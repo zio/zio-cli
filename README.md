@@ -5,7 +5,7 @@
 | [![Build Status][Badge-Circle]][Link-Circle] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Badge-Discord]][Link-Discord] |
 
 # Summary
-TODO: Tagline
+Rapidly build powerful command-line applications powered by ZIO
 
 # Documentation
 [zio-cli Microsite](https://zio.github.io/zio-cli/)
