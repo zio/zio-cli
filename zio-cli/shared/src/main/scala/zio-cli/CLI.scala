@@ -1,14 +1,14 @@
 package zio.cli
 
-sealed case class CLI[+A](
+final case class CLI[-R, +E](
   name:    String,
   version: String,
-  command: Command[A]
+  command: Command[R, E]
 )
 
 object CLI {
 
-  def parse[A](cli: CLI[A], arg: List[String], options: ParserOptions = ParserOptions.default): Either[Vector[String], A] = ???
-
-  def document(cli: CLI[Any]): CliDoc = ???
+//  def parse[A](cli: CLI[A], arg: List[String], options: ParserOptions = ParserOptions.default): Either[Vector[String], A] = ???
+//
+//  def document(cli: CLI[Any]): CliDoc = ???
 }
