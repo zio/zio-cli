@@ -17,8 +17,10 @@ import java.time.{
   ZoneId => JZoneId
 }
 
+import zio._
+
 sealed trait PrimType[+A] {
-  def parse(value: String): Either[String, A] = ???
+  def validate(value: String): IO[String, A] = ???
 }
 object PrimType {
   sealed trait PathType
