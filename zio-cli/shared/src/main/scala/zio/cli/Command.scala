@@ -6,18 +6,18 @@ sealed trait Command[-R, +E] { self =>
   type A
   type B
   def action: String
-  def flags: Flags[A]
+  def options: Options[A]
   def args: Args[B]
   def execute(a: A, b: B): ZIO[R, E, Any]
   def children: List[Command[R, E]]
 
-  def flags[A1](flags0: Flags[A1]): Command.Aux[R, E, (self.A, A1), self.B] = new Command[R, E] {
+  def options[A1](options0: Options[A1]): Command.Aux[R, E, (self.A, A1), self.B] = new Command[R, E] {
     override type A = (self.A, A1)
     override type B = self.B
 
     override def action: String = self.action
 
-    override def flags: Flags[A] = self.flags :: flags0
+    override def options: Options[A] = self.options :: options0
 
     override def args: Args[B] = self.args
 
@@ -35,7 +35,7 @@ sealed trait Command[-R, +E] { self =>
 
     override def action: String = self.action
 
-    override def flags: Flags[A] = self.flags
+    override def options: Options[A] = self.options
 
     override def args: Args[B] = self.args :: args0
 
@@ -47,41 +47,45 @@ sealed trait Command[-R, +E] { self =>
     override def children: List[Command[R, E]] = self.children
   }
 
-  def execute[R1 <: R, E1 >: E](f: (A, B) => ZIO[R1, E1, Any]): Command.Aux[R1, E1, self.A, self.B] = new Command[R1, E1] {
-    override type A = self.A
-    override type B = self.B
+  def execute[R1 <: R, E1 >: E](f: (A, B) => ZIO[R1, E1, Any]): Command.Aux[R1, E1, self.A, self.B] =
+    new Command[R1, E1] {
+      override type A = self.A
+      override type B = self.B
 
-    override def action: String = self.action
+      override def action: String = self.action
 
-    override def flags: Flags[A] = self.flags
+      override def options: Options[A] = self.options
 
-    override def args: Args[B] = self.args
+      override def args: Args[B] = self.args
 
-    override def execute(
-      a: A,
-      b: B
-    ): ZIO[R1, E1, Any] = self.execute(a, b) *> f(a, b)
+      override def execute(
+        a: A,
+        b: B
+      ): ZIO[R1, E1, Any] = self.execute(a, b) *> f(a, b)
 
-    override def children: List[Command[R, E]] = self.children
-  }
+      override def children: List[Command[R, E]] = self.children
+    }
 
-  def children[R1 <: R, E1 >: E](children0: List[Command[R1, E1]]): Command.Aux[R1, E1, self.A, self.B] = new Command[R1, E1] {
-    override type A = self.A
-    override type B = self.B
+  def children[R1 <: R, E1 >: E](children0: List[Command[R1, E1]]): Command.Aux[R1, E1, self.A, self.B] =
+    new Command[R1, E1] {
+      override type A = self.A
+      override type B = self.B
 
-    override def action: String = self.action
+      override def action: String = self.action
 
-    override def flags: Flags[A] = self.flags
+      override def options: Options[A] = self.options
 
-    override def args: Args[B] = self.args
+      override def args: Args[B] = self.args
 
-    override def execute(
-      a: A,
-      b: B
-    ): ZIO[R1, E1, Any] = self.execute(a, b)
+      override def execute(
+        a: A,
+        b: B
+      ): ZIO[R1, E1, Any] = self.execute(a, b)
 
-    override def children: List[Command[R1, E1]] = self.children ++ children0
-  }
+      override def children: List[Command[R1, E1]] = self.children ++ children0
+    }
+
+  final def helpDoc: List[HelpDoc.Block] = ???
 }
 
 object Command {
@@ -99,7 +103,7 @@ object Command {
 
     override def action: String = action0
 
-    override def flags: Flags[A] = Flags.Empty
+    override def options: Options[A] = Options.Empty
 
     override def args: Args[B] = Args.Empty
 
