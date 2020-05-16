@@ -12,8 +12,11 @@ sealed trait Args[+A] { self =>
 
 object Args {
 
-  final case class Single[+A](pseudoName: String, argType: Type[A]) extends Args[A] { self =>
+  final case class Single[+A](pseudoName: String, primType: PrimType[A], description: Vector[String]) extends Args[A] {
+    self =>
     def * : Args.Variadic[A] = Args.Variadic(self, None, None)
+
+    def ??(that: String): Single[A] = copy(description = description :+ that)
 
     def atLeast(min: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), None)
 
@@ -24,20 +27,19 @@ object Args {
 
   case object Empty extends Args[Unit]
 
-  sealed trait Type[+A]
-  object Type {
-    case object Text extends Type[String]
-    case object Path extends Type[JPath]
-    case object Int  extends Type[scala.Int]
-  }
-
   final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)]
 
   final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]]
 
-  def text(name: String): Single[String]   = Single(name, Type.Text)
-  def path(name: String): Single[JPath]    = Single(name, Type.Path)
-  def int(name: String): Single[scala.Int] = Single(name, Type.Int)
+  def text(name: String): Single[String] = Single(name, PrimType.Text, Vector.empty)
+
+  def file(name: String, exists: Boolean): Single[JPath] =
+    Single(name, PrimType.Path(PrimType.PathType.File, exists), Vector.empty)
+
+  def directory(name: String, exists: Boolean): Single[JPath] =
+    Single(name, PrimType.Path(PrimType.PathType.Directory, exists), Vector.empty)
+
+  def int(name: String): Single[BigInt] = Single(name, PrimType.Integer, Vector.empty)
 
   val empty: Args[Unit] = Empty
 }

@@ -38,10 +38,17 @@ object Options {
   // --verbose 3
   final case object Empty extends Options[Unit]
 
-  final case class Single[+A](name: String, aliases: Vector[String], flagType: Options.Type[A]) extends Options[A] {
+  final case class Single[+A](
+    name: String,
+    aliases: Vector[String],
+    flagType: Options.Type[A],
+    description: Vector[String]
+  ) extends Options[A] {
     import Options.Type._
 
     def ? : Options[Option[A]] = optional
+
+    def ??(that: String): Single[A] = copy(description = description :+ that)
 
     def alias(name: String): Options[A] = copy(aliases = aliases :+ name)
 
@@ -81,61 +88,61 @@ object Options {
    * produce the specified constant boolean value.
    */
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Single[Boolean] =
-    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent))
+    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty)
 
   def file(name: String, exists: Boolean): Single[JPath] =
-    Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.File, exists)))
+    Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.File, exists)), Vector.empty)
 
   def directory(name: String, exists: Boolean): Single[JPath] =
-    Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.Directory, exists)))
+    Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.Directory, exists)), Vector.empty)
 
   def text(name: String): Single[String] =
-    Single(name, Vector.empty, Primitive(PrimType.Text))
+    Single(name, Vector.empty, Primitive(PrimType.Text), Vector.empty)
 
   def decimal(name: String): Single[BigDecimal] =
-    Single(name, Vector.empty, Primitive(PrimType.Decimal))
+    Single(name, Vector.empty, Primitive(PrimType.Decimal), Vector.empty)
 
   def integer(name: String): Single[BigInt] =
-    Single(name, Vector.empty, Primitive(PrimType.Integer))
+    Single(name, Vector.empty, Primitive(PrimType.Integer), Vector.empty)
 
   def instant(name: String): Single[JInstant] =
-    Single(name, Vector.empty, Primitive(PrimType.Instant))
+    Single(name, Vector.empty, Primitive(PrimType.Instant), Vector.empty)
 
   def localDate(name: String): Single[JLocalDate] =
-    Single(name, Vector.empty, Primitive(PrimType.LocalDate))
+    Single(name, Vector.empty, Primitive(PrimType.LocalDate), Vector.empty)
 
   def localDateTime(name: String): Single[JLocalDateTime] =
-    Single(name, Vector.empty, Primitive(PrimType.LocalDateTime))
+    Single(name, Vector.empty, Primitive(PrimType.LocalDateTime), Vector.empty)
 
   def localTime(name: String): Single[JLocalTime] =
-    Single(name, Vector.empty, Primitive(PrimType.LocalTime))
+    Single(name, Vector.empty, Primitive(PrimType.LocalTime), Vector.empty)
 
   def monthDay(name: String): Single[JMonthDay] =
-    Single(name, Vector.empty, Primitive(PrimType.MonthDay))
+    Single(name, Vector.empty, Primitive(PrimType.MonthDay), Vector.empty)
 
   def offsetDateTime(name: String): Single[JOffsetDateTime] =
-    Single(name, Vector.empty, Primitive(PrimType.OffsetDateTime))
+    Single(name, Vector.empty, Primitive(PrimType.OffsetDateTime), Vector.empty)
 
   def offsetTime(name: String): Single[JOffsetTime] =
-    Single(name, Vector.empty, Primitive(PrimType.OffsetTime))
+    Single(name, Vector.empty, Primitive(PrimType.OffsetTime), Vector.empty)
 
   def period(name: String): Single[JPeriod] =
-    Single(name, Vector.empty, Primitive(PrimType.Period))
+    Single(name, Vector.empty, Primitive(PrimType.Period), Vector.empty)
 
   def year(name: String): Single[JYear] =
-    Single(name, Vector.empty, Primitive(PrimType.Year))
+    Single(name, Vector.empty, Primitive(PrimType.Year), Vector.empty)
 
   def yearMonth(name: String): Single[JYearMonth] =
-    Single(name, Vector.empty, Primitive(PrimType.YearMonth))
+    Single(name, Vector.empty, Primitive(PrimType.YearMonth), Vector.empty)
 
   def zonedDateTime(name: String): Single[JZonedDateTime] =
-    Single(name, Vector.empty, Primitive(PrimType.ZonedDateTime))
+    Single(name, Vector.empty, Primitive(PrimType.ZonedDateTime), Vector.empty)
 
   def zoneId(name: String): Single[JZoneId] =
-    Single(name, Vector.empty, Primitive(PrimType.ZoneId))
+    Single(name, Vector.empty, Primitive(PrimType.ZoneId), Vector.empty)
 
   def zoneOffset(name: String): Single[JZoneOffset] =
-    Single(name, Vector.empty, Primitive(PrimType.ZoneOffset))
+    Single(name, Vector.empty, Primitive(PrimType.ZoneOffset), Vector.empty)
 
   val empty: Options[Unit] = Empty
 }

@@ -2,10 +2,9 @@ package zio.cli
 
 import scala.language.postfixOps
 
-object Examples {
+trait WordCountExample {
 
   /**
-   *
    * wc [-clmw] [file ...]
    */
   val bytesFlag: Options[Boolean] = Options.bool("c", true)
@@ -15,13 +14,13 @@ object Examples {
 
   val options = bytesFlag :: linesFlag :: wordsFlag :: charFlag
 
-  val args = Args.path("files") *
+  val args = Args.file("files", true) *
 
   val wc = Command("wc")
     .options(options)
     .args(args)
 
-  val wcApp = CLI("ZIO Word Count", "0.1.2", wc)
+  val wcApp = CLIApp("ZIO Word Count", "0.1.2", wc)
 
   object WcApp extends App {
     def run(args: List[String]) = wcApp.run(args)

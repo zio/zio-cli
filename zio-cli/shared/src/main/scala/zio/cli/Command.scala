@@ -1,7 +1,13 @@
 package zio.cli
 
-import zio.ZIO
+import zio.{ IO, ZIO }
 
+/**
+ * A `Command[R, E]` is a model of a command that can be given to a command-
+ * line application.
+ *
+ * Commands may have children, which represent subcommands.
+ */
 sealed trait Command[-R, +E] { self =>
   type A
   type B
@@ -85,7 +91,18 @@ sealed trait Command[-R, +E] { self =>
       override def children: List[Command[R1, E1]] = self.children ++ children0
     }
 
+  /**
+   * Generates the help doc for this command, and any subcommands.
+   */
   final def helpDoc: List[HelpDoc.Block] = ???
+
+  /**
+   * Validates the arguments from the command line, either returning a failure
+   * that includes detailed documentation, or returning a tuple that contains
+   * both options and arguments, together with remaining (unparsed) arguments
+   * from the command-line.
+   */
+  final def validate(args: List[String]): IO[List[HelpDoc.Block], (List[String], A, B)] = ???
 }
 
 object Command {
@@ -95,6 +112,9 @@ object Command {
     type B = B0
   }
 
+  /**
+   * Construct a new command with the specified command name.
+   */
   def apply(
     action0: String
   ): Command.Aux[Any, Nothing, Any, Any] = new Command[Any, Nothing] {

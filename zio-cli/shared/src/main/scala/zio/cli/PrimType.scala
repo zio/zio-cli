@@ -19,6 +19,11 @@ import java.time.{
 
 import zio._
 
+/**
+ * A `PrimType` represents the primitive types supported by ZIO CLI.
+ *
+ * Each primitive type has a way to parse and validate from a string.
+ */
 sealed trait PrimType[+A] {
   def validate(value: String): IO[String, A] = ???
 }
