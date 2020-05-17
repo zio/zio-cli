@@ -12,7 +12,9 @@ final case class CLIApp[-R, +E](
   command: Command[R, E],
   options: ParserOptions = ParserOptions.default
 ) {
-  def run(args: List[String]): ZIO[R, Nothing, Int] = ???
-
+  def completions(shellType: ShellType): String = ???
+  
   def helpDoc: HelpDoc = ???
+
+  def run(args: List[String]): ZIO[R, Nothing, Int] = ???
 }
