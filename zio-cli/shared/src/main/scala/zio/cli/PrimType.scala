@@ -19,6 +19,9 @@ import java.time.{
 
 import zio._
 import scala.util.{Try, Success, Failure}
+import zio.cli.PrimType.PathType.Anything
+import zio.cli.PrimType.PathType.File
+import zio.cli.PrimType.PathType.Directory
 
 /**
  * A `PrimType` represents the primitive types supported by ZIO CLI.
@@ -42,16 +45,24 @@ object PrimType {
   final case class Path(pathType: PathType, exists: Boolean) extends PrimType[JPath]
   {
     import PathType._
-    def validate(value: String): IO[String,JPath] = {
-      val path = JPaths.get(value)
-      val (matchesType, existsCheck) = pathType match {
-        case Anything => (true, JFiles.exists(path))
-        case File => (JFiles.isDirectory(path), JFiles.exists(path))
-        case Directory => (JFiles.isDirectory(path), JFiles.exists(path))
-      }
-      if (matchesType && exists == existsCheck) IO.succeed(path) 
-      else IO.fail(s"Specified path '$value' does not match requirements.")
-    }
+    def validate(value: String): IO[String, JPath] = 
+      for {
+        p       <- IO.effect(JPaths.get(value)).catchAll(_ => IO.fail(s"Couldn't recognize '$value' as valid path."))
+        _       <- exists(p) >>= refine("Expected path '$value' to exist.")
+        _       <- pathType match {
+                      case Anything => IO.unit
+                      case File => isRegularFile(p) >>= refine(s"Expected path '$value' to be a regular file.")
+                      case Directory => isDirectory(p) >>= refine(s"Expected path '$value' to be a directory.")
+                    }
+      } yield p
+      
+    private def exists(path: JPath) = IO.effect(JFiles.exists(path)) orElse IO.succeed(false)
+
+    private def isDirectory(path: JPath) = IO.effect(JFiles.isDirectory(path)) orElse IO.succeed(false)
+
+    private def isRegularFile(path: JPath) = IO.effect(JFiles.isDirectory(path)) orElse IO.succeed(false)
+
+    private def refine(message: String) (f: Boolean) = if (f) IO.unit else IO.fail(message)
   }
   
   case object Text extends PrimType[String] {
@@ -68,9 +79,9 @@ object PrimType {
 
   case object Boolean extends PrimType[Boolean] {
     def validate(value: String): IO[String, Boolean] = value match {
-      case "true" => IO.succeed(true)
-      case "false" => IO.succeed(false)
-      case s => IO.fail(s"Couldn't parse Boolean from $s.")
+      case "true"  | "1" | "y" | "yes" | "on"  => IO.succeed(true)
+      case "false" | "0" | "n" | "no"  | "off" => IO.succeed(false)
+      case s => IO.fail(s"Couldn't parse boolean from value: $value.")
     }
   }
   
