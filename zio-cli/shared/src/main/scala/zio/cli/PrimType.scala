@@ -18,10 +18,7 @@ import java.time.{
 }
 
 import zio._
-import scala.util.{Try, Success, Failure}
-import zio.cli.PrimType.PathType.Anything
-import zio.cli.PrimType.PathType.File
-import zio.cli.PrimType.PathType.Directory
+import scala.util.{ Failure, Success, Try }
 
 /**
  * A `PrimType` represents the primitive types supported by ZIO CLI.
@@ -32,7 +29,7 @@ sealed trait PrimType[+A] {
   // TODO: Human-friendly rendering
   def render: String = toString()
 
-  def validate(value: String): IO[String, A] = ???
+  def validate(value: String): IO[String, A]
 }
 object PrimType {
   sealed trait PathType
@@ -42,49 +39,48 @@ object PrimType {
     case object Directory extends PathType
   }
 
-  final case class Path(pathType: PathType, exists: Boolean) extends PrimType[JPath]
-  {
+  final case class Path(pathType: PathType, exists: Boolean) extends PrimType[JPath] {
     import PathType._
-    def validate(value: String): IO[String, JPath] = 
+    def validate(value: String): IO[String, JPath] =
       for {
-        p       <- IO.effect(JPaths.get(value)).catchAll(_ => IO.fail(s"Couldn't recognize '$value' as valid path."))
-        _       <- exists(p) >>= refine("Expected path '$value' to exist.")
-        _       <- pathType match {
-                      case Anything => IO.unit
-                      case File => isRegularFile(p) >>= refine(s"Expected path '$value' to be a regular file.")
-                      case Directory => isDirectory(p) >>= refine(s"Expected path '$value' to be a directory.")
-                    }
+        p <- IO.effect(JPaths.get(value)).catchAll(_ => IO.fail(s"Couldn't recognize '$value' as valid path."))
+        _ <- exists(p) >>= refine(s"Expected path '$value' to exist.")
+        _ <- pathType match {
+              case Anything  => IO.unit
+              case File      => isRegularFile(p) >>= refine(s"Expected path '$value' to be a regular file.")
+              case Directory => isDirectory(p) >>= refine(s"Expected path '$value' to be a directory.")
+            }
       } yield p
-      
+
     private def exists(path: JPath) = IO.effect(JFiles.exists(path)) orElse IO.succeed(false)
 
     private def isDirectory(path: JPath) = IO.effect(JFiles.isDirectory(path)) orElse IO.succeed(false)
 
-    private def isRegularFile(path: JPath) = IO.effect(JFiles.isDirectory(path)) orElse IO.succeed(false)
+    private def isRegularFile(path: JPath) = IO.effect(JFiles.isRegularFile(path)) orElse IO.succeed(false)
 
-    private def refine(message: String) (f: Boolean) = if (f) IO.unit else IO.fail(message)
+    private def refine(message: String)(f: Boolean) = if (f) IO.unit else IO.fail(message)
   }
-  
+
   case object Text extends PrimType[String] {
     def validate(value: String): IO[String, String] = attempt(value, _ => value, "text")
   }
-  
+
   case object Decimal extends PrimType[BigDecimal] {
     def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), "decimal")
   }
-  
+
   case object Integer extends PrimType[BigInt] {
     def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), "integer")
   }
 
   case object Boolean extends PrimType[Boolean] {
     def validate(value: String): IO[String, Boolean] = value match {
-      case "true"  | "1" | "y" | "yes" | "on"  => IO.succeed(true)
-      case "false" | "0" | "n" | "no"  | "off" => IO.succeed(false)
-      case s => IO.fail(s"Couldn't parse boolean from value: $value.")
+      case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
+      case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
+      case _                                  => IO.fail(s"Couldn't parse boolean from value: $value.")
     }
   }
-  
+
   case object Instant extends PrimType[JInstant] {
     def validate(value: String): IO[String, JInstant] = attempt(value, JInstant.parse, "instant")
   }
@@ -96,7 +92,7 @@ object PrimType {
   case object LocalDateTime extends PrimType[JLocalDateTime] {
     def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, "localdatetime")
   }
-  
+
   case object LocalTime extends PrimType[JLocalTime] {
     def validate(value: String): IO[String, JLocalTime] = attempt(value, JLocalTime.parse, "localtime")
   }
@@ -108,19 +104,19 @@ object PrimType {
   case object OffsetDateTime extends PrimType[JOffsetDateTime] {
     def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, "offsetdatetime")
   }
-  
+
   case object OffsetTime extends PrimType[JOffsetTime] {
     def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, "offsettime")
   }
-  
+
   case object Period extends PrimType[JPeriod] {
     def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, "period")
   }
-  
+
   case object Year extends PrimType[JYear] {
     def validate(value: String): IO[String, JYear] = attempt(value, JYear.parse, "year")
   }
-  
+
   case object YearMonth extends PrimType[JYearMonth] {
     def validate(value: String): IO[String, JYearMonth] = attempt(value, JYearMonth.parse, "yearmonth")
   }
