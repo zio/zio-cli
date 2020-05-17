@@ -102,7 +102,7 @@ sealed trait Command[-R, +E] { self =>
    * both options and arguments, together with remaining (unparsed) arguments
    * from the command-line.
    */
-  final def validate(args: List[String]): IO[List[HelpDoc.Block], (List[String], A, B)] = ???
+  final def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A, B)] = ???
 }
 
 object Command {
