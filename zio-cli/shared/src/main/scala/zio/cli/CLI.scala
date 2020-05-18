@@ -13,7 +13,7 @@ final case class CLIApp[-R, +E](
   options: ParserOptions = ParserOptions.default
 ) {
   def completions(shellType: ShellType): String = ???
-  
+
   def helpDoc: HelpDoc = ???
 
   def run(args: List[String]): ZIO[R, Nothing, Int] = ???

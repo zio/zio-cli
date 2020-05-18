@@ -31,6 +31,8 @@ object HelpDoc {
     final case class Paragraph(value: Span)          extends Block
     final case class DescriptionList(definitions: List[(Span, Block)])
     final case class Enumeration(elements: List[Block])
+
+    def paragraph(value: String): Block = Block.Paragraph(Span.Text(value))
   }
 
   sealed trait Span {

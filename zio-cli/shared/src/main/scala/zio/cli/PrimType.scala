@@ -25,6 +25,9 @@ import zio._
  * Each primitive type has a way to parse and validate from a string.
  */
 sealed trait PrimType[+A] {
+  // TODO: Human-friendly rendering
+  def render: String = toString()
+
   def validate(value: String): IO[String, A] = ???
 }
 object PrimType {

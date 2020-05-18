@@ -2,12 +2,16 @@ package zio.cli
 
 import java.nio.file.{ Path => JPath }
 
+import zio.IO
+
 sealed trait Args[+A] { self =>
 
   def ::[That, A1 >: A](that: Args[That]): Args.Cons[That, A1] =
     Args.Cons(that, self)
 
   def helpDoc: HelpDoc.Span = ???
+
+  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
 }
 
 object Args {
@@ -23,13 +27,48 @@ object Args {
     def atMost(max: Int): Args.Variadic[A] = Args.Variadic(self, None, Some(max))
 
     def between(min: Int, max: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), Some(max))
+
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
+      args match {
+        case head :: tail => primType.validate(head).bimap(text => HelpDoc.Block.paragraph(text) :: Nil, a => tail -> a)
+        case Nil =>
+          IO.fail(HelpDoc.Block.paragraph(s"Missing argument <${pseudoName}> of type ${primType.render}.") :: Nil)
+      }
   }
 
-  case object Empty extends Args[Unit]
+  case object Empty extends Args[Unit] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
+      IO.succeed(args -> ())
+  }
 
-  final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)]
+  final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], (A, B))] =
+      for {
+        tuple     <- head.validate(args, opts)
+        (args, a) = tuple
+        tuple     <- tail.validate(args, opts)
+        (args, b) = tuple
+      } yield (args, (a, b))
+  }
 
-  final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]]
+  final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], List[A])] = {
+      val min1 = min.getOrElse(0)
+      val max1 = max.getOrElse(Int.MaxValue)
+
+      def loop(args: List[String], acc: List[A]): IO[List[HelpDoc.Block], (List[String], List[A])] =
+        if (acc.length >= max1) IO.succeed(args -> acc)
+        else
+          value
+            .validate(args, opts)
+            .foldM(
+              failure => if (acc.length >= min1) IO.succeed(args -> acc) else IO.fail(failure),
+              { case (args, a) => loop(args, a :: acc) }
+            )
+
+      loop(args, Nil).map { case (args, list) => (args, list.reverse) }
+    }
+  }
 
   def text(name: String): Single[String] = Single(name, PrimType.Text, Vector.empty)
 

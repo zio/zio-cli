@@ -17,6 +17,8 @@ import java.time.{
   ZoneId => JZoneId
 }
 
+import zio.IO
+
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
@@ -32,6 +34,8 @@ sealed trait Options[+A] { self =>
 
   final def requiresNot[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.RequiresNot(self, that, suchThat)
+
+  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = ???
 }
 
 object Options {
@@ -65,7 +69,21 @@ object Options {
       copy(flagType = Map(flagType, (a: A) => scala.util.Try(f(a)).toEither.left.map(_.getMessage)))
   }
 
-  final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)]
+  final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
+    override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], (A, B))] =
+      (for {
+        tuple     <- left.validate(args, opts)
+        (args, a) = tuple
+        tuple     <- right.validate(args, opts)
+        (args, b) = tuple
+      } yield (args -> (a -> b))) orElse
+        (for {
+          tuple     <- right.validate(args, opts)
+          (args, b) = tuple
+          tuple     <- left.validate(args, opts)
+          (args, a) = tuple
+        } yield (args -> (a -> b)))
+  }
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A]
 

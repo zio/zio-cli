@@ -96,17 +96,28 @@ sealed trait Command[-R, +E] { self =>
    */
   final def helpDoc: List[HelpDoc.Block] = ???
 
+  // git --foo bar help --baz boo commit
+  // git --  rm -rf foo
+
   /**
    * Validates the arguments from the command line, either returning a failure
    * that includes detailed documentation, or returning a tuple that contains
    * both options and arguments, together with remaining (unparsed) arguments
    * from the command-line.
    */
-  final def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A, B)] = ???
+  final def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A, B)] = {
+    val _ = args
+    val _ = opts
+
+    val subActions = children.map(_.action)
+
+    val _ = subActions
+
+    ???
+  }
 }
 
 object Command {
-
   type Aux[-R0, +E0, A0, B0] = Command[R0, E0] {
     type A = A0
     type B = B0
