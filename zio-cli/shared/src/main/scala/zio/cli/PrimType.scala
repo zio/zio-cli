@@ -30,6 +30,7 @@ sealed trait PrimType[+A] {
 
   def validate(value: String): IO[String, A]
 }
+
 object PrimType {
   sealed trait PathType
   object PathType {
@@ -67,15 +68,15 @@ object PrimType {
   }
 
   case object Text extends PrimType[String] {
-    def validate(value: String): IO[String, String] = attempt(value, _ => value, "text")
+    def validate(value: String): IO[String, String] = attempt(value, _ => value, render)
   }
 
   case object Decimal extends PrimType[BigDecimal] {
-    def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), "decimal")
-  }
+    def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), render)
+  
 
   case object Integer extends PrimType[BigInt] {
-    def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), "integer")
+    def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), render)
   }
 
   case object Boolean extends PrimType[Boolean] {
@@ -87,54 +88,54 @@ object PrimType {
   }
 
   case object Instant extends PrimType[JInstant] {
-    def validate(value: String): IO[String, JInstant] = attempt(value, JInstant.parse, "instant")
+    def validate(value: String): IO[String, JInstant] = attempt(value, JInstant.parse, render)
   }
 
   case object LocalDate extends PrimType[JLocalDate] {
-    def validate(value: String): IO[String, JLocalDate] = attempt(value, JLocalDate.parse, "localdate")
+    def validate(value: String): IO[String, JLocalDate] = attempt(value, JLocalDate.parse, render)
   }
 
   case object LocalDateTime extends PrimType[JLocalDateTime] {
-    def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, "localdatetime")
+    def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, render)
   }
 
   case object LocalTime extends PrimType[JLocalTime] {
-    def validate(value: String): IO[String, JLocalTime] = attempt(value, JLocalTime.parse, "localtime")
+    def validate(value: String): IO[String, JLocalTime] = attempt(value, JLocalTime.parse, render)
   }
 
   case object MonthDay extends PrimType[JMonthDay] {
-    def validate(value: String): IO[String, JMonthDay] = attempt(value, JMonthDay.parse, "monthday")
+    def validate(value: String): IO[String, JMonthDay] = attempt(value, JMonthDay.parse, render)
   }
 
   case object OffsetDateTime extends PrimType[JOffsetDateTime] {
-    def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, "offsetdatetime")
+    def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, render)
   }
 
   case object OffsetTime extends PrimType[JOffsetTime] {
-    def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, "offsettime")
+    def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, render)
   }
 
   case object Period extends PrimType[JPeriod] {
-    def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, "period")
+    def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, render)
   }
 
   case object Year extends PrimType[JYear] {
-    def validate(value: String): IO[String, JYear] = attempt(value, JYear.parse, "year")
+    def validate(value: String): IO[String, JYear] = attempt(value, JYear.parse, render)
   }
 
   case object YearMonth extends PrimType[JYearMonth] {
-    def validate(value: String): IO[String, JYearMonth] = attempt(value, JYearMonth.parse, "yearmonth")
+    def validate(value: String): IO[String, JYearMonth] = attempt(value, JYearMonth.parse, render)
   }
 
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
-    def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, "zoneddatetime")
+    def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, render)
   }
 
   case object ZoneId extends PrimType[JZoneId] {
-    def validate(value: String): IO[String, JZoneId] = attempt(value, JZoneId.of, "zoneid")
+    def validate(value: String): IO[String, JZoneId] = attempt(value, JZoneId.of, render)
   }
   case object ZoneOffset extends PrimType[JZoneOffset] {
-    def validate(value: String): IO[String, JZoneOffset] = attempt(value, JZoneOffset.of, "zoneoffset")
+    def validate(value: String): IO[String, JZoneOffset] = attempt(value, JZoneOffset.of, render)
   }
 
   private def attempt[A, E](value: String, parse: String => A, typeName: String): IO[String, A] =
