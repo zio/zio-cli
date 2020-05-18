@@ -8,6 +8,8 @@ import java.time.LocalDateTime
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.MonthDay
+import java.time.Year
+import java.time.YearMonth
 
 object PrimTypeSpec extends DefaultRunnableSpec
 {
@@ -104,6 +106,22 @@ object PrimTypeSpec extends DefaultRunnableSpec
         }
       }
     }, 
+
+    suite("Year Suite") {
+      testM("validate returns proper Year representation") {
+        checkM(anyYear) {i => 
+          assertM(PrimType.Year.validate(i))(equalTo(Year.parse(i)))
+        }
+      }
+    }, 
+
+    suite("YearMonth Suite") {
+      testM("validate returns proper YearMonth representation") {
+        checkM(anyYearMonth) {i => 
+          assertM(PrimType.YearMonth.validate(i))(equalTo(YearMonth.parse(i)))
+        }
+      }
+    }, 
   )
 
   val anyBigIntString = Gen.long(0, Long.MaxValue).map(BigInt(_)).map(_.toString)
@@ -113,6 +131,8 @@ object PrimTypeSpec extends DefaultRunnableSpec
   val anyLocalDateTime = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC).toLocalDateTime.toString)
   val anyLocalDate = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC).toLocalDate.toString)
   val anyLocalTime = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC).toLocalTime.toString) 
-  val anyMonthDay = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC).toLocalDate).map(d => MonthDay.of(d.getMonthValue, d.getDayOfMonth).toString) 
+  val anyMonthDay = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC)).map(d => MonthDay.of(d.getMonthValue, d.getDayOfMonth).toString) 
+  val anyYear = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC).getYear.toString) 
+  val anyYearMonth = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC)).map(d => YearMonth.of(d.getYear, d.getMonthValue).toString) 
 
 }

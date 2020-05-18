@@ -125,6 +125,7 @@ object PrimType {
   case object YearMonth extends PrimType[JYearMonth] {
     def validate(value: String): IO[String, JYearMonth] = attempt(value, JYearMonth.parse, "yearmonth")
   }
+  
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
     def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, "zoneddatetime")
   }
