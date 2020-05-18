@@ -80,9 +80,9 @@ object PrimType {
 
   case object Boolean extends PrimType[Boolean] {
     def validate(value: String): IO[String, Boolean] = value.trim.toLowerCase match {
-      case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
-      case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
-      case _                                  => IO.fail(s"$value cannot be recognized as valid boolean.")
+      case "true"  | "1" | "y" | "yes" | "on"  => IO.succeed(true)
+      case "false" | "0" | "n" | "no"  | "off" => IO.succeed(false)
+      case _                                   => IO.fail(s"$value cannot be recognized as valid boolean.")
     }
   }
 
@@ -125,7 +125,7 @@ object PrimType {
   case object YearMonth extends PrimType[JYearMonth] {
     def validate(value: String): IO[String, JYearMonth] = attempt(value, JYearMonth.parse, "yearmonth")
   }
-  
+
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
     def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, "zoneddatetime")
   }
