@@ -73,7 +73,7 @@ object PrimType {
 
   case object Decimal extends PrimType[BigDecimal] {
     def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), render)
-  
+  }
 
   case object Integer extends PrimType[BigInt] {
     def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), render)
