@@ -18,7 +18,6 @@ import java.time.{
 }
 
 import zio._
-import scala.util.{ Failure, Success, Try }
 
 /**
  * A `PrimType` represents the primitive types supported by ZIO CLI.
@@ -43,12 +42,12 @@ object PrimType {
     import PathType._
     def validate(value: String): IO[String, JPath] =
       for {
-        p <- IO.effect(JPaths.get(value)).catchAll(_ => IO.fail(s"Couldn't recognize '$value' as valid path."))
-        _ <- exists(p) >>= refine(s"Expected path '$value' to exist.")
+        p <- IO.effect(JPaths.get(value)) orElseFail (s"'$value' is not a recognized path.")
+        _ <- exists(p) >>= refineExistence(value, exists)
         _ <- pathType match {
               case Anything  => IO.unit
-              case File      => isRegularFile(p) >>= refine(s"Expected path '$value' to be a regular file.")
-              case Directory => isDirectory(p) >>= refine(s"Expected path '$value' to be a directory.")
+              case File      => ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(isRegularFile(p))
+              case Directory => ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(isDirectory(p))
             }
       } yield p
 
@@ -58,7 +57,13 @@ object PrimType {
 
     private def isRegularFile(path: JPath) = IO.effect(JFiles.isRegularFile(path)) orElse IO.succeed(false)
 
-    private def refine(message: String)(f: Boolean) = if (f) IO.unit else IO.fail(message)
+    private def refineExistence(value: String, expected: Boolean) (actual: Boolean) = {
+      (expected, actual) match {
+        case (true, false) =>  IO.fail(s"Path '$value' does not exist.")
+        case (false, true) =>  IO.fail(s"Path '$value' expected to not exist, but it does.")
+        case             _ =>  IO.unit
+      } 
+    }
   }
 
   case object Text extends PrimType[String] {
@@ -74,10 +79,10 @@ object PrimType {
   }
 
   case object Boolean extends PrimType[Boolean] {
-    def validate(value: String): IO[String, Boolean] = value match {
+    def validate(value: String): IO[String, Boolean] = value.trim.toLowerCase match {
       case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
       case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
-      case _                                  => IO.fail(s"Couldn't parse boolean from value: $value.")
+      case _                                  => IO.fail(s"$value cannot be recognized as valid boolean.")
     }
   }
 
@@ -132,8 +137,5 @@ object PrimType {
   }
 
   private def attempt[A, E](value: String, parse: String => A, typeName: String): IO[String, A] =
-    Try(parse(value)) match {
-      case Success(value)     => IO.succeed(value)
-      case Failure(throwable) => IO.fail(s"Couldn't parse $typeName from value: $value.")
-    }
+    IO(parse(value)) orElseFail(s"${value} is not a ${typeName}.")
 }
