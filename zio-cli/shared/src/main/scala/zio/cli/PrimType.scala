@@ -58,13 +58,12 @@ object PrimType {
 
     private def isRegularFile(path: JPath) = IO.effect(JFiles.isRegularFile(path)) orElse IO.succeed(false)
 
-    private def refineExistence(value: String, expected: Boolean) (actual: Boolean) = {
+    private def refineExistence(value: String, expected: Boolean)(actual: Boolean) =
       (expected, actual) match {
-        case (true, false) =>  IO.fail(s"Path '$value' does not exist.")
-        case (false, true) =>  IO.fail(s"Path '$value' expected to not exist, but it does.")
-        case             _ =>  IO.unit
-      } 
-    }
+        case (true, false) => IO.fail(s"Path '$value' does not exist.")
+        case (false, true) => IO.fail(s"Path '$value' expected to not exist, but it does.")
+        case _             => IO.unit
+      }
   }
 
   case object Text extends PrimType[String] {
@@ -81,9 +80,9 @@ object PrimType {
 
   case object Boolean extends PrimType[Boolean] {
     def validate(value: String): IO[String, Boolean] = value.trim.toLowerCase match {
-      case "true"  | "1" | "y" | "yes" | "on"  => IO.succeed(true)
-      case "false" | "0" | "n" | "no"  | "off" => IO.succeed(false)
-      case _                                   => IO.fail(s"$value cannot be recognized as valid boolean.")
+      case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
+      case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
+      case _                                  => IO.fail(s"$value cannot be recognized as valid boolean.")
     }
   }
 
@@ -120,11 +119,19 @@ object PrimType {
   }
 
   case object Year extends PrimType[JYear] {
-    def validate(value: String): IO[String, JYear] = attempt(value, JYear.parse, render)
+    def validate(value: String): IO[String, JYear] = attempt(value, s => JYear.of(s.toInt), render)
   }
 
   case object YearMonth extends PrimType[JYearMonth] {
-    def validate(value: String): IO[String, JYearMonth] = attempt(value, JYearMonth.parse, render)
+    def validate(value: String): IO[String, JYearMonth] = {
+      val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
+      def parse(input: String) = input match {
+        case AcceptedFormat(y, m) => IO.effect(JYearMonth.of(y.toInt, m.toInt))
+        case _                    => IO.fail(())
+      }
+
+      parse(value) orElse IO.fail(s"${value} is not a ${render}.")
+    }
   }
 
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
@@ -139,5 +146,5 @@ object PrimType {
   }
 
   private def attempt[A, E](value: String, parse: String => A, typeName: String): IO[String, A] =
-    IO(parse(value)) orElseFail(s"${value} is not a ${typeName}.")
+    IO(parse(value)) orElseFail (s"${value} is not a ${typeName}.")
 }
