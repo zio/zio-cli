@@ -71,7 +71,7 @@ object Args {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
       val max1 = max.getOrElse(Int.MaxValue)
-
+      
       def loop(args: List[String], acc: List[A]): IO[List[HelpDoc.Block], (List[String], List[A])] =
         if (acc.length >= max1) IO.succeed(args -> acc)
         else
