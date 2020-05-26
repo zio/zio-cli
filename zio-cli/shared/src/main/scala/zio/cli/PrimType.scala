@@ -26,6 +26,8 @@ import zio._
  */
 sealed trait PrimType[+A] {
   // TODO: Human-friendly rendering
+  def helpDoc: HelpDoc.Span = HelpDoc.dsl.text(render)
+
   def render: String = toString()
 
   def validate(value: String): IO[String, A]

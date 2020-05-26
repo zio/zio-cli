@@ -94,10 +94,7 @@ sealed trait Command[-R, +E] { self =>
   /**
    * Generates the help doc for this command, and any subcommands.
    */
-  final def helpDoc: List[HelpDoc.Block] = ???
-
-  // git --foo bar help --baz boo commit
-  // git --  rm -rf foo
+  final def helpDoc: HelpDoc.Block = ???
 
   /**
    * Validates the arguments from the command line, either returning a failure

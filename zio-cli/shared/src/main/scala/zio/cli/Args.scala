@@ -9,7 +9,7 @@ sealed trait Args[+A] { self =>
   def ::[That, A1 >: A](that: Args[That]): Args.Cons[That, A1] =
     Args.Cons(that, self)
 
-  def helpDoc: HelpDoc.Span = ???
+  def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)]
 
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
 }
@@ -28,17 +28,31 @@ object Args {
 
     def between(min: Int, max: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), Some(max))
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = {
+      import HelpDoc.dsl._
+
+      List(
+        spans(weak(pseudoName), space, HelpDoc.dsl.text("(" + primType.render + ")")) ->
+          blocks(description.map(p(_)))
+      )
+    }
+
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
+      import HelpDoc.dsl._
+
       args match {
-        case head :: tail => primType.validate(head).bimap(text => HelpDoc.Block.paragraph(text) :: Nil, a => tail -> a)
+        case head :: tail => primType.validate(head).bimap(text => p(text) :: Nil, a => tail -> a)
         case Nil =>
-          IO.fail(HelpDoc.Block.paragraph(s"Missing argument <${pseudoName}> of type ${primType.render}.") :: Nil)
+          IO.fail(p(s"Missing argument <${pseudoName}> of type ${primType.render}.") :: Nil)
       }
+    }
   }
 
   case object Empty extends Args[Unit] {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
       IO.succeed(args -> ())
+
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = Nil
   }
 
   final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
@@ -49,6 +63,8 @@ object Args {
         tuple     <- tail.validate(args, opts)
         (args, b) = tuple
       } yield (args, (a, b))
+
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = head.helpDoc ++ tail.helpDoc
   }
 
   final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
@@ -68,6 +84,9 @@ object Args {
 
       loop(args, Nil).map { case (args, list) => (args, list.reverse) }
     }
+
+    // TODO:
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = ???
   }
 
   def text(name: String): Single[String] = Single(name, PrimType.Text, Vector.empty)

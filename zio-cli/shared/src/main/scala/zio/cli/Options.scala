@@ -27,7 +27,7 @@ sealed trait Options[+A] { self =>
   def ::[That, A1 >: A](that: Options[That]): Options.Cons[That, A1] =
     Options.Cons(that, self)
 
-  final def helpDoc: List[HelpDoc.Block] = ???
+  final def helpDoc: HelpDoc.Block = ???
 
   final def requires[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.Requires(self, that, suchThat)
