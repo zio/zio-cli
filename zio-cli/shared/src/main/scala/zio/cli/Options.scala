@@ -121,7 +121,8 @@ object Options {
   }
 
   final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = ???
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = 
+      target.validate(args, opts).foldM(_ => options.validate(args, opts), _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil))
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
