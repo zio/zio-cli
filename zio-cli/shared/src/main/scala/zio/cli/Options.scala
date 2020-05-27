@@ -70,11 +70,11 @@ object Options {
 
     def mapTry[B](f: A => B): Options[B] =
         Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => HelpDoc.Block.paragraph(e.getMessage)))
-
+    
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
       args match {
         case head :: tail if head.trim.toLowerCase == name =>
-          optionType.validate(tail)
+          optionType.validate(name, tail)
         case head :: tail => validate(tail, opts).map {
           case (args, a) => (head :: args, a)
         }
@@ -114,7 +114,7 @@ object Options {
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = 
-      target.validate(args, opts).foldM(f => IO.fail(f), s => options.validate(args, opts))
+      target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
   }
 
   final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
@@ -127,20 +127,19 @@ object Options {
   }
 
   sealed trait Type[+A] {
-    def validate(args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
+    def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
  
   }
   object Type {
     final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
-      def validate(args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] = ???
-        //IO.succeed(args.filter(!supportedOptions.contains(_)) -> supportedOptions.exists(args.contains)).map(r => r._1 -> (ifPresent == r._2))
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] = ???
     }
   
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
-      def validate(args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] = 
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] = 
         args match {
           case head :: tail => primType.validate(head).bimap(f => HelpDoc.Block.paragraph(f) :: Nil, a => tail -> a)
-          case Nil => IO.fail(HelpDoc.Block.paragraph(s"No options found!.") :: Nil)
+          case Nil => IO.fail(HelpDoc.Block.paragraph(s"Value for option ${name} was not found!") :: Nil)
         }
     }
   }
