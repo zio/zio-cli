@@ -18,6 +18,7 @@ import java.time.{
 }
 
 import zio.IO
+import zio.cli.HelpDoc.dsl.{ p, error }
 import scala.collection.immutable.Nil
 
 /**
@@ -62,32 +63,34 @@ object Options {
     def aliases(names: String*): Options[A] = copy(aliases = aliases ++ names)
 
     def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
-      Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(HelpDoc.Block.paragraph(message)))(Right(_)))
+      Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(p(error(message))))(Right(_)))
 
     def optional: Options[Option[A]] = Optional(self)
 
     def map[B](f: A => B): Options[B] = Map(self, (a: A) => Right(f(a)))
 
     def mapTry[B](f: A => B): Options[B] =
-        Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => HelpDoc.Block.paragraph(e.getMessage)))
+        Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
     
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
       args match {
-        case head :: tail if head.trim.toLowerCase == name =>
-          optionType.validate(name, tail)
+        case head :: tail if opts.normalizeCase(head) == fullname =>
+          optionType.validate(fullname, tail)
         case head :: tail => validate(tail, opts).map {
           case (args, a) => (head :: args, a)
         }
         case Nil =>
-          IO.fail(HelpDoc.Block.paragraph(s"No option found!. Was expecting option: ${name}.") :: Nil)
+          IO.fail(p(error(s"No option found!. Was expecting option: ${fullname}.")) :: Nil)
       }
     }
+
+    def fullname = "--" + name
   }
 
   final case class Optional[A](single: Single[A]) extends Options[Option[A]] {
       def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] = 
         args match {
-          case l @ head :: tail if head.trim.toLowerCase == single.name => 
+          case l @ head :: tail if opts.normalizeCase(head) == single.fullname => 
             single.validate(l, opts).map(r => r._1 -> Some(r._2))
           case head :: tail => validate(tail, opts).map {
             case (args, a) => (head :: args, a)
@@ -138,8 +141,8 @@ object Options {
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
       def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] = 
         args match {
-          case head :: tail => primType.validate(head).bimap(f => HelpDoc.Block.paragraph(f) :: Nil, a => tail -> a)
-          case Nil => IO.fail(HelpDoc.Block.paragraph(s"Value for option ${name} was not found!") :: Nil)
+          case head :: tail => primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
+          case Nil => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
         }
     }
   }
