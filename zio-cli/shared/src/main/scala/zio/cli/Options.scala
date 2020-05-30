@@ -18,6 +18,8 @@ import java.time.{
 }
 
 import zio.IO
+import zio.cli.HelpDoc.dsl.{ p, error }
+import scala.collection.immutable.Nil
 
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
@@ -35,20 +37,22 @@ sealed trait Options[+A] { self =>
   final def requiresNot[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.RequiresNot(self, that, suchThat)
 
-  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = ???
+  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
 }
 
 object Options {
   // --verbose 3
-  final case object Empty extends Options[Unit]
+  final case object Empty extends Options[Unit] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] = 
+      IO.succeed(args -> ())
+  }
 
   final case class Single[+A](
     name: String,
     aliases: Vector[String],
-    flagType: Options.Type[A],
+    optionType: Options.Type[A],
     description: Vector[String]
-  ) extends Options[A] {
-    import Options.Type._
+  ) extends Options[A] { self => 
 
     def ? : Options[Option[A]] = optional
 
@@ -59,14 +63,44 @@ object Options {
     def aliases(names: String*): Options[A] = copy(aliases = aliases ++ names)
 
     def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
-      copy(flagType = Map(flagType, (a: A) => f.lift(a).fold[Either[String, B]](Left(message))(Right(_))))
+      Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(p(error(message))))(Right(_)))
 
-    def optional: Options[Option[A]] = copy(flagType = Optional(flagType))
+    def optional: Options[Option[A]] = Optional(self)
 
-    def map[B](f: A => B): Options[B] = copy(flagType = Map(flagType, (a: A) => Right(f(a))))
+    def map[B](f: A => B): Options[B] = Map(self, (a: A) => Right(f(a)))
 
     def mapTry[B](f: A => B): Options[B] =
-      copy(flagType = Map(flagType, (a: A) => scala.util.Try(f(a)).toEither.left.map(_.getMessage)))
+        Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
+    
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
+      args match {
+        case head :: tail if supports(head, opts) =>
+          optionType.validate(fullname, tail)
+        case head :: tail => validate(tail, opts).map {
+          case (args, a) => (head :: args, a)
+        }
+        case Nil =>
+          IO.fail(p(error(s"No option found!. Was expecting option: ${fullname}.")) :: Nil)
+      }
+    }
+
+    private[cli] def supports(arg: String, opts: ParserOptions) = 
+      opts.normalizeCase(arg) == fullname || aliases.map("-" + opts.normalizeCase(_)).contains(arg) 
+
+    private[cli] def fullname = "--" + name
+
+  }
+
+  final case class Optional[A](single: Single[A]) extends Options[Option[A]] {
+      def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] = 
+        args match {
+          case l @ head :: tail if single.supports(head, opts) =>
+            single.validate(l, opts).map(r => r._1 -> Some(r._2))
+          case head :: tail => validate(tail, opts).map {
+            case (args, a) => (head :: args, a)
+          }
+          case Nil => IO.succeed(args -> None)
+        }
   }
 
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
@@ -85,18 +119,37 @@ object Options {
         } yield (args -> (a -> b)))
   }
 
-  final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A]
+  final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = 
+      target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
+  }
 
-  final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean)
-      extends Options[A]
+  final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = 
+      target.validate(args, opts).foldM(_ => options.validate(args, opts), _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil))
+  }
 
-  sealed trait Type[+A]
+  final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block] ,(List[String], B)] = 
+      value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
+  }
+
+  sealed trait Type[+A] {
+    def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
+ 
+  }
   object Type {
-
-    final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean]
-    final case class Map[A, B](value: Type[A], f: A => Either[String, B])     extends Type[B]
-    final case class Optional[A](value: Type[A])                              extends Type[Option[A]]
-    final case class Primitive[A](primType: PrimType[A])                      extends Type[A]
+    final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] = ???
+    }
+  
+    final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] = 
+        args match {
+          case head :: tail => primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
+          case Nil => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
+        }
+    }
   }
 
   import Type._
