@@ -5,7 +5,7 @@ import zio.test._
 
 object OptionsSpec extends DefaultRunnableSpec {
 
-  val f: Options[String]            = Options.text("firstname")
+  val f: Options[String]            = Options.text("firstname").alias("f")
   val l: Options[String]            = Options.text("lastname")
   val a: Options[BigInt]            = Options.integer("age")
   val aOpt: Options[Option[BigInt]] = Options.integer("age").optional
@@ -15,6 +15,10 @@ object OptionsSpec extends DefaultRunnableSpec {
   def spec = suite("Options Suite")(
     testM("validate text option") {
       val r = f.validate(List("--firstname", "John"), ParserOptions.default)
+      assertM(r)(equalTo(List() -> "John"))
+    },
+     testM("validate text option with alias") {
+      val r = f.validate(List("-f", "John"), ParserOptions.default)
       assertM(r)(equalTo(List() -> "John"))
     },
     testM("validate integer option") {

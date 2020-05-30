@@ -74,7 +74,7 @@ object Options {
     
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
       args match {
-        case head :: tail if opts.normalizeCase(head) == fullname =>
+        case head :: tail if supports(head, opts) =>
           optionType.validate(fullname, tail)
         case head :: tail => validate(tail, opts).map {
           case (args, a) => (head :: args, a)
@@ -84,13 +84,17 @@ object Options {
       }
     }
 
-    def fullname = "--" + name
+    private[cli] def supports(arg: String, opts: ParserOptions) = 
+      opts.normalizeCase(arg) == fullname || aliases.map("-" + opts.normalizeCase(_)).contains(arg) 
+
+    private[cli] def fullname = "--" + name
+
   }
 
   final case class Optional[A](single: Single[A]) extends Options[Option[A]] {
       def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] = 
         args match {
-          case l @ head :: tail if opts.normalizeCase(head) == single.fullname => 
+          case l @ head :: tail if single.supports(head, opts) =>
             single.validate(l, opts).map(r => r._1 -> Some(r._2))
           case head :: tail => validate(tail, opts).map {
             case (args, a) => (head :: args, a)
