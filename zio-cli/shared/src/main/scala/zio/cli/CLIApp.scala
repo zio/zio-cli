@@ -16,5 +16,5 @@ final case class CLIApp[-R, +E](
 
   def helpDoc: HelpDoc = ???
 
-  def run(args: List[String]): ZIO[R, Nothing, Int] = ???
+  def run(args: List[String]): ZIO[R, Nothing, ExitCode] = ???
 }
