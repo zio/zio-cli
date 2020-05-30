@@ -16,5 +16,11 @@ final case class CLIApp[-R, +E](
 
   def helpDoc: HelpDoc = ???
 
-  def run(args: List[String]): ZIO[R, Nothing, ExitCode] = ???
+  def run(args: List[String]): ZIO[R with console.Console, Nothing, ExitCode] =
+    (for {
+      validationResult <- command.validate(args, options)
+      (args, a, b)     = validationResult
+      result           <- command.execute(a, b) // Hmm shouldn't we still thread through the remaining args
+    } yield result).exitCode
+
 }

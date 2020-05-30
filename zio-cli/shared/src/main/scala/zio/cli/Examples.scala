@@ -19,6 +19,7 @@ trait WordCountExample {
   val wc = Command("wc")
     .options(options)
     .args(args)
+  // we provide no way to configure what execution takes place
 
   val wcApp = CLIApp("ZIO Word Count", "0.1.2", wc)
 

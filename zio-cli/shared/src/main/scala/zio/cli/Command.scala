@@ -102,16 +102,27 @@ sealed trait Command[-R, +E] { self =>
    * both options and arguments, together with remaining (unparsed) arguments
    * from the command-line.
    */
-  final def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A, B)] = {
-    val _ = args
-    val _ = opts
-
-    val subActions = children.map(_.action)
-
-    val _ = subActions
-
-    ???
-  }
+  final def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A, B)] =
+    children match {
+      case Nil =>
+        for {
+          optsResult         <- options.validate(args, opts)
+          (remainingArgs, a) = optsResult
+          argsResult         <- this.args.validate(remainingArgs, opts)
+          (finalArgs, b)     = argsResult //NOTE: Should we consider having a remainder as a validation failure???
+        } yield (finalArgs, a, b)
+      case subCommand :: Nil =>
+        for {
+          optsResult                                            <- options.validate(args, opts)
+          (remainingArgs, a)                                    = optsResult
+          argsResult                                            <- this.args.validate(remainingArgs, opts)
+          (secondArgs, b)                                       = argsResult //NOTE: Should we consider having a remainder as a validation failure???
+          subResult: (List[String], subCommand.A, subCommand.B) <- subCommand.validate(secondArgs, opts)
+          (subRemaining, sa, sb)                                = subResult
+        } yield (subRemaining, (a, sa), (b, sb))
+      case subCommands =>
+        ???
+    }
 }
 
 object Command {
