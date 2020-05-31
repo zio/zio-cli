@@ -25,7 +25,7 @@ trait WordCountExample {
   val wc = Command("wc")
     .options(options)
     .args(args)
-    .execute { ((options: WcOptions), args: List[Path]) =>
+    .execute { (options: WcOptions, args: List[Path]) =>
       putStrLn(options.toString()) *>
         putStrLn(args.toString())
     }
