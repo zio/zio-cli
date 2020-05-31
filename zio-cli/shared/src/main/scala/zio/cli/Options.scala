@@ -26,10 +26,45 @@ import scala.collection.immutable.Nil
  */
 sealed trait Options[+A] { self =>
 
-  def ::[That, A1 >: A](that: Options[That]): Options.Cons[That, A1] =
+  final def ::[That, A1 >: A](that: Options[That]): Options[(That, A1)] =
     Options.Cons(that, self)
 
+  final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< ((B, C))): Options[Z] =
+    self.map(ev).map { case ((b, c)) => f(b, c) }
+
+  final def as[B, C, D, Z](f: (B, C, D) => Z)(implicit ev: A <:< ((B, (C, D)))): Options[Z] =
+    self.map(ev).map { case ((b, (c, d))) => f(b, c, d) }
+
+  final def as[B, C, D, E, Z](f: (B, C, D, E) => Z)(implicit ev: A <:< ((B, (C, (D, E))))): Options[Z] =
+    self.map(ev).map { case ((b, (c, (d, e)))) => f(b, c, d, e) }
+
+  final def as[B, C, D, E, F, Z](f0: (B, C, D, E, F) => Z)(implicit ev: A <:< ((B, (C, (D, (E, F)))))): Options[Z] =
+    self.map(ev).map { case ((b, (c, (d, (e, f))))) => f0(b, c, d, e, f) }
+
+  final def as[B, C, D, E, F, G, Z](
+    f0: (B, C, D, E, F, G) => Z
+  )(implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[Z] =
+    self.map(ev).map { case ((b, (c, (d, (e, (f, g)))))) => f0(b, c, d, e, f, g) }
+
+  final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
+
+  final def flatten3[B, C, D](implicit ev: A <:< ((B, (C, D)))): Options[(B, C, D)] = as[B, C, D, (B, C, D)]((_, _, _))
+
+  final def flatten4[B, C, D, E](implicit ev: A <:< ((B, (C, (D, E))))): Options[(B, C, D, E)] =
+    as[B, C, D, E, (B, C, D, E)]((_, _, _, _))
+
+  final def flatten5[B, C, D, E, F](implicit ev: A <:< ((B, (C, (D, (E, F)))))): Options[(B, C, D, E, F)] =
+    as[B, C, D, E, F, (B, C, D, E, F)]((_, _, _, _, _))
+
+  final def flatten6[B, C, D, E, F, G](implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[(B, C, D, E, F, G)] =
+    as[B, C, D, E, F, G, (B, C, D, E, F, G)]((_, _, _, _, _, _))
+
   final def helpDoc: HelpDoc.Block = ???
+
+  final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
+
+  final def mapTry[B](f: A => B): Options[B] =
+    Options.Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
 
   def recognizes(value: String, opts: ParserOptions): Option[Int]
 
@@ -70,11 +105,6 @@ object Options {
       Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(p(error(message))))(Right(_)))
 
     def optional: Options[Option[A]] = Optional(self)
-
-    def map[B](f: A => B): Options[B] = Map(self, (a: A) => Right(f(a)))
-
-    def mapTry[B](f: A => B): Options[B] =
-      Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       if (supports(value, opts)) Some(1) else None

@@ -11,7 +11,7 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("Command with options followed by args")(
         testM("Should validate successfully") {
           assertM(Tail.command.validate(List("--n", "100", "foo.log"), ParserOptions.default))(
-            equalTo((List.empty[String], ((), BigInt(100)), ((), "foo.log")))
+            equalTo((List.empty[String], BigInt(100), "foo.log"))
           )
         }
       )

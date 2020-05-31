@@ -6,8 +6,8 @@ import zio.IO
 
 sealed trait Args[+A] { self =>
 
-  def ::[That, A1 >: A](that: Args[That]): Args.Cons[That, A1] =
-    Args.Cons(that, self)
+  def ++[That, A1 >: A](that: Args[That]): Args.Cons[A1, That] =
+    Args.Cons(self, that)
 
   def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)]
 

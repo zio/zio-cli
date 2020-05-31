@@ -20,41 +20,43 @@ sealed trait Command[-R, +E] { self =>
   def execute(a: OptionsType, b: ArgsType): ZIO[R, E, Any]
   def children: List[Command[R, E]]
 
-  def options[A1](options0: Options[A1]): Command.Aux[R, E, (self.OptionsType, A1), self.ArgsType] = new Command[R, E] {
-    override type OptionsType = (self.OptionsType, A1)
-    override type ArgsType    = self.ArgsType
+  def options[A1](options0: Options[A1])(implicit ev: Any <:< OptionsType): Command.Aux[R, E, A1, self.ArgsType] =
+    new Command[R, E] {
+      override type OptionsType = A1
+      override type ArgsType    = self.ArgsType
 
-    override def action: String = self.action
+      override def action: String = self.action
 
-    override def options: Options[OptionsType] = self.options :: options0
+      override def options: Options[OptionsType] = options0
 
-    override def args: Args[ArgsType] = self.args
+      override def args: Args[ArgsType] = self.args
 
-    override def execute(
-      a: OptionsType,
-      b: ArgsType
-    ): ZIO[R, E, Any] = self.execute(a._1, b)
+      override def execute(
+        a: OptionsType,
+        b: ArgsType
+      ): ZIO[R, E, Any] = self.execute((), b)
 
-    override def children: List[Command[R, E]] = self.children
-  }
+      override def children: List[Command[R, E]] = self.children
+    }
 
-  def args[B1](args0: Args[B1]): Command.Aux[R, E, self.OptionsType, (self.ArgsType, B1)] = new Command[R, E] {
-    override type OptionsType = self.OptionsType
-    override type ArgsType    = (self.ArgsType, B1)
+  def args[B1](args0: Args[B1])(implicit ev: Any <:< ArgsType): Command.Aux[R, E, self.OptionsType, B1] =
+    new Command[R, E] {
+      override type OptionsType = self.OptionsType
+      override type ArgsType    = B1
 
-    override def action: String = self.action
+      override def action: String = self.action
 
-    override def options: Options[OptionsType] = self.options
+      override def options: Options[OptionsType] = self.options
 
-    override def args: Args[ArgsType] = self.args :: args0
+      override def args: Args[ArgsType] = args0
 
-    override def execute(
-      a: OptionsType,
-      b: ArgsType
-    ): ZIO[R, E, Any] = self.execute(a, b._1)
+      override def execute(
+        a: OptionsType,
+        b: ArgsType
+      ): ZIO[R, E, Any] = self.execute(a, ())
 
-    override def children: List[Command[R, E]] = self.children
-  }
+      override def children: List[Command[R, E]] = self.children
+    }
 
   def execute[R1 <: R, E1 >: E](
     f: (OptionsType, ArgsType) => ZIO[R1, E1, Any]
