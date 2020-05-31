@@ -80,7 +80,7 @@ object Options {
           case (args, a) => (head :: args, a)
         }
         case Nil =>
-          IO.fail(p(error(s"No option found!. Was expecting option: ${fullname}.")) :: Nil)
+          IO.fail(p(error(s"Expected to find ${fullname} option.")) :: Nil)
       }
     }
 
