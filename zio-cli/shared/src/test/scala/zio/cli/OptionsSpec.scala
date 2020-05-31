@@ -17,7 +17,7 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = f.validate(List("--firstname", "John"), ParserOptions.default)
       assertM(r)(equalTo(List() -> "John"))
     },
-     testM("validate text option with alias") {
+    testM("validate text option with alias") {
       val r = f.validate(List("-f", "John"), ParserOptions.default)
       assertM(r)(equalTo(List() -> "John"))
     },
@@ -29,18 +29,16 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = f.validate(List("--firstname", "John", "--lastname", "Doe"), ParserOptions.default)
       assertM(r)(equalTo(List("--lastname", "Doe") -> "John"))
     },
-    
     testM("validate option and get remainder with different ordering") {
       val r = f.validate(List("--bar", "baz", "--firstname", "John", "--lastname", "Doe"), ParserOptions.default)
       assertM(r)(equalTo(List("--bar", "baz", "--lastname", "Doe") -> "John"))
     },
-
     testM("validate when no valid values are passed") {
       val r = f.validate(List("--lastname", "Doe"), ParserOptions.default)
       assertM(r.either)(isLeft)
     },
     testM("validate when option is passed, but not a following value") {
-      val r        = f.validate(List("--firstname"), ParserOptions.default)
+      val r = f.validate(List("--firstname"), ParserOptions.default)
       assertM(r.either)(isLeft)
     },
     testM("validate options for cons") {
@@ -48,7 +46,10 @@ object OptionsSpec extends DefaultRunnableSpec {
       assertM(r)(equalTo(List() -> ("John" -> ("Doe" -> BigInt(100)))))
     },
     testM("validate options for cons with remainder") {
-      val r = options.validate(List("--verbose", "true", "--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent", "false"), ParserOptions.default)
+      val r = options.validate(
+        List("--verbose", "true", "--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent", "false"),
+        ParserOptions.default
+      )
       assertM(r)(equalTo(List("--verbose", "true", "--silent", "false") -> ("John" -> ("Doe" -> BigInt(100)))))
     },
     testM("validate non supplied optional") {

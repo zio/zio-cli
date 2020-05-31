@@ -31,6 +31,8 @@ sealed trait Options[+A] { self =>
 
   final def helpDoc: HelpDoc.Block = ???
 
+  def recognizes(value: String, opts: ParserOptions): Option[Int]
+
   final def requires[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.Requires(self, that, suchThat)
 
@@ -43,6 +45,8 @@ sealed trait Options[+A] { self =>
 object Options {
   // --verbose 3
   case object Empty extends Options[Unit] {
+    def recognizes(value: String, opts: ParserOptions): Option[Int] = None
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
       IO.succeed((args, ()))
   }
@@ -72,6 +76,9 @@ object Options {
     def mapTry[B](f: A => B): Options[B] =
       Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
 
+    def recognizes(value: String, opts: ParserOptions): Option[Int] =
+      if (supports(value, opts)) Some(1) else None
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
@@ -92,7 +99,13 @@ object Options {
   }
 
   final case class Optional[A](single: Single[A]) extends Options[Option[A]] {
+    def recognizes(value: String, opts: ParserOptions): Option[Int] =
+      single.recognizes(value, opts)
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] =
+      // single.validate(args, opts).map {
+      //   case (args, a) => (args, Some(a))
+      // } orElse ZIO.succeed((args, None))
       args match {
         case l @ head :: tail if single.supports(head, opts) =>
           single.validate(l, opts).map(r => r._1 -> Some(r._2))
@@ -105,6 +118,9 @@ object Options {
   }
 
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
+    def recognizes(value: String, opts: ParserOptions): Option[Int] =
+      left.recognizes(value, opts) orElse right.recognizes(value, opts)
+
     override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], (A, B))] =
       (for {
         tuple     <- left.validate(args, opts)
@@ -121,12 +137,16 @@ object Options {
   }
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
+    def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
   }
 
   final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean)
       extends Options[A] {
+    def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       target
         .validate(args, opts)
@@ -137,6 +157,8 @@ object Options {
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
+    def recognizes(v: String, opts: ParserOptions): Option[Int] = value.recognizes(v, opts)
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], B)] =
       value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
   }

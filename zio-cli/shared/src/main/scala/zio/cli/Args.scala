@@ -11,6 +11,10 @@ sealed trait Args[+A] { self =>
 
   def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)]
 
+  def maxSize: Int
+
+  def minSize: Int
+
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
 }
 
@@ -37,6 +41,10 @@ object Args {
       )
     }
 
+    def maxSize: Int = 1
+
+    def minSize: Int = 1
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
       import HelpDoc.dsl._
 
@@ -49,13 +57,23 @@ object Args {
   }
 
   case object Empty extends Args[Unit] {
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = Nil
+
+    def maxSize: Int = 0
+
+    def minSize: Int = 0
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
       IO.succeed((args, ()))
-
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = Nil
   }
 
   final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = head.helpDoc ++ tail.helpDoc
+
+    def maxSize: Int = head.maxSize + tail.maxSize
+
+    def minSize: Int = head.minSize + tail.minSize
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], (A, B))] =
       for {
         tuple     <- head.validate(args, opts)
@@ -63,11 +81,16 @@ object Args {
         tuple     <- tail.validate(args, opts)
         (args, b) = tuple
       } yield (args, (a, b))
-
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = head.helpDoc ++ tail.helpDoc
   }
 
   final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
+    // TODO:
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = ???
+
+    def maxSize: Int = max.getOrElse(Int.MaxValue / 2) * value.maxSize
+
+    def minSize: Int = min.getOrElse(0) * value.minSize
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
       val max1 = max.getOrElse(Int.MaxValue)
@@ -84,9 +107,6 @@ object Args {
 
       loop(args, Nil).map { case (args, list) => (args, list.reverse) }
     }
-
-    // TODO:
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = ???
   }
 
   def text(name: String): Single[String] = Single(name, PrimType.Text, Vector.empty)

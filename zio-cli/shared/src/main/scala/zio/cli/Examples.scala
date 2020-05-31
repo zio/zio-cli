@@ -2,6 +2,8 @@ package zio.cli
 
 import scala.language.postfixOps
 
+// import java.nio.file.Path
+
 trait WordCountExample {
 
   /**
@@ -19,7 +21,9 @@ trait WordCountExample {
   val wc = Command("wc")
     .options(options)
     .args(args)
-  // we provide no way to configure what execution takes place
+  // .execute { (tuple: (Any, (Boolean, (Boolean, (Boolean, Boolean)))), tuple2: (Any, List[Path])) =>
+  //   ???
+  // }
 
   val wcApp = CLIApp("ZIO Word Count", "0.1.2", wc)
 

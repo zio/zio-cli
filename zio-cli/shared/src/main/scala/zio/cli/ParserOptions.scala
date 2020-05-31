@@ -10,6 +10,12 @@ final case class ParserOptions(
   caseSensitive: Boolean
 ) {
   def normalizeCase(text: String): String = if (caseSensitive) text else text.toLowerCase()
+
+  def isLongOption(value: String): Boolean = value.trim.matches("^-{2}([^-]|$)")
+
+  def isShortOption(value: String): Boolean = value.trim.matches("^-{1}([^-]|$)")
+
+  def isOption(value: String): Boolean = isLongOption(value) || isShortOption(value)
 }
 
 object ParserOptions {
