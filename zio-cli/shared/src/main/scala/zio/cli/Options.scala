@@ -18,7 +18,7 @@ import java.time.{
 }
 
 import zio.IO
-import zio.cli.HelpDoc.dsl.{ p, error }
+import zio.cli.HelpDoc.dsl.{ error, p }
 import scala.collection.immutable.Nil
 
 /**
@@ -42,9 +42,9 @@ sealed trait Options[+A] { self =>
 
 object Options {
   // --verbose 3
-  final case object Empty extends Options[Unit] {
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] = 
-      IO.succeed(args -> ())
+  case object Empty extends Options[Unit] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
+      IO.succeed((args, ()))
   }
 
   final case class Single[+A](
@@ -52,7 +52,7 @@ object Options {
     aliases: Vector[String],
     optionType: Options.Type[A],
     description: Vector[String]
-  ) extends Options[A] { self => 
+  ) extends Options[A] { self =>
 
     def ? : Options[Option[A]] = optional
 
@@ -70,37 +70,38 @@ object Options {
     def map[B](f: A => B): Options[B] = Map(self, (a: A) => Right(f(a)))
 
     def mapTry[B](f: A => B): Options[B] =
-        Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
-    
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
+      Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
+
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
           optionType.validate(fullname, tail)
-        case head :: tail => validate(tail, opts).map {
-          case (args, a) => (head :: args, a)
-        }
+        case head :: tail =>
+          validate(tail, opts).map {
+            case (args, a) => (head :: args, a)
+          }
         case Nil =>
           IO.fail(p(error(s"Expected to find ${fullname} option.")) :: Nil)
       }
-    }
 
-    private[cli] def supports(arg: String, opts: ParserOptions) = 
-      opts.normalizeCase(arg) == fullname || aliases.map("-" + opts.normalizeCase(_)).contains(arg) 
+    private[cli] def supports(arg: String, opts: ParserOptions) =
+      opts.normalizeCase(arg) == fullname || aliases.map("-" + opts.normalizeCase(_)).contains(arg)
 
     private[cli] def fullname = "--" + name
 
   }
 
   final case class Optional[A](single: Single[A]) extends Options[Option[A]] {
-      def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] = 
-        args match {
-          case l @ head :: tail if single.supports(head, opts) =>
-            single.validate(l, opts).map(r => r._1 -> Some(r._2))
-          case head :: tail => validate(tail, opts).map {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] =
+      args match {
+        case l @ head :: tail if single.supports(head, opts) =>
+          single.validate(l, opts).map(r => r._1 -> Some(r._2))
+        case head :: tail =>
+          validate(tail, opts).map {
             case (args, a) => (head :: args, a)
           }
-          case Nil => IO.succeed(args -> None)
-        }
+        case Nil => IO.succeed(args -> None)
+      }
   }
 
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
@@ -120,34 +121,40 @@ object Options {
   }
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = 
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
   }
 
-  final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = 
-      target.validate(args, opts).foldM(_ => options.validate(args, opts), _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil))
+  final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean)
+      extends Options[A] {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
+      target
+        .validate(args, opts)
+        .foldM(
+          _ => options.validate(args, opts),
+          _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil)
+        )
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block] ,(List[String], B)] = 
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], B)] =
       value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
   }
 
   sealed trait Type[+A] {
     def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
- 
+
   }
   object Type {
     final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
       def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] = ???
     }
-  
+
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] = 
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] =
         args match {
           case head :: tail => primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
-          case Nil => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
+          case Nil          => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
         }
     }
   }
