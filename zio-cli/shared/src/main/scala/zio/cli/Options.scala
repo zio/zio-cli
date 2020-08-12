@@ -137,7 +137,7 @@ object Options {
       //   case (args, a) => (args, Some(a))
       // } orElse ZIO.succeed((args, None))
       args match {
-        case l @ head :: tail if single.supports(head, opts) =>
+        case l @ head :: _ if single.supports(head, opts) =>
           single.validate(l, opts).map(r => r._1 -> Some(r._2))
         case head :: tail =>
           validate(tail, opts).map {
