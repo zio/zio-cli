@@ -11,36 +11,17 @@ import scala.collection.immutable.Nil
  *
  * Commands may have children, which represent subcommands.
  */
-sealed trait Command[-R, +E] { self =>
+sealed trait Command[+A] { self =>
   type OptionsType
   type ArgsType
+
   def action: String
   def options: Options[OptionsType]
   def args: Args[ArgsType]
-  def execute(a: OptionsType, b: ArgsType): ZIO[R, E, Any]
-  def children: List[Command[R, E]]
+  def output(options: OptionsType, args: ArgsType): A
 
-  def options[A1](options0: Options[A1])(implicit ev: Any <:< OptionsType): Command.Aux[R, E, A1, self.ArgsType] =
-    new Command[R, E] {
-      override type OptionsType = A1
-      override type ArgsType    = self.ArgsType
-
-      override def action: String = self.action
-
-      override def options: Options[OptionsType] = options0
-
-      override def args: Args[ArgsType] = self.args
-
-      override def execute(
-        a: OptionsType,
-        b: ArgsType
-      ): ZIO[R, E, Any] = self.execute((), b)
-
-      override def children: List[Command[R, E]] = self.children
-    }
-
-  def args[B1](args0: Args[B1])(implicit ev: Any <:< ArgsType): Command.Aux[R, E, self.OptionsType, B1] =
-    new Command[R, E] {
+  def args[B1](args0: Args[B1])(implicit ev: Any <:< ArgsType): Command.Aux[self.OptionsType, B1, Unit] =
+    new Command[Unit] {
       override type OptionsType = self.OptionsType
       override type ArgsType    = B1
 
@@ -50,18 +31,13 @@ sealed trait Command[-R, +E] { self =>
 
       override def args: Args[ArgsType] = args0
 
-      override def execute(
-        a: OptionsType,
-        b: ArgsType
-      ): ZIO[R, E, Any] = self.execute(a, ())
-
-      override def children: List[Command[R, E]] = self.children
+      def output(options: OptionsType, args: ArgsType): Unit = ()
     }
 
-  def execute[R1 <: R, E1 >: E](
-    f: (OptionsType, ArgsType) => ZIO[R1, E1, Any]
-  ): Command.Aux[R1, E1, self.OptionsType, self.ArgsType] =
-    new Command[R1, E1] {
+  def as[B](b: => B): Command.Aux[OptionsType, ArgsType, B] = self.map(_ => b)
+
+  def map[B](f: A => B): Command.Aux[OptionsType, ArgsType, B] =
+    new Command[B] {
       override type OptionsType = self.OptionsType
       override type ArgsType    = self.ArgsType
 
@@ -71,33 +47,23 @@ sealed trait Command[-R, +E] { self =>
 
       override def args: Args[ArgsType] = self.args
 
-      override def execute(
-        a: OptionsType,
-        b: ArgsType
-      ): ZIO[R1, E1, Any] = self.execute(a, b) *> f(a, b)
-
-      override def children: List[Command[R, E]] = self.children
+      def output(options: OptionsType, args: ArgsType): B = f(self.output(options, args))
     }
 
-  def children[R1 <: R, E1 >: E](
-    children0: List[Command[R1, E1]]
-  ): Command.Aux[R1, E1, self.OptionsType, self.ArgsType] =
-    new Command[R1, E1] {
-      override type OptionsType = self.OptionsType
+  def options[A1](
+    options0: Options[A1]
+  )(implicit ev: Any <:< OptionsType): Command.Aux[A1, self.ArgsType, Unit] =
+    new Command[Unit] {
+      override type OptionsType = A1
       override type ArgsType    = self.ArgsType
 
       override def action: String = self.action
 
-      override def options: Options[OptionsType] = self.options
+      override def options: Options[OptionsType] = options0
 
       override def args: Args[ArgsType] = self.args
 
-      override def execute(
-        a: OptionsType,
-        b: ArgsType
-      ): ZIO[R1, E1, Any] = self.execute(a, b)
-
-      override def children: List[Command[R1, E1]] = self.children ++ children0
+      def output(options: OptionsType, args: ArgsType): Unit = ()
     }
 
   /**
@@ -178,7 +144,7 @@ sealed trait Command[-R, +E] { self =>
 }
 
 object Command {
-  type Aux[-R0, +E0, OptionsType0, ArgsType0] = Command[R0, E0] {
+  type Aux[OptionsType0, ArgsType0, +Out] = Command[Out] {
     type OptionsType = OptionsType0
     type ArgsType    = ArgsType0
   }
@@ -188,7 +154,7 @@ object Command {
    */
   def apply(
     action0: String
-  ): Command.Aux[Any, Nothing, Any, Any] = new Command[Any, Nothing] {
+  ): Command.Aux[Any, Any, Unit] = new Command[Unit] {
     override type OptionsType = Any
     override type ArgsType    = Any
 
@@ -198,9 +164,7 @@ object Command {
 
     override def args: Args[ArgsType] = Args.Empty
 
-    override def execute(a: OptionsType, b: ArgsType): ZIO[Any, Nothing, Any] = ZIO.unit
-
-    override def children: List[Command[Any, Nothing]] = Nil
+    def output(options: OptionsType, args: ArgsType): Unit = ()
   }
 
 }
