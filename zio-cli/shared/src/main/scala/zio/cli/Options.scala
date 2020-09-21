@@ -199,7 +199,8 @@ object Options {
   }
   object Type {
     final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] = ???
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] =
+        IO.effectTotal((args, ifPresent))
     }
 
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
