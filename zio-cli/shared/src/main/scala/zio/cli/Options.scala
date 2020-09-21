@@ -218,8 +218,8 @@ object Options {
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    */
-  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Single[Boolean] =
-    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty)
+  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
+    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
 
   def file(name: String, exists: Boolean): Single[JPath] =
     Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.File, exists)), Vector.empty)
