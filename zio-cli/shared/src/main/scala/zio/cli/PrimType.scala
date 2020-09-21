@@ -47,10 +47,12 @@ object PrimType {
       for {
         p <- IO.effect(JPaths.get(value)) orElseFail (s"'$value' is not a recognized path.")
         _ <- exists(p) >>= refineExistence(value, exists)
-        _ <- pathType match {
-              case Anything  => IO.unit
-              case File      => ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(isRegularFile(p))
-              case Directory => ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(isDirectory(p))
+        _ <- ZIO.when(exists) {
+              pathType match {
+                case Anything  => IO.unit
+                case File      => ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(isRegularFile(p))
+                case Directory => ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(isDirectory(p))
+              }
             }
       } yield p
 
