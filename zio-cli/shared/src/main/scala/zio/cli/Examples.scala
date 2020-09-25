@@ -1,8 +1,19 @@
 package zio.cli
 
+import java.nio.file.Path
+
+import zio.App
+import zio.URIO
+import zio.console.Console
+
 import scala.language.postfixOps
 
-trait WordCountExample {
+object WcApp extends App {
+  @Override
+  def run(args: List[String]) = WordCountExample.wcApp.run(args)
+}
+
+object WordCountExample {
 
   /**
    * wc [-clmw] [file ...]
@@ -22,11 +33,10 @@ trait WordCountExample {
     .options(options)
     .args(args)
 
-  val wcApp = CLIApp("ZIO Word Count", "0.1.2", wc)
+  val execute: (WcOptions, List[Path]) => URIO[Console, Unit] = (opts, paths) =>
+    zio.console.putStrLn(s"${opts} ${paths}")
 
-  object WcApp extends App {
-    def run(args: List[String]) = wcApp.run(args)
-  }
+  val wcApp = CLIApp[Console, Nothing, (WcOptions, List[Path])]("ZIO Word Count", "0.1.2", wc, execute.tupled)
 }
 
 trait GitExample {
