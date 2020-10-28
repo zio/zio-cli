@@ -20,8 +20,8 @@ sealed trait Command[+A] { self =>
   def args: Args[ArgsType]
   def output(options: OptionsType, args: ArgsType): A
 
-  def args[B1](args0: Args[B1])(implicit ev: Any <:< ArgsType): Command.Aux[self.OptionsType, B1, Unit] =
-    new Command[Unit] {
+  def args[B1](args0: Args[B1])(implicit ev: Any <:< ArgsType): Command.Aux[self.OptionsType, B1, (self.OptionsType, B1)] =
+    new Command[(self.OptionsType, B1)] {
       override type OptionsType = self.OptionsType
       override type ArgsType    = B1
 
@@ -31,7 +31,7 @@ sealed trait Command[+A] { self =>
 
       override def args: Args[ArgsType] = args0
 
-      def output(options: OptionsType, args: ArgsType): Unit = ()
+      def output(options: OptionsType, args: ArgsType): (self.OptionsType, B1) = (options, args)
     }
 
   def as[B](b: => B): Command.Aux[OptionsType, ArgsType, B] = self.map(_ => b)
@@ -52,8 +52,8 @@ sealed trait Command[+A] { self =>
 
   def options[A1](
     options0: Options[A1]
-  )(implicit ev: Any <:< OptionsType): Command.Aux[A1, self.ArgsType, Unit] =
-    new Command[Unit] {
+  )(implicit ev: Any <:< OptionsType): Command.Aux[A1, self.ArgsType, (A1, self.ArgsType)] =
+    new Command[(A1, self.ArgsType)] {
       override type OptionsType = A1
       override type ArgsType    = self.ArgsType
 
@@ -63,7 +63,7 @@ sealed trait Command[+A] { self =>
 
       override def args: Args[ArgsType] = self.args
 
-      def output(options: OptionsType, args: ArgsType): Unit = ()
+      def output(options: OptionsType, args: ArgsType): (A1, self.ArgsType) = (options, args)
     }
 
   /**
@@ -166,5 +166,4 @@ object Command {
 
     def output(options: OptionsType, args: ArgsType): Unit = ()
   }
-
 }
