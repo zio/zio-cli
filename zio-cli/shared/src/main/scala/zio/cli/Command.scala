@@ -20,7 +20,9 @@ sealed trait Command[+A] { self =>
   def args: Args[ArgsType]
   def output(options: OptionsType, args: ArgsType): A
 
-  def args[B1](args0: Args[B1])(implicit ev: Any <:< ArgsType): Command.Aux[self.OptionsType, B1, (self.OptionsType, B1)] =
+  def args[B1](
+    args0: Args[B1]
+  )(implicit ev: Any <:< ArgsType): Command.Aux[self.OptionsType, B1, (self.OptionsType, B1)] =
     new Command[(self.OptionsType, B1)] {
       override type OptionsType = self.OptionsType
       override type ArgsType    = B1

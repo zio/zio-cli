@@ -19,6 +19,7 @@ import java.time.{
 
 import zio.IO
 import zio.cli.HelpDoc.dsl.{ error, p }
+import zio.cli.Options.{ Map, Optional, Single }
 import scala.collection.immutable.Nil
 
 /**
@@ -28,6 +29,23 @@ sealed trait Options[+A] { self =>
 
   final def ::[That, A1 >: A](that: Options[That]): Options[(That, A1)] =
     Options.Cons(that, self)
+
+  def ? : Options[Option[A]] = optional
+
+  def ??(that: String): Options[A] =
+    modifySingle(new SingleModifier {
+      override def apply[A](single: Single[A]): Single[A] = single.copy(description = single.description :+ that)
+    })
+
+  def alias(name: String): Options[A] =
+    modifySingle(new SingleModifier {
+      override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases :+ name)
+    })
+
+  def aliases(names: String*): Options[A] =
+    modifySingle(new SingleModifier {
+      override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases ++ names)
+    })
 
   final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< ((B, C))): Options[Z] =
     self.map(ev).map { case ((b, c)) => f(b, c) }
@@ -46,6 +64,9 @@ sealed trait Options[+A] { self =>
   )(implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[Z] =
     self.map(ev).map { case ((b, (c, (d, (e, (f, g)))))) => f0(b, c, d, e, f, g) }
 
+  def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
+    Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(p(error(message))))(Right(_)))
+
   final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
 
   final def flatten3[B, C, D](implicit ev: A <:< ((B, (C, D)))): Options[(B, C, D)] = as[B, C, D, (B, C, D)]((_, _, _))
@@ -59,12 +80,26 @@ sealed trait Options[+A] { self =>
   final def flatten6[B, C, D, E, F, G](implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[(B, C, D, E, F, G)] =
     as[B, C, D, E, F, G, (B, C, D, E, F, G)]((_, _, _, _, _, _))
 
+  private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
+    case _: Options.Empty.type                   => initial
+    case s @ Single(_, _, _, _)                  => f(initial, s)
+    case opt: Optional[a]                        => opt.options.foldSingle(initial)(f)
+    case cons: Options.Cons[a, b]                => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
+    case Options.Requires(options, target, _)    => target.foldSingle(options.foldSingle(initial)(f))(f)
+    case Options.RequiresNot(options, target, _) => target.foldSingle(options.foldSingle(initial)(f))(f)
+    case Map(value, _)                           => value.foldSingle(initial)(f)
+  }
+
   final def helpDoc: HelpDoc.Block = ???
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
   final def mapTry[B](f: A => B): Options[B] =
     Options.Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
+
+  private[cli] def modifySingle(f: SingleModifier): Options[A]
+
+  def optional: Options[Option[A]] = Optional(self)
 
   def recognizes(value: String, opts: ParserOptions): Option[Int]
 
@@ -74,7 +109,19 @@ sealed trait Options[+A] { self =>
   final def requiresNot[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.RequiresNot(self, that, suchThat)
 
+  private[cli] def supports(arg: String, opts: ParserOptions) =
+    foldSingle(false) {
+      case (bool, single) =>
+        bool || opts.normalizeCase(arg) == single.fullname || single.aliases
+          .map("-" + opts.normalizeCase(_))
+          .contains(arg)
+    }
+
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
+}
+
+trait SingleModifier {
+  def apply[A](single: Single[A]): Single[A]
 }
 
 object Options {
@@ -84,6 +131,8 @@ object Options {
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
       IO.succeed((args, ()))
+
+    override def modifySingle(f: SingleModifier): Options[Unit] = Empty
   }
 
   final case class Single[+A](
@@ -93,18 +142,7 @@ object Options {
     description: Vector[String]
   ) extends Options[A] { self =>
 
-    def ? : Options[Option[A]] = optional
-
-    def ??(that: String): Single[A] = copy(description = description :+ that)
-
-    def alias(name: String): Options[A] = copy(aliases = aliases :+ name)
-
-    def aliases(names: String*): Options[A] = copy(aliases = aliases ++ names)
-
-    def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
-      Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(p(error(message))))(Right(_)))
-
-    def optional: Options[Option[A]] = Optional(self)
+    override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       if (supports(value, opts)) Some(1) else None
@@ -121,24 +159,22 @@ object Options {
           IO.fail(p(error(s"Expected to find ${fullname} option.")) :: Nil)
       }
 
-    private[cli] def supports(arg: String, opts: ParserOptions) =
-      opts.normalizeCase(arg) == fullname || aliases.map("-" + opts.normalizeCase(_)).contains(arg)
-
     private[cli] def fullname = "--" + name
-
   }
 
-  final case class Optional[A](single: Single[A]) extends Options[Option[A]] {
+  final case class Optional[A](options: Options[A]) extends Options[Option[A]] { self =>
+    override def modifySingle(f: SingleModifier): Options[Option[A]] = Optional(options.modifySingle(f))
+
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
-      single.recognizes(value, opts)
+      options.recognizes(value, opts)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] =
       // single.validate(args, opts).map {
       //   case (args, a) => (args, Some(a))
       // } orElse ZIO.succeed((args, None))
       args match {
-        case l @ head :: _ if single.supports(head, opts) =>
-          single.validate(l, opts).map(r => r._1 -> Some(r._2))
+        case l @ head :: _ if options.supports(head, opts) =>
+          options.validate(l, opts).map(r => r._1 -> Some(r._2))
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
@@ -148,6 +184,8 @@ object Options {
   }
 
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
+    override def modifySingle(f: SingleModifier): Options[(A, B)] = Cons(left.modifySingle(f), right.modifySingle(f))
+
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       left.recognizes(value, opts) orElse right.recognizes(value, opts)
 
@@ -167,6 +205,9 @@ object Options {
   }
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
+    override def modifySingle(f: SingleModifier): Options[A] =
+      Requires(options.modifySingle(f), target.modifySingle(f), predicate)
+
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
@@ -175,6 +216,9 @@ object Options {
 
   final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean)
       extends Options[A] {
+    override def modifySingle(f: SingleModifier): Options[A] =
+      RequiresNot(options.modifySingle(f), target.modifySingle(f), predicate)
+
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
@@ -187,6 +231,8 @@ object Options {
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
+    override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
+
     def recognizes(v: String, opts: ParserOptions): Option[Int] = value.recognizes(v, opts)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], B)] =
@@ -199,7 +245,8 @@ object Options {
   }
   object Type {
     final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] = ???
+      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] =
+        IO.effectTotal((args, ifPresent))
     }
 
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
@@ -217,61 +264,61 @@ object Options {
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    */
-  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Single[Boolean] =
-    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty)
+  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
+    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
 
-  def file(name: String, exists: Boolean): Single[JPath] =
+  def file(name: String, exists: Boolean): Options[JPath] =
     Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.File, exists)), Vector.empty)
 
-  def directory(name: String, exists: Boolean): Single[JPath] =
+  def directory(name: String, exists: Boolean): Options[JPath] =
     Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.Directory, exists)), Vector.empty)
 
-  def text(name: String): Single[String] =
+  def text(name: String): Options[String] =
     Single(name, Vector.empty, Primitive(PrimType.Text), Vector.empty)
 
-  def decimal(name: String): Single[BigDecimal] =
+  def decimal(name: String): Options[BigDecimal] =
     Single(name, Vector.empty, Primitive(PrimType.Decimal), Vector.empty)
 
-  def integer(name: String): Single[BigInt] =
+  def integer(name: String): Options[BigInt] =
     Single(name, Vector.empty, Primitive(PrimType.Integer), Vector.empty)
 
-  def instant(name: String): Single[JInstant] =
+  def instant(name: String): Options[JInstant] =
     Single(name, Vector.empty, Primitive(PrimType.Instant), Vector.empty)
 
-  def localDate(name: String): Single[JLocalDate] =
+  def localDate(name: String): Options[JLocalDate] =
     Single(name, Vector.empty, Primitive(PrimType.LocalDate), Vector.empty)
 
-  def localDateTime(name: String): Single[JLocalDateTime] =
+  def localDateTime(name: String): Options[JLocalDateTime] =
     Single(name, Vector.empty, Primitive(PrimType.LocalDateTime), Vector.empty)
 
-  def localTime(name: String): Single[JLocalTime] =
+  def localTime(name: String): Options[JLocalTime] =
     Single(name, Vector.empty, Primitive(PrimType.LocalTime), Vector.empty)
 
-  def monthDay(name: String): Single[JMonthDay] =
+  def monthDay(name: String): Options[JMonthDay] =
     Single(name, Vector.empty, Primitive(PrimType.MonthDay), Vector.empty)
 
-  def offsetDateTime(name: String): Single[JOffsetDateTime] =
+  def offsetDateTime(name: String): Options[JOffsetDateTime] =
     Single(name, Vector.empty, Primitive(PrimType.OffsetDateTime), Vector.empty)
 
-  def offsetTime(name: String): Single[JOffsetTime] =
+  def offsetTime(name: String): Options[JOffsetTime] =
     Single(name, Vector.empty, Primitive(PrimType.OffsetTime), Vector.empty)
 
-  def period(name: String): Single[JPeriod] =
+  def period(name: String): Options[JPeriod] =
     Single(name, Vector.empty, Primitive(PrimType.Period), Vector.empty)
 
-  def year(name: String): Single[JYear] =
+  def year(name: String): Options[JYear] =
     Single(name, Vector.empty, Primitive(PrimType.Year), Vector.empty)
 
-  def yearMonth(name: String): Single[JYearMonth] =
+  def yearMonth(name: String): Options[JYearMonth] =
     Single(name, Vector.empty, Primitive(PrimType.YearMonth), Vector.empty)
 
-  def zonedDateTime(name: String): Single[JZonedDateTime] =
+  def zonedDateTime(name: String): Options[JZonedDateTime] =
     Single(name, Vector.empty, Primitive(PrimType.ZonedDateTime), Vector.empty)
 
-  def zoneId(name: String): Single[JZoneId] =
+  def zoneId(name: String): Options[JZoneId] =
     Single(name, Vector.empty, Primitive(PrimType.ZoneId), Vector.empty)
 
-  def zoneOffset(name: String): Single[JZoneOffset] =
+  def zoneOffset(name: String): Options[JZoneOffset] =
     Single(name, Vector.empty, Primitive(PrimType.ZoneOffset), Vector.empty)
 
   val empty: Options[Unit] = Empty

@@ -1,16 +1,27 @@
 package zio.cli
 
+import java.nio.file.Path
+
+import zio.App
+import zio.URIO
+import zio.console.Console
+
 import scala.language.postfixOps
 
-trait WordCountExample {
+object WcApp extends App {
+  @Override
+  def run(args: List[String]) = WordCountExample.wcApp.run(args)
+}
+
+object WordCountExample {
 
   /**
    * wc [-clmw] [file ...]
    */
-  val bytesFlag: Options[Boolean] = Options.bool("c", true)
-  val linesFlag: Options[Boolean] = Options.bool("l", true)
-  val wordsFlag: Options[Boolean] = Options.bool("w", true)
-  val charFlag: Options[Boolean]  = Options.bool("m", false)
+  val bytesFlag: Options[Boolean] = Options.bool("c", true).alias("c")
+  val linesFlag: Options[Boolean] = Options.bool("l", true).alias("l")
+  val wordsFlag: Options[Boolean] = Options.bool("w", true).alias("w")
+  val charFlag: Options[Boolean]  = Options.bool("m", false).alias("m")
 
   case class WcOptions(bytes: Boolean, lines: Boolean, words: Boolean, char: Boolean)
 
@@ -22,11 +33,10 @@ trait WordCountExample {
     .options(options)
     .args(args)
 
-  val wcApp = CLIApp("ZIO Word Count", "0.1.2", wc)
+  val execute: (WcOptions, List[Path]) => URIO[Console, Unit] = (opts, paths) =>
+    zio.console.putStrLn(s"${opts} ${paths}")
 
-  object WcApp extends App {
-    def run(args: List[String]) = wcApp.run(args)
-  }
+  val wcApp = CLIApp[Console, Nothing, (WcOptions, List[Path])]("ZIO Word Count", "0.1.2", wc, execute.tupled)
 }
 
 trait GitExample {
