@@ -18,10 +18,10 @@ object WordCountExample {
   /**
    * wc [-clmw] [file ...]
    */
-  val bytesFlag: Options[Boolean] = Options.bool("c", true)
-  val linesFlag: Options[Boolean] = Options.bool("l", true)
-  val wordsFlag: Options[Boolean] = Options.bool("w", true)
-  val charFlag: Options[Boolean]  = Options.bool("m", false)
+  val bytesFlag: Options[Boolean] = Options.bool("c", true).alias("c")
+  val linesFlag: Options[Boolean] = Options.bool("l", true).alias("l")
+  val wordsFlag: Options[Boolean] = Options.bool("w", true).alias("w")
+  val charFlag: Options[Boolean]  = Options.bool("m", false).alias("m")
 
   case class WcOptions(bytes: Boolean, lines: Boolean, words: Boolean, char: Boolean)
 
