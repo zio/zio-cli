@@ -1,8 +1,9 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
+import java.nio.file.{Path => JPath}
 
 import zio.IO
+import zio.cli.HelpDoc.dsl
 
 sealed trait Args[+A] { self =>
 
@@ -84,8 +85,19 @@ object Args {
   }
 
   final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
-    // TODO:
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = ???
+
+    import HelpDoc.dsl._
+
+    // TODO
+    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = value.helpDoc.map{
+      case (span, block) =>
+        val newSpan = span + dsl.text(if (max.isDefined) s" ${minSize} - ${maxSize}" else s"${minSize}")
+        val newBlock = blocks(block, p(if (max.isDefined)
+          s"This argument must be repeated at least ${minSize} times and up to ${maxSize} times."
+        else s"This argument must be repeated at least ${minSize} times."))
+        (newSpan,newBlock)
+    }
+
 
     def maxSize: Int = max.getOrElse(Int.MaxValue / 2) * value.maxSize
 

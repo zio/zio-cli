@@ -1,5 +1,7 @@
 package zio.cli
 
+import zio.cli.HelpDoc.Span.Sequence
+
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
  *
@@ -49,11 +51,11 @@ object HelpDoc {
       }
 
     def text(t: String): Span = Span.Text(t)
-    def spans(span: Span, spans: Span*): Span =
-      spans.toList.foldLeft(span) {
-        case (span, s) => Span.Sequence(span, s)
-      }
+    def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
 
+    def spans(spans: Iterable[Span]):Span = spans.toList.foldLeft(text("")) {
+      case (span, s) => Span.Sequence(span, s)
+    }
     def error(span: Span): Span = Span.Error(span)
     def error(t: String): Span  = Span.Error(text(t))
 
@@ -89,6 +91,8 @@ object HelpDoc {
     def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = ???
     def toJson: String                                                     = ???
     def toHtml: String                                                     = ???
+
+    def +(that: Span): Span = Sequence(this, that)
   }
   object Span {
     final case class Text(value: String)               extends Span

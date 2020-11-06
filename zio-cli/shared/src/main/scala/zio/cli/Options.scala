@@ -1,25 +1,12 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
-import java.time.{
-  Instant => JInstant,
-  LocalDate => JLocalDate,
-  LocalDateTime => JLocalDateTime,
-  LocalTime => JLocalTime,
-  MonthDay => JMonthDay,
-  OffsetDateTime => JOffsetDateTime,
-  OffsetTime => JOffsetTime,
-  Period => JPeriod,
-  Year => JYear,
-  YearMonth => JYearMonth,
-  ZonedDateTime => JZonedDateTime,
-  ZoneOffset => JZoneOffset,
-  ZoneId => JZoneId
-}
+import java.nio.file.{Path => JPath}
+import java.time.{Instant => JInstant, LocalDate => JLocalDate, LocalDateTime => JLocalDateTime, LocalTime => JLocalTime, MonthDay => JMonthDay, OffsetDateTime => JOffsetDateTime, OffsetTime => JOffsetTime, Period => JPeriod, Year => JYear, YearMonth => JYearMonth, ZoneId => JZoneId, ZoneOffset => JZoneOffset, ZonedDateTime => JZonedDateTime}
 
 import zio.IO
-import zio.cli.HelpDoc.dsl.{ error, p }
-import zio.cli.Options.{ Map, Optional, Single }
+import zio.cli.HelpDoc.dsl.{blocks, error, p}
+import zio.cli.Options.{Map, Optional, Single}
+
 import scala.collection.immutable.Nil
 
 /**
@@ -80,6 +67,8 @@ sealed trait Options[+A] { self =>
   final def flatten6[B, C, D, E, F, G](implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[(B, C, D, E, F, G)] =
     as[B, C, D, E, F, G, (B, C, D, E, F, G)]((_, _, _, _, _, _))
 
+  def uid: Option[String]
+
   private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
     case _: Options.Empty.type                   => initial
     case s @ Single(_, _, _, _)                  => f(initial, s)
@@ -90,7 +79,7 @@ sealed trait Options[+A] { self =>
     case Map(value, _)                           => value.foldSingle(initial)(f)
   }
 
-  final def helpDoc: HelpDoc.Block = ???
+  def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)]
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
@@ -112,7 +101,7 @@ sealed trait Options[+A] { self =>
   private[cli] def supports(arg: String, opts: ParserOptions) =
     foldSingle(false) {
       case (bool, single) =>
-        bool || opts.normalizeCase(arg) == single.fullname || single.aliases
+        bool || opts.normalizeCase(arg) == single.uid || single.aliases
           .map("-" + opts.normalizeCase(_))
           .contains(arg)
     }
@@ -133,6 +122,11 @@ object Options {
       IO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
+
+    //TODO
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = List.empty
+
+    override def uid: Option[String] = None
   }
 
   final case class Single[+A](
@@ -150,19 +144,34 @@ object Options {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
-          optionType.validate(fullname, tail)
+          optionType.validate(fName, tail)
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
           }
         case Nil =>
-          IO.fail(p(error(s"Expected to find ${fullname} option.")) :: Nil)
+          IO.fail(p(error(s"Expected to find ${fName} option.")) :: Nil)
       }
 
-    private[cli] def fullname = "--" + name
+    def uid = Some(fName)
+
+    private def fName: String =  "--" + name
+
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = {
+      import HelpDoc.dsl._
+      val allNames = Vector("--" + name) ++ aliases.map("--" + _)
+      List(
+        spans(allNames.map(weak(_)).zipWithIndex.map {
+          case (span, index) => if (index < aliases.length - 1) span + text(", ") else span
+        }) ->
+          blocks(optionType.helpDoc, blocks(description.map(p(_))))
+      )
+    }
   }
 
   final case class Optional[A](options: Options[A]) extends Options[Option[A]] { self =>
+
+    import HelpDoc.dsl._
     override def modifySingle(f: SingleModifier): Options[Option[A]] = Optional(options.modifySingle(f))
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
@@ -181,6 +190,12 @@ object Options {
           }
         case Nil => IO.succeed(args -> None)
       }
+
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
+      case (span, block) => (span, blocks(block, p("This option is optional.")))
+    }
+
+    override def uid: Option[String] = options.uid
   }
 
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
@@ -202,9 +217,18 @@ object Options {
           tuple     <- left.validate(args, opts)
           (args, a) = tuple
         } yield (args -> (a -> b)))
+
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = left.helpDoc ++ right.helpDoc
+
+    override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
+      case Nil => None
+      case list => Some(list.mkString(", "))
+    }
   }
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
+
+    import HelpDoc.dsl._
     override def modifySingle(f: SingleModifier): Options[A] =
       Requires(options.modifySingle(f), target.modifySingle(f), predicate)
 
@@ -212,6 +236,15 @@ object Options {
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
+
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
+      case (span, block) => target.uid match {
+        case Some(value) => (span, blocks(block, p(s"This option must be used in combination with ${value}.")))
+        case None => (span, block)
+      }
+    }
+
+    override def uid: Option[String] = options.uid
   }
 
   final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean)
@@ -228,6 +261,15 @@ object Options {
           _ => options.validate(args, opts),
           _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil)
         )
+
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
+      case (span, block) => target.uid match {
+        case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
+        case None => (span, block)
+      }
+    }
+
+    override def uid: Option[String] = options.uid
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
@@ -237,16 +279,27 @@ object Options {
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], B)] =
       value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
+
+    override def uid: Option[String] = value.uid
+
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = value.helpDoc
   }
 
   sealed trait Type[+A] {
     def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
+    def helpDoc : HelpDoc.Block
 
   }
   object Type {
     final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
       def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] =
         IO.effectTotal((args, ifPresent))
+
+      override def helpDoc: HelpDoc.Block = p(s"A boolean toggle. If present, this option will be ${ifPresent}." + (negationName match {
+        case None => ""
+        case Some(value) if ifPresent=> s" To turn this toggle off, use --${value}."
+        case Some(value) => s" To turn this toggle on, use --${value}."
+      }))
     }
 
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
@@ -255,6 +308,8 @@ object Options {
           case head :: tail => primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
           case Nil          => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
         }
+
+      override def helpDoc: HelpDoc.Block = p(primType.helpDoc)
     }
   }
 
