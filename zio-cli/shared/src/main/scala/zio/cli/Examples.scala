@@ -14,6 +14,29 @@ object WcApp extends App {
 }
 
 object WordCountExample {
+  def main(args: Array[String]): Unit = {
+    import HelpDoc.dsl
+
+    val helpDoc = HelpDoc(
+      dsl.blocks(
+        dsl.h1("wc"),
+        dsl.p("wc -- counts words in the file"),
+        dsl.h1("synopsis"),
+        dsl.p("cat [-benstuv] [file ...]"),
+        dsl.h1("description"),
+        dsl.p(
+          "The cat utility reads files sequentially, writing them to the standard output. The file operands are processed in command-line order.  If file is a single dash (`-') or absent, cat reads from the standard input. If file is a UNIX domain socket, cat connects to it and then reads it until EOF.  This complements the UNIX domain binding capability available in inetd(8)."
+        ),
+        dsl.p("The options are as follows:"),
+        dsl.descriptionList(
+          dsl.text("-b") -> dsl.p("Number the non-blank output lines, starting at 1."),
+          dsl.text("-d") -> dsl.p("Display non-printing characters (see the -v option)")
+        )
+      ) :: Nil
+    )
+
+    println(helpDoc.toPlaintext(80))
+  }
 
   /**
    * wc [-clmw] [file ...]

@@ -1,7 +1,5 @@
 package zio.cli
 
-import zio.cli.HelpDoc.Span.Sequence
-
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
  *
@@ -13,19 +11,103 @@ import zio.cli.HelpDoc.Span.Sequence
  *
  * A `HelpDoc` can be converted into plaintext, JSON, and HTML.
  */
-sealed trait HelpDoc {
-  def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = ???
-  def toJson: String                                                     = ???
-  def toHtml: String                                                     = ???
+final case class HelpDoc(blocks: List[HelpDoc.Block]) {
+  import HelpDoc._
+
+  def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
+    val _ = color
+
+    val writer         = DocWriter(0, columnWidth)
+    var uppercase      = false
+    var pendingNewline = false
+
+    def renderText(text: String): Unit =
+      renderSpan(dsl.text(text))
+
+    def renderNewline(): Unit = renderText("\n")
+
+    def forceNewlines(): Unit =
+      if (pendingNewline) {
+        renderNewline()
+        pendingNewline = false
+      }
+
+    def scheduleNewline(): Unit = pendingNewline = true
+
+    def renderBlock(block: Block): Unit = {
+      forceNewlines()
+
+      block match {
+        case Block.Header(value, level) =>
+          writer.unindent()
+          renderNewline()
+          uppercase = true
+          renderSpan(value)
+          uppercase = false
+          writer.indent(4)
+          scheduleNewline()
+
+        case Block.Paragraph(value) =>
+          renderSpan(value)
+          scheduleNewline()
+
+        case Block.DescriptionList(definitions) =>
+          definitions.zipWithIndex.foreach {
+            case ((span, block), index) =>
+              renderSpan(span)
+              writer.indent(4)
+              renderNewline()
+              renderBlock(block)
+              writer.unindent()
+              if (index != definitions.length - 1) {
+                forceNewlines()
+                renderNewline()
+              }
+          }
+        case Block.Enumeration(elements) =>
+          elements.zipWithIndex.foreach {
+            case (block, index) =>
+              writer.indent(2)
+              renderText("- ")
+              renderBlock(block)
+              writer.unindent()
+
+              if (index != elements.length - 1) forceNewlines()
+          }
+
+        case Block.Sequence(left, right) =>
+          renderBlock(left)
+          if (!right.isHeader) renderNewline()
+          renderBlock(right)
+      }
+    }
+
+    def renderSpan(span: Span): Unit = {
+      val _ = span match {
+        case Span.Text(value) =>
+          val _ = writer.append(if (uppercase) value.toUpperCase() else value)
+        case Span.Code(value)   => writer.append(value)
+        case Span.Error(value)  => renderSpan(value) // TODO: Red?
+        case Span.Weak(value)   => renderSpan(value) // TODO: Italic?
+        case Span.Strong(value) => renderSpan(value) // TODO: Bold?
+        case Span.URI(value)    => writer.append(value.toASCIIString()) // TODO: Underline?
+        case Span.Sequence(left, right) =>
+          renderSpan(left)
+          renderSpan(right)
+        case Span.Space =>
+          val _ = writer.append(" ")
+      }
+    }
+
+    blocks.foreach(renderBlock(_))
+
+    writer.toString()
+  }
 }
-
 object HelpDoc {
+  val empty: HelpDoc = HelpDoc(Nil)
+
   object dsl {
-    val empty: HelpDoc = Empty
-
-    def body(content: Block): HelpDoc                   = Body(None, content, None)
-    def body(content: Block, contents: Block*): HelpDoc = Body(None, blocks(content, contents: _*), None)
-
     def h1(t: String): Block  = h1(text(t))
     def h1(span: Span): Block = Block.Header(span, 1)
 
@@ -50,10 +132,10 @@ object HelpDoc {
         case (acc, b) => Block.Sequence(acc, b)
       }
 
-    def text(t: String): Span = Span.Text(t)
+    def text(t: String): Span                  = Span.Text(t)
     def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
 
-    def spans(spans: Iterable[Span]):Span = spans.toList.foldLeft(text("")) {
+    def spans(spans: Iterable[Span]): Span = spans.toList.foldLeft(text("")) {
       case (span, s) => Span.Sequence(span, s)
     }
     def error(span: Span): Span = Span.Error(span)
@@ -71,13 +153,37 @@ object HelpDoc {
 
     def space: Span = Span.Space
   }
-  case object Empty                                                                   extends HelpDoc
-  final case class Body(header: Option[Block], content: Block, footer: Option[Block]) extends HelpDoc
 
-  sealed trait Block {
-    def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = ???
-    def toJson: String                                                     = ???
-    def toHtml: String                                                     = ???
+  sealed trait Block { self =>
+    def isHeader: Boolean =
+      self match {
+        case Block.Header(_, _) => true
+        case _                  => false
+      }
+
+    def isParagraph: Boolean =
+      self match {
+        case Block.Paragraph(_) => true
+        case _                  => false
+      }
+
+    def isDescriptionList: Boolean =
+      self match {
+        case Block.DescriptionList(_) => true
+        case _                        => false
+      }
+
+    def isEnumeration: Boolean =
+      self match {
+        case Block.Enumeration(_) => true
+        case _                    => false
+      }
+
+    def isSequence: Boolean =
+      self match {
+        case Block.Sequence(_, _) => true
+        case _                    => false
+      }
   }
   object Block {
     final case class Header(value: Span, level: Int)                   extends Block
@@ -88,11 +194,7 @@ object HelpDoc {
   }
 
   sealed trait Span {
-    def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = ???
-    def toJson: String                                                     = ???
-    def toHtml: String                                                     = ???
-
-    def +(that: Span): Span = Sequence(this, that)
+    def +(that: Span): Span = Span.Sequence(this, that)
   }
   object Span {
     final case class Text(value: String)               extends Span
@@ -103,5 +205,93 @@ object HelpDoc {
     final case class URI(value: java.net.URI)          extends Span
     final case class Sequence(left: Span, right: Span) extends Span
     case object Space                                  extends Span
+  }
+}
+
+private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) {
+  private var marginStack: List[Int] = List(startOffset)
+
+  def append(s: String): DocWriter = {
+    if (s.length == 0) this
+    else
+      DocWriter.splitNewlines(s) match {
+        case None =>
+          if (currentColumn + s.length > columnWidth) {
+            val remainder = columnWidth - currentColumn
+
+            val lastSpace = {
+              val lastSpace = s.take(remainder + 1).lastIndexOf(' ')
+
+              if (lastSpace == -1) remainder else lastSpace
+            }
+
+            val before = s.take(lastSpace)
+            val after  = s.drop(lastSpace).dropWhile(_ == ' ')
+
+            append(before)
+            append("\n")
+            append(after)
+          } else {
+            stringBuilder.append(s)
+            currentColumn += s.length
+          }
+        case Some(pieces) =>
+          pieces.zipWithIndex.foreach {
+            case (piece, index) =>
+              append(piece)
+
+              stringBuilder.append("\n").append(DocWriter.margin(currentMargin))
+              currentColumn = currentMargin
+          }
+      }
+
+    this
+  }
+
+  def currentMargin: Int = marginStack.sum
+
+  var currentColumn: Int = startOffset
+
+  def indent(adjust: Int): Unit = marginStack = adjust :: marginStack
+
+  def newline(): DocWriter = append("\n")
+
+  override def toString(): String = stringBuilder.toString()
+
+  def unindent(): Unit = marginStack = marginStack.drop(1)
+}
+private[cli] object DocWriter {
+  private def margin(n: Int): String = List.fill(n)(" ").mkString
+  def splitNewlines(s: String): Option[Array[String]] = {
+    val count = s.count(_ == '\n')
+
+    if (count == 0) None
+    else
+      Some {
+        val size = if (count == s.length) count else count + 1
+
+        val array = Array.ofDim[String](size)
+
+        var i = 0
+        var j = 0
+        while (i < s.length) {
+          val search   = s.indexOf('\n', i)
+          val endIndex = if (search == -1) s.length else search
+
+          array(j) = s.substring(i, endIndex)
+
+          i = endIndex + 1
+          j = j + 1
+        }
+        if (j < array.length) array(j) = ""
+
+        array
+      }
+  }
+
+  def apply(startOffset: Int, columnWidth: Int): DocWriter = {
+    val builder = new StringBuilder
+    builder.append(margin(startOffset))
+    new DocWriter(builder, startOffset, if (columnWidth <= 0) startOffset + 1 else columnWidth)
   }
 }

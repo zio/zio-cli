@@ -1,11 +1,25 @@
 package zio.cli
 
-import java.nio.file.{Path => JPath}
-import java.time.{Instant => JInstant, LocalDate => JLocalDate, LocalDateTime => JLocalDateTime, LocalTime => JLocalTime, MonthDay => JMonthDay, OffsetDateTime => JOffsetDateTime, OffsetTime => JOffsetTime, Period => JPeriod, Year => JYear, YearMonth => JYearMonth, ZoneId => JZoneId, ZoneOffset => JZoneOffset, ZonedDateTime => JZonedDateTime}
+import java.nio.file.{ Path => JPath }
+import java.time.{
+  Instant => JInstant,
+  LocalDate => JLocalDate,
+  LocalDateTime => JLocalDateTime,
+  LocalTime => JLocalTime,
+  MonthDay => JMonthDay,
+  OffsetDateTime => JOffsetDateTime,
+  OffsetTime => JOffsetTime,
+  Period => JPeriod,
+  Year => JYear,
+  YearMonth => JYearMonth,
+  ZoneId => JZoneId,
+  ZoneOffset => JZoneOffset,
+  ZonedDateTime => JZonedDateTime
+}
 
 import zio.IO
-import zio.cli.HelpDoc.dsl.{blocks, error, p}
-import zio.cli.Options.{Map, Optional, Single}
+import zio.cli.HelpDoc.dsl.{ blocks, error, p }
+import zio.cli.Options.{ Map, Optional, Single }
 
 import scala.collection.immutable.Nil
 
@@ -155,14 +169,16 @@ object Options {
 
     def uid = Some(fName)
 
-    private def fName: String =  "--" + name
+    private def fName: String = "--" + name
 
     override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = {
-      import HelpDoc.dsl._
+      import HelpDoc.dsl
+      import dsl._
+
       val allNames = Vector("--" + name) ++ aliases.map("--" + _)
       List(
         spans(allNames.map(weak(_)).zipWithIndex.map {
-          case (span, index) => if (index < aliases.length - 1) span + text(", ") else span
+          case (span, index) => if (index < aliases.length - 1) span + dsl.text(", ") else span
         }) ->
           blocks(optionType.helpDoc, blocks(description.map(p(_))))
       )
@@ -221,7 +237,7 @@ object Options {
     override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = left.helpDoc ++ right.helpDoc
 
     override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
-      case Nil => None
+      case Nil  => None
       case list => Some(list.mkString(", "))
     }
   }
@@ -238,10 +254,11 @@ object Options {
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
 
     override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
-      case (span, block) => target.uid match {
-        case Some(value) => (span, blocks(block, p(s"This option must be used in combination with ${value}.")))
-        case None => (span, block)
-      }
+      case (span, block) =>
+        target.uid match {
+          case Some(value) => (span, blocks(block, p(s"This option must be used in combination with ${value}.")))
+          case None        => (span, block)
+        }
     }
 
     override def uid: Option[String] = options.uid
@@ -263,10 +280,11 @@ object Options {
         )
 
     override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
-      case (span, block) => target.uid match {
-        case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
-        case None => (span, block)
-      }
+      case (span, block) =>
+        target.uid match {
+          case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
+          case None        => (span, block)
+        }
     }
 
     override def uid: Option[String] = options.uid
@@ -287,7 +305,7 @@ object Options {
 
   sealed trait Type[+A] {
     def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
-    def helpDoc : HelpDoc.Block
+    def helpDoc: HelpDoc.Block
 
   }
   object Type {
@@ -295,11 +313,12 @@ object Options {
       def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] =
         IO.effectTotal((args, ifPresent))
 
-      override def helpDoc: HelpDoc.Block = p(s"A boolean toggle. If present, this option will be ${ifPresent}." + (negationName match {
-        case None => ""
-        case Some(value) if ifPresent=> s" To turn this toggle off, use --${value}."
-        case Some(value) => s" To turn this toggle on, use --${value}."
-      }))
+      override def helpDoc: HelpDoc.Block =
+        p(s"A boolean toggle. If present, this option will be ${ifPresent}." + (negationName match {
+          case None                     => ""
+          case Some(value) if ifPresent => s" To turn this toggle off, use --${value}."
+          case Some(value)              => s" To turn this toggle on, use --${value}."
+        }))
     }
 
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {

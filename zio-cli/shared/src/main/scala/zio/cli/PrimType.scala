@@ -1,7 +1,21 @@
 package zio.cli
 
-import java.nio.file.{Files => JFiles, Path => JPath, Paths => JPaths}
-import java.time.{Instant => JInstant, LocalDate => JLocalDate, LocalDateTime => JLocalDateTime, LocalTime => JLocalTime, MonthDay => JMonthDay, OffsetDateTime => JOffsetDateTime, OffsetTime => JOffsetTime, Period => JPeriod, Year => JYear, YearMonth => JYearMonth, ZoneId => JZoneId, ZoneOffset => JZoneOffset, ZonedDateTime => JZonedDateTime}
+import java.nio.file.{ Files => JFiles, Path => JPath, Paths => JPaths }
+import java.time.{
+  Instant => JInstant,
+  LocalDate => JLocalDate,
+  LocalDateTime => JLocalDateTime,
+  LocalTime => JLocalTime,
+  MonthDay => JMonthDay,
+  OffsetDateTime => JOffsetDateTime,
+  OffsetTime => JOffsetTime,
+  Period => JPeriod,
+  Year => JYear,
+  YearMonth => JYearMonth,
+  ZoneId => JZoneId,
+  ZoneOffset => JZoneOffset,
+  ZonedDateTime => JZonedDateTime
+}
 
 import zio._
 
@@ -11,7 +25,6 @@ import zio._
  * Each primitive type has a way to parse and validate from a string.
  */
 sealed trait PrimType[+A] {
-  // TODO: Human-friendly rendering
   def helpDoc: HelpDoc.Span
 
   def render: String = toString()
@@ -57,11 +70,11 @@ object PrimType {
       }
 
     override def helpDoc: HelpDoc.Span = (pathType, exists) match {
-      case (PathType.Anything, true) => text("An existing file or directory.")
-      case (PathType.File, true) => text("An existing file.")
-      case (PathType.Directory, true) => text("An existing directory.")
-      case (PathType.Anything, false) => text("A file or directory that must not exist.")
-      case (PathType.File, false) => text("A file that does not exist.")
+      case (PathType.Anything, true)   => text("An existing file or directory.")
+      case (PathType.File, true)       => text("An existing file.")
+      case (PathType.Directory, true)  => text("An existing directory.")
+      case (PathType.Anything, false)  => text("A file or directory that must not exist.")
+      case (PathType.File, false)      => text("A file that does not exist.")
       case (PathType.Directory, false) => text("A directory that does not exist.")
     }
   }
@@ -116,7 +129,8 @@ object PrimType {
     import HelpDoc.dsl._
     def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, render)
 
-    override def helpDoc: HelpDoc.Span = text("A date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.")
+    override def helpDoc: HelpDoc.Span =
+      text("A date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.")
   }
 
   case object LocalTime extends PrimType[JLocalTime] {
@@ -137,21 +151,24 @@ object PrimType {
     import HelpDoc.dsl._
     def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, render)
 
-    override def helpDoc: HelpDoc.Span = text("A date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.")
+    override def helpDoc: HelpDoc.Span =
+      text("A date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.")
   }
 
   case object OffsetTime extends PrimType[JOffsetTime] {
     import HelpDoc.dsl._
     def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, render)
 
-    override def helpDoc: HelpDoc.Span = text("A time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00}.")
+    override def helpDoc: HelpDoc.Span =
+      text("A time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00}.")
   }
 
   case object Period extends PrimType[JPeriod] {
     import HelpDoc.dsl._
     def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, render)
 
-    override def helpDoc: HelpDoc.Span = text("A date-based amount of time in the ISO-8601 format, such as '2 years, 3 months and 4 days'.")
+    override def helpDoc: HelpDoc.Span =
+      text("A date-based amount of time in the ISO-8601 format, such as '2 years, 3 months and 4 days'.")
   }
 
   case object Year extends PrimType[JYear] {
@@ -180,7 +197,8 @@ object PrimType {
     import HelpDoc.dsl._
     def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, render)
 
-    override def helpDoc: HelpDoc.Span = text("A date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.")
+    override def helpDoc: HelpDoc.Span =
+      text("A date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.")
   }
 
   case object ZoneId extends PrimType[JZoneId] {

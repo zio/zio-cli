@@ -21,8 +21,8 @@ object CommandSpec extends DefaultRunnableSpec {
   object Tail {
     val nFlag = Options.integer("n")
 
-    val options: Options[BigInt]        = nFlag
-    val args: Args.Single[String]       = Args.text("file")
+    val options: Options[BigInt]  = nFlag
+    val args: Args.Single[String] = Args.text("file")
 
     val command = Command("tail")
       .options(options)
