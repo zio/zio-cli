@@ -24,7 +24,7 @@ sealed trait CLIApp[-R, +E] {
   def completions(shellType: ShellType): String = ???
 
   def helpDoc: HelpDoc =
-    h1(text(command.name)) +
+    h1(text(command.name) + text(" -- " + text(version))) +
       p(text(command.name) + text(" -- ") + summary) +
       generateDoc(command) +
       footer

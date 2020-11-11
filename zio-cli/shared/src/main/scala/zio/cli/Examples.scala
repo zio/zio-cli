@@ -40,8 +40,26 @@ object WordCountExample {
     println(helpDoc.toPlaintext(80))
   }
 
-  /**
-   * wc [-clmw] [file ...]
+  /*
+
+    ZIO Word Count - 0.1.2
+    __    __     __
+    |  T__T  T   /  ]
+    |  |  |  |  /  /
+    |  |  |  | /  /
+    l  `  '  !/   \_
+    \      / \     |
+      \_/\_/   \____j
+
+    WC
+
+      wc [-cdfs]
+
+    DESCRIPTION
+
+    OPTIONS
+
+
    */
   val bytesFlag: Options[Boolean] = Options.bool("c", true).alias("c")
   val linesFlag: Options[Boolean] = Options.bool("l", true).alias("l")
