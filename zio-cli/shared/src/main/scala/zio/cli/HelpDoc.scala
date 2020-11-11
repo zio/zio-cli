@@ -13,6 +13,7 @@ package zio.cli
  */
 final case class HelpDoc(blocks: List[HelpDoc.Block]) {
   import HelpDoc._
+  import scala.Console
 
   def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
     val _ = color
@@ -20,6 +21,14 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
     val writer         = DocWriter(0, columnWidth)
     var uppercase      = false
     var pendingNewline = false
+    var styles         = List.empty[String]
+    var lastStyle      = Console.RESET
+
+    def setStyle(style: String): Unit = styles = style :: styles
+
+    def currentStyle(): String = styles.headOption.getOrElse(Console.RESET)
+
+    def resetStyle(): Unit = styles = styles.drop(1)
 
     def renderText(text: String): Unit =
       renderSpan(dsl.text(text))
@@ -42,7 +51,9 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
           writer.unindent()
           renderNewline()
           uppercase = true
+          setStyle(Console.BOLD)
           renderSpan(value)
+          resetStyle()
           uppercase = false
           writer.indent(4)
           scheduleNewline()
@@ -54,7 +65,9 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
         case Block.DescriptionList(definitions) =>
           definitions.zipWithIndex.foreach {
             case ((span, block), index) =>
+              setStyle(Console.BOLD)
               renderSpan(span)
+              resetStyle()
               writer.indent(4)
               renderNewline()
               renderBlock(block)
@@ -85,23 +98,50 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
     def renderSpan(span: Span): Unit = {
       val _ = span match {
         case Span.Text(value) =>
-          val _ = writer.append(if (uppercase) value.toUpperCase() else value)
-        case Span.Code(value)   => writer.append(value)
-        case Span.Error(value)  => renderSpan(value) // TODO: Red?
-        case Span.Weak(value)   => renderSpan(value) // TODO: Italic?
-        case Span.Strong(value) => renderSpan(value) // TODO: Bold?
-        case Span.URI(value)    => writer.append(value.toASCIIString()) // TODO: Underline?
+          if (color && (lastStyle != currentStyle())) {
+            writer.append(currentStyle())
+            lastStyle = currentStyle()
+          }
+
+          writer.append(if (uppercase) value.toUpperCase() else value)
+
+        case Span.Code(value) =>
+          setStyle(Console.WHITE)
+          writer.append(value)
+          resetStyle()
+
+        case Span.Error(value) =>
+          setStyle(Console.RED)
+          renderSpan(value)
+          resetStyle()
+
+        case Span.Weak(value) =>
+          setStyle(Console.BOLD)
+          renderSpan(value)
+          resetStyle()
+
+        case Span.Strong(value) =>
+          setStyle(Console.BOLD)
+          renderSpan(value)
+          resetStyle()
+
+        case Span.URI(value) =>
+          setStyle(Console.UNDERLINED)
+          renderSpan(dsl.text(value.toASCIIString()))
+          resetStyle()
+
         case Span.Sequence(left, right) =>
           renderSpan(left)
           renderSpan(right)
+
         case Span.Space =>
-          val _ = writer.append(" ")
+          renderSpan(dsl.text(" "))
       }
     }
 
     blocks.foreach(renderBlock(_))
 
-    writer.toString()
+    writer.toString() + (if (color) Console.RESET else "")
   }
 }
 object HelpDoc {
