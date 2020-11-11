@@ -18,7 +18,9 @@ import java.time.{
 }
 
 import zio.IO
-import zio.cli.HelpDoc.dsl.{ blocks, error, p }
+import zio.cli.HelpDoc.Span
+import zio.cli.HelpDoc.{ blocks, p }
+import zio.cli.HelpDoc.Span._
 import zio.cli.Options.{ Map, Optional, Single }
 
 import scala.collection.immutable.Nil
@@ -66,7 +68,7 @@ sealed trait Options[+A] { self =>
     self.map(ev).map { case ((b, (c, (d, (e, (f, g)))))) => f0(b, c, d, e, f, g) }
 
   def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
-    Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc.Block, B]](Left(p(error(message))))(Right(_)))
+    Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc, B]](Left(p(error(message))))(Right(_)))
 
   final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
 
@@ -93,7 +95,7 @@ sealed trait Options[+A] { self =>
     case Map(value, _)                           => value.foldSingle(initial)(f)
   }
 
-  def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)]
+  def helpDoc: List[(HelpDoc.Span, HelpDoc)]
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
@@ -120,7 +122,7 @@ sealed trait Options[+A] { self =>
           .contains(arg)
     }
 
-  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
+  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 }
 
 trait SingleModifier {
@@ -132,13 +134,13 @@ object Options {
   case object Empty extends Options[Unit] {
     def recognizes(value: String, opts: ParserOptions): Option[Int] = None
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
       IO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
 
     //TODO
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = List.empty
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = List.empty
 
     override def uid: Option[String] = None
   }
@@ -155,7 +157,7 @@ object Options {
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       if (supports(value, opts)) Some(1) else None
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
           optionType.validate(fName, tail)
@@ -171,14 +173,12 @@ object Options {
 
     private def fName: String = "--" + name
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = {
-      import HelpDoc.dsl
-      import dsl._
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = {
 
       val allNames = Vector("--" + name) ++ aliases.map("--" + _)
       List(
         spans(allNames.map(weak(_)).zipWithIndex.map {
-          case (span, index) => if (index < aliases.length - 1) span + dsl.text(", ") else span
+          case (span, index) => if (index < aliases.length - 1) span + Span.text(", ") else span
         }) ->
           blocks(optionType.helpDoc, blocks(description.map(p(_))))
       )
@@ -186,14 +186,12 @@ object Options {
   }
 
   final case class Optional[A](options: Options[A]) extends Options[Option[A]] { self =>
-
-    import HelpDoc.dsl._
     override def modifySingle(f: SingleModifier): Options[Option[A]] = Optional(options.modifySingle(f))
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       options.recognizes(value, opts)
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Option[A])] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Option[A])] =
       // single.validate(args, opts).map {
       //   case (args, a) => (args, Some(a))
       // } orElse ZIO.succeed((args, None))
@@ -207,7 +205,7 @@ object Options {
         case Nil => IO.succeed(args -> None)
       }
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = options.helpDoc.map {
       case (span, block) => (span, blocks(block, p("This option is optional.")))
     }
 
@@ -220,7 +218,7 @@ object Options {
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       left.recognizes(value, opts) orElse right.recognizes(value, opts)
 
-    override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], (A, B))] =
+    override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
       (for {
         tuple     <- left.validate(args, opts)
         (args, a) = tuple
@@ -234,7 +232,7 @@ object Options {
           (args, a) = tuple
         } yield (args -> (a -> b)))
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = left.helpDoc ++ right.helpDoc
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = left.helpDoc ++ right.helpDoc
 
     override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
       case Nil  => None
@@ -243,17 +241,15 @@ object Options {
   }
 
   final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
-
-    import HelpDoc.dsl._
     override def modifySingle(f: SingleModifier): Options[A] =
       Requires(options.modifySingle(f), target.modifySingle(f), predicate)
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = options.helpDoc.map {
       case (span, block) =>
         target.uid match {
           case Some(value) => (span, blocks(block, p(s"This option must be used in combination with ${value}.")))
@@ -271,7 +267,7 @@ object Options {
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target
         .validate(args, opts)
         .foldM(
@@ -279,7 +275,7 @@ object Options {
           _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil)
         )
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = options.helpDoc.map {
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = options.helpDoc.map {
       case (span, block) =>
         target.uid match {
           case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
@@ -290,30 +286,30 @@ object Options {
     override def uid: Option[String] = options.uid
   }
 
-  final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc.Block, B]) extends Options[B] {
+  final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc, B]) extends Options[B] {
     override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
 
     def recognizes(v: String, opts: ParserOptions): Option[Int] = value.recognizes(v, opts)
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], B)] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], B)] =
       value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
 
     override def uid: Option[String] = value.uid
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = value.helpDoc
+    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = value.helpDoc
   }
 
   sealed trait Type[+A] {
-    def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)]
-    def helpDoc: HelpDoc.Block
+    def validate(name: String, args: List[String]): IO[List[HelpDoc], (List[String], A)]
+    def helpDoc: HelpDoc
 
   }
   object Type {
     final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], Boolean)] =
+      def validate(name: String, args: List[String]): IO[List[HelpDoc], (List[String], Boolean)] =
         IO.effectTotal((args, ifPresent))
 
-      override def helpDoc: HelpDoc.Block =
+      override def helpDoc: HelpDoc =
         p(s"A boolean toggle. If present, this option will be ${ifPresent}." + (negationName match {
           case None                     => ""
           case Some(value) if ifPresent => s" To turn this toggle off, use --${value}."
@@ -322,13 +318,13 @@ object Options {
     }
 
     final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc.Block], (List[String], A)] =
+      def validate(name: String, args: List[String]): IO[List[HelpDoc], (List[String], A)] =
         args match {
           case head :: tail => primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
           case Nil          => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
         }
 
-      override def helpDoc: HelpDoc.Block = p(primType.helpDoc)
+      override def helpDoc: HelpDoc = p(primType.helpDoc)
     }
   }
 

@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.{ IO, ZIO }
 
-import zio.cli.HelpDoc.dsl._
+import zio.cli.HelpDoc.Span
 import scala.collection.immutable.Nil
 
 /**
@@ -71,7 +71,7 @@ sealed trait Command[+A] { self =>
   /**
    * Generates the help doc for this command, and any subcommands.
    */
-  final def helpDoc: HelpDoc.Block = ???
+  final def helpDoc: HelpDoc = ???
 
   /**
    * Validates the arguments from the command line, either returning a failure
@@ -82,12 +82,13 @@ sealed trait Command[+A] { self =>
   final def validate(
     args: List[String],
     opts: ParserOptions
-  ): IO[List[HelpDoc.Block], (List[String], OptionsType, ArgsType)] = {
-    type Return = IO[List[HelpDoc.Block], (List[String], OptionsType, ArgsType)]
+  ): IO[List[HelpDoc], (List[String], OptionsType, ArgsType)] = {
+    type Return = IO[List[HelpDoc], (List[String], OptionsType, ArgsType)]
 
     val possibilities = partitionArgs(args, opts)
 
-    val defaultFailure = ZIO.fail(p(error(s"Expected ${self.args.minSize} arguments and options: ")) :: Nil)
+    val defaultFailure =
+      ZIO.fail(HelpDoc.p(Span.error(s"Expected ${self.args.minSize} arguments and options: ")) :: Nil)
 
     possibilities.foldLeft[Return](defaultFailure) {
       case (acc, (args, remainingArgs)) =>
@@ -98,7 +99,7 @@ sealed trait Command[+A] { self =>
             tuple               <- self.args.validate(args, opts)
             (args, argsType)    = tuple
             _ <- ZIO.when(args.nonEmpty)(
-                  ZIO.fail(p(error(s"Unexpected arguments for command ${action}: ${args}")) :: Nil)
+                  ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${action}: ${args}")) :: Nil)
                 )
           } yield (remainingArgs, optionsType, argsType)
 

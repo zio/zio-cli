@@ -3,20 +3,20 @@ package zio.cli
 import java.nio.file.{ Path => JPath }
 
 import zio.IO
-import zio.cli.HelpDoc.dsl
+import zio.cli.HelpDoc.Span
 
 sealed trait Args[+A] { self =>
 
   def ++[That, A1 >: A](that: Args[That]): Args.Cons[A1, That] =
     Args.Cons(self, that)
 
-  def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)]
+  def helpDoc: List[(HelpDoc.Span, HelpDoc)]
 
   def maxSize: Int
 
   def minSize: Int
 
-  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)]
+  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 }
 
 object Args {
@@ -33,12 +33,12 @@ object Args {
 
     def between(min: Int, max: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), Some(max))
 
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = {
-      import HelpDoc.dsl._
+    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = {
+      import HelpDoc.Span._
 
       List(
-        spans(weak(pseudoName), space, HelpDoc.dsl.text("(" + primType.render + ")")) ->
-          blocks(description.map(p(_)))
+        spans(weak(pseudoName), space, Span.text("(" + primType.render + ")")) ->
+          HelpDoc.blocks(description.map(HelpDoc.p(_)))
       )
     }
 
@@ -46,36 +46,33 @@ object Args {
 
     def minSize: Int = 1
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], A)] = {
-      import HelpDoc.dsl._
-
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
-        case head :: tail => primType.validate(head).bimap(text => p(text) :: Nil, a => tail -> a)
+        case head :: tail => primType.validate(head).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
         case Nil =>
-          IO.fail(p(s"Missing argument <${pseudoName}> of type ${primType.render}.") :: Nil)
+          IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> of type ${primType.render}.") :: Nil)
       }
-    }
   }
 
   case object Empty extends Args[Unit] {
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = Nil
+    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = Nil
 
     def maxSize: Int = 0
 
     def minSize: Int = 0
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], Unit)] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
       IO.succeed((args, ()))
   }
 
   final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = head.helpDoc ++ tail.helpDoc
+    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = head.helpDoc ++ tail.helpDoc
 
     def maxSize: Int = head.maxSize + tail.maxSize
 
     def minSize: Int = head.minSize + tail.minSize
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], (A, B))] =
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
       for {
         tuple     <- head.validate(args, opts)
         (args, a) = tuple
@@ -86,15 +83,15 @@ object Args {
 
   final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
 
-    import HelpDoc.dsl._
+    import HelpDoc.Span
 
     // TODO
-    def helpDoc: List[(HelpDoc.Span, HelpDoc.Block)] = value.helpDoc.map {
+    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = value.helpDoc.map {
       case (span, block) =>
-        val newSpan = span + dsl.text(if (max.isDefined) s" ${minSize} - ${maxSize}" else s"${minSize}")
-        val newBlock = blocks(
+        val newSpan = span + Span.text(if (max.isDefined) s" ${minSize} - ${maxSize}" else s"${minSize}")
+        val newBlock = HelpDoc.blocks(
           block,
-          p(
+          HelpDoc.p(
             if (max.isDefined)
               s"This argument must be repeated at least ${minSize} times and up to ${maxSize} times."
             else s"This argument must be repeated at least ${minSize} times."
@@ -107,11 +104,11 @@ object Args {
 
     def minSize: Int = min.getOrElse(0) * value.minSize
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc.Block], (List[String], List[A])] = {
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
       val max1 = max.getOrElse(Int.MaxValue)
 
-      def loop(args: List[String], acc: List[A]): IO[List[HelpDoc.Block], (List[String], List[A])] =
+      def loop(args: List[String], acc: List[A]): IO[List[HelpDoc], (List[String], List[A])] =
         if (acc.length >= max1) IO.succeed(args -> acc)
         else
           value

@@ -18,6 +18,7 @@ import java.time.{
 }
 
 import zio._
+import HelpDoc.Span.text
 
 /**
  * A `PrimType` represents the primitive types supported by ZIO CLI.
@@ -42,7 +43,6 @@ object PrimType {
 
   final case class Path(pathType: PathType, exists: Boolean) extends PrimType[JPath] {
     import PathType._
-    import HelpDoc.dsl._
     def validate(value: String): IO[String, JPath] =
       for {
         p <- IO.effect(JPaths.get(value)) orElseFail (s"'$value' is not a recognized path.")
@@ -80,28 +80,28 @@ object PrimType {
   }
 
   case object Text extends PrimType[String] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, String] = attempt(value, _ => value, render)
 
     override def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
   }
 
   case object Decimal extends PrimType[BigDecimal] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), render)
 
     override def helpDoc: HelpDoc.Span = text("A decimal number.")
   }
 
   case object Integer extends PrimType[BigInt] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), render)
 
     override def helpDoc: HelpDoc.Span = text("An integer.")
   }
 
   case object Boolean extends PrimType[Boolean] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, Boolean] = value.trim.toLowerCase match {
       case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
       case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
@@ -112,21 +112,21 @@ object PrimType {
   }
 
   case object Instant extends PrimType[JInstant] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JInstant] = attempt(value, JInstant.parse, render)
 
     override def helpDoc: HelpDoc.Span = text("An instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.")
   }
 
   case object LocalDate extends PrimType[JLocalDate] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JLocalDate] = attempt(value, JLocalDate.parse, render)
 
     override def helpDoc: HelpDoc.Span = text("A date in ISO_LOCAL_DATE format, such as 2007-12-03")
   }
 
   case object LocalDateTime extends PrimType[JLocalDateTime] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, render)
 
     override def helpDoc: HelpDoc.Span =
@@ -134,21 +134,21 @@ object PrimType {
   }
 
   case object LocalTime extends PrimType[JLocalTime] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JLocalTime] = attempt(value, JLocalTime.parse, render)
 
     override def helpDoc: HelpDoc.Span = text("A time without a time-zone in the ISO-8601 format, such as 10:15:30.")
   }
 
   case object MonthDay extends PrimType[JMonthDay] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JMonthDay] = attempt(value, JMonthDay.parse, render)
 
     override def helpDoc: HelpDoc.Span = text("A month-day in the ISO-8601 format such as 12-03.")
   }
 
   case object OffsetDateTime extends PrimType[JOffsetDateTime] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, render)
 
     override def helpDoc: HelpDoc.Span =
@@ -156,7 +156,7 @@ object PrimType {
   }
 
   case object OffsetTime extends PrimType[JOffsetTime] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, render)
 
     override def helpDoc: HelpDoc.Span =
@@ -164,7 +164,7 @@ object PrimType {
   }
 
   case object Period extends PrimType[JPeriod] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, render)
 
     override def helpDoc: HelpDoc.Span =
@@ -172,14 +172,14 @@ object PrimType {
   }
 
   case object Year extends PrimType[JYear] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JYear] = attempt(value, s => JYear.of(s.toInt), render)
 
     override def helpDoc: HelpDoc.Span = text("A year in the ISO-8601 format, such as 2007.")
   }
 
   case object YearMonth extends PrimType[JYearMonth] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
       def parse(input: String) = input match {
@@ -194,7 +194,7 @@ object PrimType {
   }
 
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, render)
 
     override def helpDoc: HelpDoc.Span =
@@ -202,13 +202,13 @@ object PrimType {
   }
 
   case object ZoneId extends PrimType[JZoneId] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JZoneId] = attempt(value, JZoneId.of, render)
 
     override def helpDoc: HelpDoc.Span = text("A time-zone ID, such as Europe/Paris.")
   }
   case object ZoneOffset extends PrimType[JZoneOffset] {
-    import HelpDoc.dsl._
+
     def validate(value: String): IO[String, JZoneOffset] = attempt(value, JZoneOffset.of, render)
 
     override def helpDoc: HelpDoc.Span = text("A time-zone offset from Greenwich/UTC, such as +02:00.")

@@ -4,16 +4,48 @@ package zio.cli
  * A `HelpDoc` models the full documentation for a command-line application.
  *
  * `HelpDoc` is composed of optional header and footers, and in-between, a o
- * list of block-level content items.
+ * list of HelpDoc-level content items.
  *
- * Block-level content items, in turn, can be headers, paragraphs, description
+ * HelpDoc-level content items, in turn, can be headers, paragraphs, description
  * lists, and enumerations.
  *
  * A `HelpDoc` can be converted into plaintext, JSON, and HTML.
  */
-final case class HelpDoc(blocks: List[HelpDoc.Block]) {
+sealed trait HelpDoc { self =>
   import HelpDoc._
   import scala.Console
+
+  def +(that: HelpDoc): HelpDoc = HelpDoc.Sequence(self, that)
+
+  def isHeader: Boolean =
+    self match {
+      case HelpDoc.Header(_, _) => true
+      case _                    => false
+    }
+
+  def isParagraph: Boolean =
+    self match {
+      case HelpDoc.Paragraph(_) => true
+      case _                    => false
+    }
+
+  def isDescriptionList: Boolean =
+    self match {
+      case HelpDoc.DescriptionList(_) => true
+      case _                          => false
+    }
+
+  def isEnumeration: Boolean =
+    self match {
+      case HelpDoc.Enumeration(_) => true
+      case _                      => false
+    }
+
+  def isSequence: Boolean =
+    self match {
+      case HelpDoc.Sequence(_, _) => true
+      case _                      => false
+    }
 
   def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
     val _ = color
@@ -31,7 +63,7 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
     def resetStyle(): Unit = styles = styles.drop(1)
 
     def renderText(text: String): Unit =
-      renderSpan(dsl.text(text))
+      renderSpan(Span.text(text))
 
     def renderNewline(): Unit = renderText("\n")
 
@@ -43,11 +75,12 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
 
     def scheduleNewline(): Unit = pendingNewline = true
 
-    def renderBlock(block: Block): Unit = {
+    def renderHelpDoc(helpDoc: HelpDoc): Unit = {
       forceNewlines()
 
-      block match {
-        case Block.Header(value, level) =>
+      helpDoc match {
+        case Empty =>
+        case HelpDoc.Header(value, level) =>
           writer.unindent()
           renderNewline()
           uppercase = true
@@ -58,40 +91,40 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
           writer.indent(4)
           scheduleNewline()
 
-        case Block.Paragraph(value) =>
+        case HelpDoc.Paragraph(value) =>
           renderSpan(value)
           scheduleNewline()
 
-        case Block.DescriptionList(definitions) =>
+        case HelpDoc.DescriptionList(definitions) =>
           definitions.zipWithIndex.foreach {
-            case ((span, block), index) =>
+            case ((span, helpDoc), index) =>
               setStyle(Console.BOLD)
               renderSpan(span)
               resetStyle()
               writer.indent(4)
               renderNewline()
-              renderBlock(block)
+              renderHelpDoc(helpDoc)
               writer.unindent()
               if (index != definitions.length - 1) {
                 forceNewlines()
                 renderNewline()
               }
           }
-        case Block.Enumeration(elements) =>
+        case HelpDoc.Enumeration(elements) =>
           elements.zipWithIndex.foreach {
-            case (block, index) =>
+            case (helpDoc, index) =>
               writer.indent(2)
               renderText("- ")
-              renderBlock(block)
+              renderHelpDoc(helpDoc)
               writer.unindent()
 
               if (index != elements.length - 1) forceNewlines()
           }
 
-        case Block.Sequence(left, right) =>
-          renderBlock(left)
+        case HelpDoc.Sequence(left, right) =>
+          renderHelpDoc(left)
           if (!right.isHeader) renderNewline()
-          renderBlock(right)
+          renderHelpDoc(right)
       }
     }
 
@@ -127,50 +160,65 @@ final case class HelpDoc(blocks: List[HelpDoc.Block]) {
 
         case Span.URI(value) =>
           setStyle(Console.UNDERLINED)
-          renderSpan(dsl.text(value.toASCIIString()))
+          renderSpan(Span.text(value.toASCIIString()))
           resetStyle()
 
         case Span.Sequence(left, right) =>
           renderSpan(left)
           renderSpan(right)
-
-        case Span.Space =>
-          renderSpan(dsl.text(" "))
       }
     }
 
-    blocks.foreach(renderBlock(_))
+    renderHelpDoc(this)
 
     writer.toString() + (if (color) Console.RESET else "")
   }
 }
 object HelpDoc {
-  val empty: HelpDoc = HelpDoc(Nil)
+  case object Empty                                                    extends HelpDoc
+  final case class Header(value: Span, level: Int)                     extends HelpDoc
+  final case class Paragraph(value: Span)                              extends HelpDoc
+  final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
+  final case class Enumeration(elements: List[HelpDoc])                extends HelpDoc
+  final case class Sequence(left: HelpDoc, right: HelpDoc)             extends HelpDoc
 
-  object dsl {
-    def h1(t: String): Block  = h1(text(t))
-    def h1(span: Span): Block = Block.Header(span, 1)
+  def blocks(bs: Iterable[HelpDoc]): HelpDoc =
+    if (bs.isEmpty) HelpDoc.Paragraph(Span.space) else blocks(bs.head, bs.tail.toSeq: _*)
 
-    def h2(t: String): Block  = h2(text(t))
-    def h2(span: Span): Block = Block.Header(span, 2)
+  def blocks(helpDoc: HelpDoc, helpDocs0: HelpDoc*): HelpDoc =
+    helpDocs0.foldLeft(helpDoc) {
+      case (acc, b) => HelpDoc.Sequence(acc, b)
+    }
 
-    def h3(t: String): Block  = h3(text(t))
-    def h3(span: Span): Block = Block.Header(span, 3)
+  def descriptionList(definitions: (Span, HelpDoc)*): HelpDoc = HelpDoc.DescriptionList(definitions.toList)
 
-    def p(t: String): Block  = Block.Paragraph(text(t))
-    def p(span: Span): Block = Block.Paragraph(span)
+  val empty: HelpDoc = Empty
 
-    def descriptionList(definitions: (Span, Block)*): Block = Block.DescriptionList(definitions.toList)
+  def enumeration(elements: HelpDoc*): HelpDoc = HelpDoc.Enumeration(elements.toList)
 
-    def enumeration(elements: Block*): Block = Block.Enumeration(elements.toList)
+  def h1(t: String): HelpDoc  = h1(Span.text(t))
+  def h1(span: Span): HelpDoc = HelpDoc.Header(span, 1)
 
-    def blocks(bs: Iterable[Block]): Block =
-      if (bs.isEmpty) Block.Paragraph(space) else blocks(bs.head, bs.tail.toSeq: _*)
+  def h2(t: String): HelpDoc  = h2(Span.text(t))
+  def h2(span: Span): HelpDoc = HelpDoc.Header(span, 2)
 
-    def blocks(block: Block, blocks0: Block*): Block =
-      blocks0.foldLeft(block) {
-        case (acc, b) => Block.Sequence(acc, b)
-      }
+  def h3(t: String): HelpDoc  = h3(Span.text(t))
+  def h3(span: Span): HelpDoc = HelpDoc.Header(span, 3)
+
+  def p(t: String): HelpDoc  = HelpDoc.Paragraph(Span.text(t))
+  def p(span: Span): HelpDoc = HelpDoc.Paragraph(span)
+
+  sealed trait Span {
+    def +(that: Span): Span = Span.Sequence(this, that)
+  }
+  object Span {
+    final case class Text(value: String)               extends Span
+    final case class Code(value: String)               extends Span
+    final case class Error(value: Span)                extends Span
+    final case class Weak(value: Span)                 extends Span
+    final case class Strong(value: Span)               extends Span
+    final case class URI(value: java.net.URI)          extends Span
+    final case class Sequence(left: Span, right: Span) extends Span
 
     def text(t: String): Span                  = Span.Text(t)
     def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
@@ -191,60 +239,7 @@ object HelpDoc {
 
     def uri(uri: java.net.URI): Span = Span.URI(uri)
 
-    def space: Span = Span.Space
-  }
-
-  sealed trait Block { self =>
-    def isHeader: Boolean =
-      self match {
-        case Block.Header(_, _) => true
-        case _                  => false
-      }
-
-    def isParagraph: Boolean =
-      self match {
-        case Block.Paragraph(_) => true
-        case _                  => false
-      }
-
-    def isDescriptionList: Boolean =
-      self match {
-        case Block.DescriptionList(_) => true
-        case _                        => false
-      }
-
-    def isEnumeration: Boolean =
-      self match {
-        case Block.Enumeration(_) => true
-        case _                    => false
-      }
-
-    def isSequence: Boolean =
-      self match {
-        case Block.Sequence(_, _) => true
-        case _                    => false
-      }
-  }
-  object Block {
-    final case class Header(value: Span, level: Int)                   extends Block
-    final case class Paragraph(value: Span)                            extends Block
-    final case class DescriptionList(definitions: List[(Span, Block)]) extends Block
-    final case class Enumeration(elements: List[Block])                extends Block
-    final case class Sequence(left: Block, right: Block)               extends Block
-  }
-
-  sealed trait Span {
-    def +(that: Span): Span = Span.Sequence(this, that)
-  }
-  object Span {
-    final case class Text(value: String)               extends Span
-    final case class Code(value: String)               extends Span
-    final case class Error(value: Span)                extends Span
-    final case class Weak(value: Span)                 extends Span
-    final case class Strong(value: Span)               extends Span
-    final case class URI(value: java.net.URI)          extends Span
-    final case class Sequence(left: Span, right: Span) extends Span
-    case object Space                                  extends Span
+    def space: Span = text(" ")
   }
 }
 
