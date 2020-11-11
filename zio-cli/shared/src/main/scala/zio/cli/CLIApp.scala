@@ -40,11 +40,31 @@ sealed trait CLIApp[-R, +E] {
     } yield result).exitCode
   }
 
-  private def generateDoc(command: Command[_]): HelpDoc =
-    command.description +
-      HelpDoc.descriptionList(command.args.helpDoc: _*) +
-      p(text("The options are as follows:")) +
-      HelpDoc.descriptionList(command.options.helpDoc: _*)
+  private def generateDoc(command: Command[_]): HelpDoc = {
+    val descriptionSection =
+      if (command.description != HelpDoc.Empty)
+        (h1("description") +
+          command.description)
+      else HelpDoc.Empty
+
+    val argumentsSection = {
+      val args = command.args.helpDoc
+
+      if (args == Nil) HelpDoc.Empty
+      else h1("arguments") + HelpDoc.descriptionList(command.args.helpDoc: _*)
+    }
+
+    val optionsSection = {
+      val opts = command.options.helpDoc
+
+      if (opts == Nil) HelpDoc.Empty
+      else h1("options") + HelpDoc.descriptionList(command.options.helpDoc: _*)
+    }
+
+    descriptionSection +
+      argumentsSection +
+      optionsSection
+  }
 
 }
 object CLIApp {

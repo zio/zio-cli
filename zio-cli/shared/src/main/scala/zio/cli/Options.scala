@@ -176,9 +176,10 @@ object Options {
     override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = {
 
       val allNames = Vector("--" + name) ++ aliases.map("--" + _)
+
       List(
         spans(allNames.map(weak(_)).zipWithIndex.map {
-          case (span, index) => if (index < aliases.length - 1) span + Span.text(", ") else span
+          case (span, index) => if (index != allNames.length - 1) span + Span.text(", ") else span
         }) ->
           blocks(optionType.helpDoc, blocks(description.map(p(_))))
       )
