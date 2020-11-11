@@ -6,6 +6,8 @@ import zio.App
 import zio.URIO
 import zio.console.Console
 
+import zio.cli.HelpDoc.Span.text
+
 import scala.language.postfixOps
 
 object WcApp extends App {
@@ -59,7 +61,13 @@ object WordCountExample {
   val execute: (WcOptions, List[Path]) => URIO[Console, Unit] = (opts, paths) =>
     zio.console.putStrLn(s"${opts} ${paths}")
 
-  val wcApp = CLIApp[Console, Nothing, (WcOptions, List[Path])]("ZIO Word Count", "0.1.2", wc, execute.tupled)
+  val wcApp = CLIApp[Console, Nothing, (WcOptions, List[Path])](
+    "ZIO Word Count",
+    "0.1.2",
+    wc,
+    text("counts words in the file"),
+    execute.tupled
+  )
 }
 
 trait GitExample {

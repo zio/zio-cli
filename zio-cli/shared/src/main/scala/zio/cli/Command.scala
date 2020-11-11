@@ -15,10 +15,27 @@ sealed trait Command[+A] { self =>
   type OptionsType
   type ArgsType
 
-  def action: String
+  def name: String
+  def description: HelpDoc
   def options: Options[OptionsType]
   def args: Args[ArgsType]
   def output(options: OptionsType, args: ArgsType): A
+
+  def ??(string: String): Command[A] =
+    new Command[A] {
+      override type OptionsType = self.OptionsType
+      override type ArgsType    = self.ArgsType
+
+      override def name: String = self.name
+
+      override def description: HelpDoc = self.description + HelpDoc.p(HelpDoc.Span.text(string))
+
+      override def options: Options[OptionsType] = self.options
+
+      override def args: Args[ArgsType] = self.args
+
+      def output(options: OptionsType, args: ArgsType): A = self.output(options, args)
+    }
 
   def args[B1](
     args0: Args[B1]
@@ -27,7 +44,9 @@ sealed trait Command[+A] { self =>
       override type OptionsType = self.OptionsType
       override type ArgsType    = B1
 
-      override def action: String = self.action
+      override def name: String = self.name
+
+      override def description: HelpDoc = self.description
 
       override def options: Options[OptionsType] = self.options
 
@@ -43,7 +62,9 @@ sealed trait Command[+A] { self =>
       override type OptionsType = self.OptionsType
       override type ArgsType    = self.ArgsType
 
-      override def action: String = self.action
+      override def name: String = self.name
+
+      override def description: HelpDoc = self.description
 
       override def options: Options[OptionsType] = self.options
 
@@ -59,7 +80,9 @@ sealed trait Command[+A] { self =>
       override type OptionsType = A1
       override type ArgsType    = self.ArgsType
 
-      override def action: String = self.action
+      override def name: String = self.name
+
+      override def description: HelpDoc = self.description
 
       override def options: Options[OptionsType] = options0
 
@@ -67,11 +90,6 @@ sealed trait Command[+A] { self =>
 
       def output(options: OptionsType, args: ArgsType): (A1, self.ArgsType) = (options, args)
     }
-
-  /**
-   * Generates the help doc for this command, and any subcommands.
-   */
-  final def helpDoc: HelpDoc = ???
 
   /**
    * Validates the arguments from the command line, either returning a failure
@@ -99,7 +117,7 @@ sealed trait Command[+A] { self =>
             tuple               <- self.args.validate(args, opts)
             (args, argsType)    = tuple
             _ <- ZIO.when(args.nonEmpty)(
-                  ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${action}: ${args}")) :: Nil)
+                  ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
                 )
           } yield (remainingArgs, optionsType, argsType)
 
@@ -156,12 +174,14 @@ object Command {
    * Construct a new command with the specified command name.
    */
   def apply(
-    action0: String
+    name0: String
   ): Command.Aux[Any, Any, Unit] = new Command[Unit] {
     override type OptionsType = Any
     override type ArgsType    = Any
 
-    override def action: String = action0
+    override def name: String = name0
+
+    override def description: HelpDoc = HelpDoc.Empty
 
     override def options: Options[OptionsType] = Options.Empty
 
