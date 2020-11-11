@@ -95,7 +95,7 @@ sealed trait Options[+A] { self =>
     case Map(value, _)                           => value.foldSingle(initial)(f)
   }
 
-  def helpDoc: List[(HelpDoc.Span, HelpDoc)]
+  def helpDoc: HelpDoc
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
@@ -130,7 +130,6 @@ trait SingleModifier {
 }
 
 object Options {
-  // --verbose 3
   case object Empty extends Options[Unit] {
     def recognizes(value: String, opts: ParserOptions): Option[Int] = None
 
@@ -139,8 +138,7 @@ object Options {
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
 
-    //TODO
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = List.empty
+    override def helpDoc: HelpDoc = HelpDoc.Empty
 
     override def uid: Option[String] = None
   }
@@ -173,15 +171,17 @@ object Options {
 
     private def fName: String = "--" + name
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = {
+    override def helpDoc: HelpDoc = {
 
       val allNames = Vector("--" + name) ++ aliases.map("--" + _)
 
-      List(
-        spans(allNames.map(weak(_)).zipWithIndex.map {
-          case (span, index) => if (index != allNames.length - 1) span + Span.text(", ") else span
-        }) ->
-          blocks(optionType.helpDoc, blocks(description.map(p(_))))
+      HelpDoc.DescriptionList(
+        List(
+          spans(allNames.map(weak(_)).zipWithIndex.map {
+            case (span, index) => if (index != allNames.length - 1) span + Span.text(", ") else span
+          }) ->
+            blocks(optionType.helpDoc, blocks(description.map(p(_))))
+        )
       )
     }
   }
@@ -206,8 +206,8 @@ object Options {
         case Nil => IO.succeed(args -> None)
       }
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = options.helpDoc.map {
-      case (span, block) => (span, blocks(block, p("This option is optional.")))
+    override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList { (span, block) =>
+      (span, blocks(block, p("This option is optional.")))
     }
 
     override def uid: Option[String] = options.uid
@@ -233,7 +233,7 @@ object Options {
           (args, a) = tuple
         } yield (args -> (a -> b)))
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = left.helpDoc ++ right.helpDoc
+    override def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
     override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
       case Nil  => None
@@ -250,7 +250,7 @@ object Options {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = options.helpDoc.map {
+    override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList {
       case (span, block) =>
         target.uid match {
           case Some(value) => (span, blocks(block, p(s"This option must be used in combination with ${value}.")))
@@ -276,12 +276,11 @@ object Options {
           _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil)
         )
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = options.helpDoc.map {
-      case (span, block) =>
-        target.uid match {
-          case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
-          case None        => (span, block)
-        }
+    override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList { (span, block) =>
+      target.uid match {
+        case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
+        case None        => (span, block)
+      }
     }
 
     override def uid: Option[String] = options.uid
@@ -297,7 +296,7 @@ object Options {
 
     override def uid: Option[String] = value.uid
 
-    override def helpDoc: List[(HelpDoc.Span, HelpDoc)] = value.helpDoc
+    override def helpDoc: HelpDoc = value.helpDoc
   }
 
   sealed trait Type[+A] {
@@ -338,11 +337,11 @@ object Options {
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
     Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
 
-  def file(name: String, exists: Boolean): Options[JPath] =
-    Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.File, exists)), Vector.empty)
+  def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
+    Single(name, Vector.empty, Primitive(PrimType.Path(PathType.File, exists)), Vector.empty)
 
-  def directory(name: String, exists: Boolean): Options[JPath] =
-    Single(name, Vector.empty, Primitive(PrimType.Path(PrimType.PathType.Directory, exists)), Vector.empty)
+  def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
+    Single(name, Vector.empty, Primitive(PrimType.Path(PathType.Directory, exists)), Vector.empty)
 
   def text(name: String): Options[String] =
     Single(name, Vector.empty, Primitive(PrimType.Text), Vector.empty)

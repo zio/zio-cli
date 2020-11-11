@@ -24,7 +24,7 @@ sealed trait CLIApp[-R, +E] {
   def completions(shellType: ShellType): String = ???
 
   def helpDoc: HelpDoc =
-    h1(text(command.name) + text(" -- " + text(version))) +
+    h1(text(command.name) + text(" -- ") + text(version)) +
       p(text(command.name) + text(" -- ") + summary) +
       generateDoc(command) +
       footer
@@ -50,15 +50,15 @@ sealed trait CLIApp[-R, +E] {
     val argumentsSection = {
       val args = command.args.helpDoc
 
-      if (args == Nil) HelpDoc.Empty
-      else h1("arguments") + HelpDoc.descriptionList(command.args.helpDoc: _*)
+      if (args == HelpDoc.Empty) HelpDoc.Empty
+      else h1("arguments") + command.args.helpDoc
     }
 
     val optionsSection = {
       val opts = command.options.helpDoc
 
-      if (opts == Nil) HelpDoc.Empty
-      else h1("options") + HelpDoc.descriptionList(command.options.helpDoc: _*)
+      if (opts == HelpDoc.Empty) HelpDoc.Empty
+      else h1("options") + command.options.helpDoc
     }
 
     descriptionSection +

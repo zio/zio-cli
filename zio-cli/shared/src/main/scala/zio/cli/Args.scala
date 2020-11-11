@@ -10,7 +10,7 @@ sealed trait Args[+A] { self =>
   def ++[That, A1 >: A](that: Args[That]): Args.Cons[A1, That] =
     Args.Cons(self, that)
 
-  def helpDoc: List[(HelpDoc.Span, HelpDoc)]
+  def helpDoc: HelpDoc
 
   def maxSize: Int
 
@@ -33,12 +33,14 @@ object Args {
 
     def between(min: Int, max: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), Some(max))
 
-    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = {
+    def helpDoc: HelpDoc = {
       import HelpDoc.Span._
 
-      List(
-        spans(weak(pseudoName), space, Span.text("(" + primType.render + ")")) ->
-          HelpDoc.blocks(description.map(HelpDoc.p(_)))
+      HelpDoc.DescriptionList(
+        List(
+          (Span.text("<") + weak(pseudoName) + Span.text(">") + Span.text(" (" + primType.render + ")")) ->
+            HelpDoc.blocks(description.map(HelpDoc.p(_)))
+        )
       )
     }
 
@@ -55,7 +57,7 @@ object Args {
   }
 
   case object Empty extends Args[Unit] {
-    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = Nil
+    def helpDoc: HelpDoc = HelpDoc.Empty
 
     def maxSize: Int = 0
 
@@ -66,7 +68,7 @@ object Args {
   }
 
   final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
-    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = head.helpDoc ++ tail.helpDoc
+    def helpDoc: HelpDoc = head.helpDoc + tail.helpDoc
 
     def maxSize: Int = head.maxSize + tail.maxSize
 
@@ -86,17 +88,19 @@ object Args {
     import HelpDoc.Span
 
     // TODO
-    def helpDoc: List[(HelpDoc.Span, HelpDoc)] = value.helpDoc.map {
+    def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList {
       case (span, block) =>
-        val newSpan = span + Span.text(if (max.isDefined) s" ${minSize} - ${maxSize}" else s"${minSize}")
-        val newBlock = HelpDoc.blocks(
-          block,
-          HelpDoc.p(
-            if (max.isDefined)
-              s"This argument must be repeated at least ${minSize} times and up to ${maxSize} times."
-            else s"This argument must be repeated at least ${minSize} times."
-          )
+        val newSpan = span + Span.text(" ") + Span.text(
+          if (max.isDefined) s" ${minSize} - ${maxSize}" else s"${minSize}+"
         )
+        val newBlock =
+          block +
+            HelpDoc.p(
+              if (max.isDefined)
+                s"This argument must be repeated at least ${minSize} times and up to ${maxSize} times."
+              else s"This argument must be repeated at least ${minSize} times."
+            )
+
         (newSpan, newBlock)
     }
 
@@ -124,11 +128,11 @@ object Args {
 
   def text(name: String): Single[String] = Single(name, PrimType.Text, Vector.empty)
 
-  def file(name: String, exists: Boolean): Single[JPath] =
-    Single(name, PrimType.Path(PrimType.PathType.File, exists), Vector.empty)
+  def file(name: String, exists: Exists = Exists.Either): Single[JPath] =
+    Single(name, PrimType.Path(PathType.File, exists), Vector.empty)
 
-  def directory(name: String, exists: Boolean): Single[JPath] =
-    Single(name, PrimType.Path(PrimType.PathType.Directory, exists), Vector.empty)
+  def directory(name: String, exists: Exists = Exists.Either): Single[JPath] =
+    Single(name, PrimType.Path(PathType.Directory, exists), Vector.empty)
 
   def int(name: String): Single[BigInt] = Single(name, PrimType.Integer, Vector.empty)
 

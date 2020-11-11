@@ -28,28 +28,28 @@ import HelpDoc.Span.text
 sealed trait PrimType[+A] {
   def helpDoc: HelpDoc.Span
 
-  def render: String = toString()
+  def render: String
 
   def validate(value: String): IO[String, A]
 }
 
 object PrimType {
-  sealed trait PathType
-  object PathType {
-    case object Anything  extends PathType
-    case object File      extends PathType
-    case object Directory extends PathType
-  }
-
-  final case class Path(pathType: PathType, exists: Boolean) extends PrimType[JPath] {
+  final case class Path(pathType: PathType, exists: Exists) extends PrimType[JPath] {
     import PathType._
+    override def render: String =
+      pathType match {
+        case PathType.File      => "file"
+        case PathType.Directory => "directory"
+        case PathType.Either    => "path"
+      }
+
     def validate(value: String): IO[String, JPath] =
       for {
         p <- IO.effect(JPaths.get(value)) orElseFail (s"'$value' is not a recognized path.")
         _ <- exists(p) >>= refineExistence(value, exists)
-        _ <- ZIO.when(exists) {
+        _ <- ZIO.when(exists != Exists.No) {
               pathType match {
-                case Anything  => IO.unit
+                case Either    => IO.unit
                 case File      => ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(isRegularFile(p))
                 case Directory => ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(isDirectory(p))
               }
@@ -62,24 +62,28 @@ object PrimType {
 
     private def isRegularFile(path: JPath) = IO.effect(JFiles.isRegularFile(path)) orElse IO.succeed(false)
 
-    private def refineExistence(value: String, expected: Boolean)(actual: Boolean) =
+    private def refineExistence(value: String, expected: Exists)(actual: Boolean) =
       (expected, actual) match {
-        case (true, false) => IO.fail(s"Path '$value' does not exist.")
-        case (false, true) => IO.fail(s"Path '$value' expected to not exist, but it does.")
-        case _             => IO.unit
+        case (Exists.No, true)   => IO.fail(s"Path '$value' must not exist.")
+        case (Exists.Yes, false) => IO.fail(s"Path '$value' must exist.")
+        case _                   => IO.unit
       }
 
     override def helpDoc: HelpDoc.Span = (pathType, exists) match {
-      case (PathType.Anything, true)   => text("An existing file or directory.")
-      case (PathType.File, true)       => text("An existing file.")
-      case (PathType.Directory, true)  => text("An existing directory.")
-      case (PathType.Anything, false)  => text("A file or directory that must not exist.")
-      case (PathType.File, false)      => text("A file that does not exist.")
-      case (PathType.Directory, false) => text("A directory that does not exist.")
+      case (PathType.Either, Exists.Yes)       => text("An existing file or directory.")
+      case (PathType.File, Exists.Yes)         => text("An existing file.")
+      case (PathType.Directory, Exists.Yes)    => text("An existing directory.")
+      case (PathType.Either, Exists.No)        => text("A file or directory that must not exist.")
+      case (PathType.File, Exists.No)          => text("A file that does not exist.")
+      case (PathType.Directory, Exists.No)     => text("A directory that does not exist.")
+      case (PathType.Either, Exists.Either)    => text("A file or directory.")
+      case (PathType.File, Exists.Either)      => text("A file.")
+      case (PathType.Directory, Exists.Either) => text("A directory.")
     }
   }
 
   case object Text extends PrimType[String] {
+    override def render: String = "text"
 
     def validate(value: String): IO[String, String] = attempt(value, _ => value, render)
 
@@ -87,6 +91,7 @@ object PrimType {
   }
 
   case object Decimal extends PrimType[BigDecimal] {
+    override def render: String = "decimal"
 
     def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), render)
 
@@ -94,6 +99,7 @@ object PrimType {
   }
 
   case object Integer extends PrimType[BigInt] {
+    override def render: String = "integer"
 
     def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), render)
 
@@ -101,6 +107,7 @@ object PrimType {
   }
 
   case object Boolean extends PrimType[Boolean] {
+    override def render: String = "boolean"
 
     def validate(value: String): IO[String, Boolean] = value.trim.toLowerCase match {
       case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
@@ -112,6 +119,7 @@ object PrimType {
   }
 
   case object Instant extends PrimType[JInstant] {
+    override def render: String = "instant"
 
     def validate(value: String): IO[String, JInstant] = attempt(value, JInstant.parse, render)
 
@@ -119,6 +127,7 @@ object PrimType {
   }
 
   case object LocalDate extends PrimType[JLocalDate] {
+    override def render: String = "date"
 
     def validate(value: String): IO[String, JLocalDate] = attempt(value, JLocalDate.parse, render)
 
@@ -126,6 +135,7 @@ object PrimType {
   }
 
   case object LocalDateTime extends PrimType[JLocalDateTime] {
+    override def render: String = "date-time"
 
     def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, render)
 
@@ -134,6 +144,7 @@ object PrimType {
   }
 
   case object LocalTime extends PrimType[JLocalTime] {
+    override def render: String = "local-time"
 
     def validate(value: String): IO[String, JLocalTime] = attempt(value, JLocalTime.parse, render)
 
@@ -141,6 +152,7 @@ object PrimType {
   }
 
   case object MonthDay extends PrimType[JMonthDay] {
+    override def render: String = "month-day"
 
     def validate(value: String): IO[String, JMonthDay] = attempt(value, JMonthDay.parse, render)
 
@@ -148,6 +160,7 @@ object PrimType {
   }
 
   case object OffsetDateTime extends PrimType[JOffsetDateTime] {
+    override def render: String = "offset-date-time"
 
     def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, render)
 
@@ -156,6 +169,7 @@ object PrimType {
   }
 
   case object OffsetTime extends PrimType[JOffsetTime] {
+    override def render: String = "offset-time"
 
     def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, render)
 
@@ -164,14 +178,16 @@ object PrimType {
   }
 
   case object Period extends PrimType[JPeriod] {
+    override def render: String = "period"
 
     def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, render)
 
     override def helpDoc: HelpDoc.Span =
-      text("A date-based amount of time in the ISO-8601 format, such as '2 years, 3 months and 4 days'.")
+      text("A date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.")
   }
 
   case object Year extends PrimType[JYear] {
+    override def render: String = "year"
 
     def validate(value: String): IO[String, JYear] = attempt(value, s => JYear.of(s.toInt), render)
 
@@ -179,6 +195,7 @@ object PrimType {
   }
 
   case object YearMonth extends PrimType[JYearMonth] {
+    override def render: String = "year-month"
 
     def validate(value: String): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
@@ -194,6 +211,7 @@ object PrimType {
   }
 
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
+    override def render: String = "zoned-date-time"
 
     def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, render)
 
@@ -202,12 +220,14 @@ object PrimType {
   }
 
   case object ZoneId extends PrimType[JZoneId] {
+    override def render: String = "zone-id"
 
     def validate(value: String): IO[String, JZoneId] = attempt(value, JZoneId.of, render)
 
     override def helpDoc: HelpDoc.Span = text("A time-zone ID, such as Europe/Paris.")
   }
   case object ZoneOffset extends PrimType[JZoneOffset] {
+    override def render: String = "zone-offset"
 
     def validate(value: String): IO[String, JZoneOffset] = attempt(value, JZoneOffset.of, render)
 

@@ -15,7 +15,14 @@ sealed trait HelpDoc { self =>
   import HelpDoc._
   import scala.Console
 
-  def +(that: HelpDoc): HelpDoc = HelpDoc.Sequence(self, that)
+  def +(that: HelpDoc): HelpDoc =
+    (self, that) match {
+      case (HelpDoc.Empty, that)                                           => that
+      case (self, HelpDoc.Empty)                                           => this
+      case (HelpDoc.DescriptionList(left), HelpDoc.DescriptionList(right)) => HelpDoc.DescriptionList(left ++ right)
+      case (HelpDoc.Enumeration(left), HelpDoc.Enumeration(right))         => HelpDoc.Enumeration(left ++ right)
+      case _                                                               => HelpDoc.Sequence(self, that)
+    }
 
   def isHeader: Boolean =
     self match {
@@ -35,16 +42,25 @@ sealed trait HelpDoc { self =>
       case _                          => false
     }
 
-  def isEnumeration: Boolean =
+  def isEmpty: Boolean =
     self match {
-      case HelpDoc.Enumeration(_) => true
-      case _                      => false
+      case HelpDoc.Empty                 => true
+      case HelpDoc.DescriptionList(Nil)  => true
+      case HelpDoc.Sequence(left, right) => left.isEmpty && right.isEmpty
+      case HelpDoc.Enumeration(Nil)      => true
+      case _                             => false
     }
 
   def isSequence: Boolean =
     self match {
       case HelpDoc.Sequence(_, _) => true
       case _                      => false
+    }
+
+  def mapDescriptionList(f: (HelpDoc.Span, HelpDoc) => (HelpDoc.Span, HelpDoc)): HelpDoc =
+    self match {
+      case HelpDoc.DescriptionList(list) => HelpDoc.DescriptionList(list.map(f.tupled))
+      case x                             => x
     }
 
   def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
@@ -123,7 +139,7 @@ sealed trait HelpDoc { self =>
 
         case HelpDoc.Sequence(left, right) =>
           renderHelpDoc(left)
-          if (!right.isHeader) renderNewline()
+          if (!right.isHeader && !(left.isEmpty || right.isEmpty)) renderNewline()
           renderHelpDoc(right)
       }
     }

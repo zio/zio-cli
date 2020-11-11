@@ -70,7 +70,7 @@ object WordCountExample {
 
   val options = (bytesFlag :: linesFlag :: wordsFlag :: charFlag).as(WcOptions)
 
-  val args = Args.file("files", true) *
+  val args = Args.file("files", Exists.Yes) *
 
   val wc = Command("wc")
     .options(options)
@@ -93,7 +93,7 @@ trait GitExample {
 
   val verboseFlag: Options[Boolean] = Options.bool("v", true)
 
-  val configPath: Options[Path] = Options.directory("c", true)
+  val configPath: Options[Path] = Options.directory("c", Exists.Yes)
 
   val modifiedFlag: Options[Boolean] = Options.bool("m", true)
 
@@ -108,7 +108,7 @@ trait GitExample {
 
   val add = Command("add")
     .options(modifiedFlag)
-    .args(Args.directory("directory", true))
+    .args(Args.directory("directory", Exists.Yes))
 
   val remote = Command("remote")
     .options(verboseFlag)
