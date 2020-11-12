@@ -17,8 +17,8 @@ sealed trait HelpDoc { self =>
 
   def +(that: HelpDoc): HelpDoc =
     (self, that) match {
-      case (HelpDoc.Empty, that)                                           => that
-      case (self, HelpDoc.Empty)                                           => this
+      case (self, that) if self.isEmpty                                    => that
+      case (self, that) if (that.isEmpty)                                  => this
       case (HelpDoc.DescriptionList(left), HelpDoc.DescriptionList(right)) => HelpDoc.DescriptionList(left ++ right)
       case (HelpDoc.Enumeration(left), HelpDoc.Enumeration(right))         => HelpDoc.Enumeration(left ++ right)
       case _                                                               => HelpDoc.Sequence(self, that)
@@ -45,9 +45,9 @@ sealed trait HelpDoc { self =>
   def isEmpty: Boolean =
     self match {
       case HelpDoc.Empty                 => true
-      case HelpDoc.DescriptionList(Nil)  => true
+      case HelpDoc.DescriptionList(xs)   => xs.forall(_._2.isEmpty)
       case HelpDoc.Sequence(left, right) => left.isEmpty && right.isEmpty
-      case HelpDoc.Enumeration(Nil)      => true
+      case HelpDoc.Enumeration(xs)       => xs.forall(_.isEmpty)
       case _                             => false
     }
 
@@ -91,12 +91,11 @@ sealed trait HelpDoc { self =>
 
     def scheduleNewline(): Unit = pendingNewline = true
 
-    def renderHelpDoc(helpDoc: HelpDoc): Unit = {
-      forceNewlines()
-
+    def renderHelpDoc(helpDoc: HelpDoc): Unit =
       helpDoc match {
         case Empty =>
         case HelpDoc.Header(value, level) =>
+          forceNewlines()
           writer.unindent()
           renderNewline()
           uppercase = true
@@ -105,13 +104,15 @@ sealed trait HelpDoc { self =>
           resetStyle()
           uppercase = false
           writer.indent(4)
-          scheduleNewline()
+          renderNewline()
 
         case HelpDoc.Paragraph(value) =>
+          forceNewlines()
           renderSpan(value)
           scheduleNewline()
 
         case HelpDoc.DescriptionList(definitions) =>
+          forceNewlines()
           definitions.zipWithIndex.foreach {
             case ((span, helpDoc), index) =>
               setStyle(Console.BOLD)
@@ -127,6 +128,7 @@ sealed trait HelpDoc { self =>
               }
           }
         case HelpDoc.Enumeration(elements) =>
+          forceNewlines()
           elements.zipWithIndex.foreach {
             case (helpDoc, index) =>
               writer.indent(2)
@@ -139,10 +141,9 @@ sealed trait HelpDoc { self =>
 
         case HelpDoc.Sequence(left, right) =>
           renderHelpDoc(left)
-          if (!right.isHeader && !(left.isEmpty || right.isEmpty)) renderNewline()
+          scheduleNewline()
           renderHelpDoc(right)
       }
-    }
 
     def renderSpan(span: Span): Unit = {
       val _ = span match {

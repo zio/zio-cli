@@ -59,7 +59,7 @@ object Args {
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.text("<") + Span.weak(pseudoName) + Span.text(": " + primType.typeName + "") + Span.text(">")) ->
+          (Span.weak(pseudoName) + Span.text(": " + primType.typeName + "")) ->
             HelpDoc.blocks(description.map(HelpDoc.p(_)))
         )
       )
@@ -120,14 +120,15 @@ object Args {
 
     def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList {
       case (span, block) =>
-        val newSpan = span + Span.text(" ") + Span.text(
-          if (max.isDefined) s" ${minSize} - ${maxSize}" else s"${minSize}+"
+        val newSpan = span + Span.text(
+          if (max.isDefined) s" ${minSize} - ${maxSize}" else if (minSize == 0) "..." else s" ${minSize}+"
         )
         val newBlock =
           block +
             HelpDoc.p(
               if (max.isDefined)
                 s"This argument must be repeated at least ${minSize} times and may be repeated up to ${maxSize} times."
+              else if (minSize == 0) "This argument may be repeated zero or more times."
               else s"This argument must be repeated at least ${minSize} times."
             )
 

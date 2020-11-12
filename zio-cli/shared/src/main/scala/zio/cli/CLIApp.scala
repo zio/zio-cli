@@ -17,10 +17,13 @@ final case class CLIApp[-R, +E, Model](
   execute: Model => ZIO[R, E, Any],
   footer: HelpDoc = HelpDoc.Empty,
   options: ParserOptions = ParserOptions.default
-) {
+) { self =>
   def completions(shellType: ShellType): String = ???
 
-  def helpDoc: HelpDoc =
+  final def footer(f: HelpDoc): CLIApp[R, E, Model] =
+    copy(footer = self.footer + f)
+
+  final def helpDoc: HelpDoc =
     h1(text(name) + text(" ") + text(version)) +
       p(text(name) + text(" -- ") + summary) +
       h1("synopsis") +
@@ -28,7 +31,7 @@ final case class CLIApp[-R, +E, Model](
       command.helpDoc +
       footer
 
-  def run(args: List[String]): ZIO[R with console.Console, Nothing, ExitCode] = {
+  final def run(args: List[String]): ZIO[R with console.Console, Nothing, ExitCode] = {
     val c = command
 
     (for {
