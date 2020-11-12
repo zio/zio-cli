@@ -11,7 +11,7 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("Command with options followed by args")(
         testM("Should validate successfully") {
           assertM(Tail.command.parse(List("--n", "100", "foo.log"), ParserOptions.default))(
-            equalTo((List.empty[String], ("foo.log", BigInt(100))))
+            equalTo((List.empty[String], (BigInt(100), "foo.log")))
           )
         }
       )
@@ -24,7 +24,7 @@ object CommandSpec extends DefaultRunnableSpec {
     val options: Options[BigInt] = nFlag
     val args: Args[String]       = Args.text("file")
 
-    val command = Command("tail", args, options)
+    val command = Command("tail", options, args)
   }
 
   object WC {
@@ -37,6 +37,6 @@ object CommandSpec extends DefaultRunnableSpec {
 
     val args = Args.text("files") *
 
-    val command = Command("wc", args, options)
+    val command = Command("wc", options, args)
   }
 }
