@@ -337,6 +337,8 @@ object Options {
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
     Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
 
+  val empty: Options[Unit] = Empty
+
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
     Single(name, Vector.empty, Primitive(PrimType.Path(PathType.File, exists)), Vector.empty)
 
@@ -390,6 +392,4 @@ object Options {
 
   def zoneOffset(name: String): Options[JZoneOffset] =
     Single(name, Vector.empty, Primitive(PrimType.ZoneOffset), Vector.empty)
-
-  val empty: Options[Unit] = Empty
 }

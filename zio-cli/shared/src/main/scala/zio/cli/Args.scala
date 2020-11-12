@@ -2,13 +2,39 @@ package zio.cli
 
 import java.nio.file.{ Path => JPath }
 
+import java.time.{
+  Instant => JInstant,
+  LocalDate => JLocalDate,
+  LocalDateTime => JLocalDateTime,
+  LocalTime => JLocalTime,
+  MonthDay => JMonthDay,
+  OffsetDateTime => JOffsetDateTime,
+  OffsetTime => JOffsetTime,
+  Period => JPeriod,
+  Year => JYear,
+  YearMonth => JYearMonth,
+  ZoneId => JZoneId,
+  ZoneOffset => JZoneOffset,
+  ZonedDateTime => JZonedDateTime
+}
+
 import zio.IO
 import zio.cli.HelpDoc.Span
 
 sealed trait Args[+A] { self =>
 
-  def ++[That, A1 >: A](that: Args[That]): Args.Cons[A1, That] =
+  final def ++[That, A1 >: A](that: Args[That]): Args.Cons[A1, That] =
     Args.Cons(self, that)
+
+  final def * : Args[List[A]] = Args.Variadic(self, None, None)
+
+  def ??(that: String): Args[A]
+
+  final def atLeast(min: Int): Args[List[A]] = Args.Variadic(self, Some(min), None)
+
+  final def atMost(max: Int): Args[List[A]] = Args.Variadic(self, None, Some(max))
+
+  final def between(min: Int, max: Int): Args[List[A]] = Args.Variadic(self, Some(min), Some(max))
 
   def helpDoc: HelpDoc
 
@@ -16,22 +42,17 @@ sealed trait Args[+A] { self =>
 
   def minSize: Int
 
+  final def repeat: Args[List[A]] = self.*
+
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 }
 
 object Args {
 
-  final case class Single[+A](pseudoName: String, primType: PrimType[A], description: Vector[String]) extends Args[A] {
+  final case class Single[+A](pseudoName: String, primType: PrimType[A], description: Vector[String] = Vector())
+      extends Args[A] {
     self =>
-    def * : Args.Variadic[A] = Args.Variadic(self, None, None)
-
-    def ??(that: String): Single[A] = copy(description = description :+ that)
-
-    def atLeast(min: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), None)
-
-    def atMost(max: Int): Args.Variadic[A] = Args.Variadic(self, None, Some(max))
-
-    def between(min: Int, max: Int): Args.Variadic[A] = Args.Variadic(self, Some(min), Some(max))
+    def ??(that: String): Args[A] = copy(description = description :+ that)
 
     def helpDoc: HelpDoc = {
       import HelpDoc.Span._
@@ -57,6 +78,8 @@ object Args {
   }
 
   case object Empty extends Args[Unit] {
+    def ??(that: String): Args[Unit] = Empty
+
     def helpDoc: HelpDoc = HelpDoc.Empty
 
     def maxSize: Int = 0
@@ -68,6 +91,8 @@ object Args {
   }
 
   final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
+    def ??(that: String): Args[(A, B)] = Cons(head ?? that, tail ?? that)
+
     def helpDoc: HelpDoc = head.helpDoc + tail.helpDoc
 
     def maxSize: Int = head.maxSize + tail.maxSize
@@ -83,7 +108,8 @@ object Args {
       } yield (args, (a, b))
   }
 
-  final case class Variadic[+A](value: Single[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
+  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
+    def ??(that: String): Args[List[A]] = Variadic(value ?? that, min, max)
 
     import HelpDoc.Span
 
@@ -126,15 +152,61 @@ object Args {
     }
   }
 
-  def text(name: String): Single[String] = Single(name, PrimType.Text, Vector.empty)
-
-  def file(name: String, exists: Exists = Exists.Either): Single[JPath] =
-    Single(name, PrimType.Path(PathType.File, exists), Vector.empty)
-
-  def directory(name: String, exists: Exists = Exists.Either): Single[JPath] =
-    Single(name, PrimType.Path(PathType.Directory, exists), Vector.empty)
-
-  def int(name: String): Single[BigInt] = Single(name, PrimType.Integer, Vector.empty)
+  def bool(name: String): Args[Boolean] = Single(name, PrimType.Boolean)
 
   val empty: Args[Unit] = Empty
+
+  def file(name: String, exists: Exists = Exists.Either): Args[JPath] =
+    Single(name, PrimType.Path(PathType.File, exists))
+
+  def directory(name: String, exists: Exists = Exists.Either): Args[JPath] =
+    Single(name, PrimType.Path(PathType.Directory, exists))
+
+  def text(name: String): Args[String] =
+    Single(name, PrimType.Text)
+
+  def decimal(name: String): Args[BigDecimal] =
+    Single(name, PrimType.Decimal)
+
+  def integer(name: String): Args[BigInt] =
+    Single(name, PrimType.Integer)
+
+  def instant(name: String): Args[JInstant] =
+    Single(name, PrimType.Instant)
+
+  def localDate(name: String): Args[JLocalDate] =
+    Single(name, PrimType.LocalDate)
+
+  def localDateTime(name: String): Args[JLocalDateTime] =
+    Single(name, PrimType.LocalDateTime)
+
+  def localTime(name: String): Args[JLocalTime] =
+    Single(name, PrimType.LocalTime)
+
+  def monthDay(name: String): Args[JMonthDay] =
+    Single(name, PrimType.MonthDay)
+
+  def offsetDateTime(name: String): Args[JOffsetDateTime] =
+    Single(name, PrimType.OffsetDateTime)
+
+  def offsetTime(name: String): Args[JOffsetTime] =
+    Single(name, PrimType.OffsetTime)
+
+  def period(name: String): Args[JPeriod] =
+    Single(name, PrimType.Period)
+
+  def year(name: String): Args[JYear] =
+    Single(name, PrimType.Year)
+
+  def yearMonth(name: String): Args[JYearMonth] =
+    Single(name, PrimType.YearMonth)
+
+  def zonedDateTime(name: String): Args[JZonedDateTime] =
+    Single(name, PrimType.ZonedDateTime)
+
+  def zoneId(name: String): Args[JZoneId] =
+    Single(name, PrimType.ZoneId)
+
+  def zoneOffset(name: String): Args[JZoneOffset] =
+    Single(name, PrimType.ZoneOffset)
 }
