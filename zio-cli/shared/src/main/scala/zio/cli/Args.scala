@@ -44,6 +44,8 @@ sealed trait Args[+A] { self =>
 
   final def repeat: Args[List[A]] = self.*
 
+  def synopsis: CLIGrammar
+
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 }
 
@@ -57,7 +59,7 @@ object Args {
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.text("<") + Span.weak(pseudoName) + Span.text(">") + Span.text(" (" + primType.render + ")")) ->
+          (Span.text("<") + Span.weak(pseudoName) + Span.text(">") + Span.text(": " + primType.typeName + "")) ->
             HelpDoc.blocks(description.map(HelpDoc.p(_)))
         )
       )
@@ -66,11 +68,13 @@ object Args {
 
     def minSize: Int = 1
 
+    def synopsis: CLIGrammar = CLIGrammar.Argument("<" + pseudoName.toLowerCase + ": " + primType.typeName + ">")
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
         case head :: tail => primType.validate(head).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
         case Nil =>
-          IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> of type ${primType.render}.") :: Nil)
+          IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> of type ${primType.typeName}.") :: Nil)
       }
   }
 
@@ -82,6 +86,8 @@ object Args {
     def maxSize: Int = 0
 
     def minSize: Int = 0
+
+    def synopsis: CLIGrammar = CLIGrammar.None
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
       IO.succeed((args, ()))
@@ -96,6 +102,8 @@ object Args {
 
     def minSize: Int = head.minSize + tail.minSize
 
+    def synopsis: CLIGrammar = head.synopsis + tail.synopsis
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
       for {
         tuple     <- head.validate(args, opts)
@@ -107,6 +115,8 @@ object Args {
 
   final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
     def ??(that: String): Args[List[A]] = Variadic(value ?? that, min, max)
+
+    def synopsis: CLIGrammar = CLIGrammar.Repeated(value.synopsis)
 
     def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList {
       case (span, block) =>

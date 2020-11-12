@@ -26,15 +26,17 @@ sealed trait Command[+A] { self =>
 
   final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*): Command[(A, B)] =
     subcommands(cs.foldLeft(c1 | c2)(_ | _))
+
+  def synopsis: CLIGrammar
 }
 
 object Command {
-  final case class Single[ArgsType, OptionsType](
+  final case class Single[OptionsType, ArgsType](
     name: String,
     description: HelpDoc,
-    args: Args[ArgsType],
-    options: Options[OptionsType]
-  ) extends Command[(ArgsType, OptionsType)] { self =>
+    options: Options[OptionsType],
+    args: Args[ArgsType]
+  ) extends Command[(OptionsType, ArgsType)] { self =>
     def helpDoc: HelpDoc = {
       val descriptionsSection = {
         val desc = description
@@ -63,8 +65,8 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], (ArgsType, OptionsType))] = {
-      type Return = IO[List[HelpDoc], (List[String], (ArgsType, OptionsType))]
+    ): IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))] = {
+      type Return = IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))]
 
       val possibilities = partitionArgs(args, opts)
 
@@ -82,11 +84,14 @@ object Command {
               _ <- ZIO.when(args.nonEmpty)(
                     ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
                   )
-            } yield (remainingArgs, (argsType, optionsType))
+            } yield (remainingArgs, (optionsType, argsType))
 
           acc orElse tryCurrent
       }
     }
+
+    def synopsis: CLIGrammar =
+      CLIGrammar.Command(name) + options.synopsis + args.synopsis
 
     private def partitionArgs(args: List[String], opts: ParserOptions): Set[(List[String], List[String])] = {
       def loop(argsMatched: Int, args: List[String], opts: ParserOptions): Set[(List[String], List[String])] =
@@ -135,6 +140,8 @@ object Command {
     ): IO[List[HelpDoc], (List[String], B)] = command.parse(args, opts).map {
       case (leftover, a) => (leftover, f(a))
     }
+
+    def synopsis: CLIGrammar = command.synopsis
   }
   final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
     def helpDoc = left.helpDoc + right.helpDoc
@@ -143,6 +150,8 @@ object Command {
       args: List[String],
       opts: ParserOptions
     ): IO[List[HelpDoc], (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
+
+    def synopsis: CLIGrammar = CLIGrammar.Mixed
   }
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] {
     def helpDoc = parent.helpDoc + h1("subcommands") + child.helpDoc
@@ -153,15 +162,17 @@ object Command {
     ): IO[List[HelpDoc], (List[String], (A, B))] = parent.parse(args, opts).flatMap {
       case (leftover, a) => child.parse(leftover, opts).map(t => (t._1, (a, t._2)))
     }
+
+    def synopsis: CLIGrammar = parent.synopsis
   }
 
   /**
    * Construct a new command.
    */
-  def apply[ArgsType, OptionsType](
+  def apply[OptionsType, ArgsType](
     name: String,
-    args: Args[ArgsType],
     options: Options[OptionsType],
+    args: Args[ArgsType],
     helpDoc: HelpDoc = HelpDoc.Empty
-  ): Command[(ArgsType, OptionsType)] = Single(name, helpDoc, args, options)
+  ): Command[(OptionsType, ArgsType)] = Single(name, helpDoc, options, args)
 }

@@ -67,7 +67,7 @@ sealed trait Options[+A] { self =>
   )(implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[Z] =
     self.map(ev).map { case ((b, (c, (d, (e, (f, g)))))) => f0(b, c, d, e, f, g) }
 
-  def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
+  final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
     Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc, B]](Left(p(error(message))))(Right(_)))
 
   final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
@@ -83,26 +83,12 @@ sealed trait Options[+A] { self =>
   final def flatten6[B, C, D, E, F, G](implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[(B, C, D, E, F, G)] =
     as[B, C, D, E, F, G, (B, C, D, E, F, G)]((_, _, _, _, _, _))
 
-  def uid: Option[String]
-
-  private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
-    case _: Options.Empty.type                   => initial
-    case s @ Single(_, _, _, _)                  => f(initial, s)
-    case opt: Optional[a]                        => opt.options.foldSingle(initial)(f)
-    case cons: Options.Cons[a, b]                => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
-    case Options.Requires(options, target, _)    => target.foldSingle(options.foldSingle(initial)(f))(f)
-    case Options.RequiresNot(options, target, _) => target.foldSingle(options.foldSingle(initial)(f))(f)
-    case Map(value, _)                           => value.foldSingle(initial)(f)
-  }
-
   def helpDoc: HelpDoc
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
   final def mapTry[B](f: A => B): Options[B] =
     Options.Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
-
-  private[cli] def modifySingle(f: SingleModifier): Options[A]
 
   def optional: Options[Option[A]] = Optional(self)
 
@@ -114,6 +100,24 @@ sealed trait Options[+A] { self =>
   final def requiresNot[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.RequiresNot(self, that, suchThat)
 
+  def synopsis: CLIGrammar
+
+  def uid: Option[String]
+
+  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
+
+  private[cli] def modifySingle(f: SingleModifier): Options[A]
+
+  private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
+    case _: Options.Empty.type                   => initial
+    case s @ Single(_, _, _, _)                  => f(initial, s)
+    case opt: Optional[a]                        => opt.options.foldSingle(initial)(f)
+    case cons: Options.Cons[a, b]                => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
+    case Options.Requires(options, target, _)    => target.foldSingle(options.foldSingle(initial)(f))(f)
+    case Options.RequiresNot(options, target, _) => target.foldSingle(options.foldSingle(initial)(f))(f)
+    case Map(value, _)                           => value.foldSingle(initial)(f)
+  }
+
   private[cli] def supports(arg: String, opts: ParserOptions) =
     foldSingle(false) {
       case (bool, single) =>
@@ -121,8 +125,6 @@ sealed trait Options[+A] { self =>
           .map("-" + opts.normalizeCase(_))
           .contains(arg)
     }
-
-  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 }
 
 trait SingleModifier {
@@ -132,6 +134,8 @@ trait SingleModifier {
 object Options {
   case object Empty extends Options[Unit] {
     def recognizes(value: String, opts: ParserOptions): Option[Int] = None
+
+    def synopsis: CLIGrammar = CLIGrammar.None
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
       IO.succeed((args, ()))
@@ -155,21 +159,27 @@ object Options {
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       if (supports(value, opts)) Some(1) else None
 
+    def synopsis: CLIGrammar =
+      CLIGrammar.Option(fullname, optionType match {
+        case Type.Primitive(primType) => Some(primType.typeName)
+        case _                        => None
+      })
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
-          optionType.validate(fName, tail)
+          optionType.validate(fullname, tail)
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
           }
         case Nil =>
-          IO.fail(p(error(s"Expected to find ${fName} option.")) :: Nil)
+          IO.fail(p(error(s"Expected to find ${fullname} option.")) :: Nil)
       }
 
-    def uid = Some(fName)
+    def uid = Some(fullname)
 
-    private def fName: String = "--" + name
+    private def fullname: String = (if (name.length == 1) "-" else "--") + name
 
     override def helpDoc: HelpDoc = {
 
@@ -191,6 +201,8 @@ object Options {
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       options.recognizes(value, opts)
+
+    def synopsis: CLIGrammar = CLIGrammar.Optional(options.synopsis)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Option[A])] =
       // single.validate(args, opts).map {
@@ -218,6 +230,8 @@ object Options {
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       left.recognizes(value, opts) orElse right.recognizes(value, opts)
+
+    def synopsis: CLIGrammar = left.synopsis + right.synopsis
 
     override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
       (for {
@@ -247,6 +261,8 @@ object Options {
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
+    def synopsis: CLIGrammar = options.synopsis
+
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
 
@@ -267,6 +283,8 @@ object Options {
       RequiresNot(options.modifySingle(f), target.modifySingle(f), predicate)
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
+
+    def synopsis: CLIGrammar = options.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target
@@ -290,6 +308,8 @@ object Options {
     override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
 
     def recognizes(v: String, opts: ParserOptions): Option[Int] = value.recognizes(v, opts)
+
+    def synopsis: CLIGrammar = value.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], B)] =
       value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))

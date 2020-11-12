@@ -9,23 +9,22 @@ import zio.cli.HelpDoc.Span.text
  * A `CLIApp[R, E]` is a complete description of a command-line application, which
  * requires environment `R`, and may fail with a value of type `E`.
  */
-sealed trait CLIApp[-R, +E] {
-  type Model
-
-  def name: String
-  def version: String
-  def command: Command[Model]
-  def summary: HelpDoc.Span
-  def footer: HelpDoc
-  def options: ParserOptions
-
-  def execute(model: Model): ZIO[R, E, Any]
-
+final case class CLIApp[-R, +E, Model](
+  name: String,
+  version: String,
+  summary: HelpDoc.Span,
+  command: Command[Model],
+  execute: Model => ZIO[R, E, Any],
+  footer: HelpDoc = HelpDoc.Empty,
+  options: ParserOptions = ParserOptions.default
+) {
   def completions(shellType: ShellType): String = ???
 
   def helpDoc: HelpDoc =
-    h1(text(name) + text(" -- ") + text(version)) +
+    h1(text(name) + text(" ") + text(version)) +
       p(text(name) + text(" -- ") + summary) +
+      h1("synopsis") +
+      command.synopsis.helpDoc +
       command.helpDoc +
       footer
 
@@ -39,26 +38,4 @@ sealed trait CLIApp[-R, +E] {
     } yield result).exitCode
   }
 
-}
-object CLIApp {
-  def apply[R, E, M](
-    name0: String,
-    version0: String,
-    command0: Command[M],
-    summary0: HelpDoc.Span,
-    execute0: M => ZIO[R, E, Any] = (_: M) => ZIO.unit,
-    footer0: HelpDoc = HelpDoc.Empty,
-    options0: ParserOptions = ParserOptions.default
-  ): CLIApp[R, E] =
-    new CLIApp[R, E] {
-      type Model = M
-
-      def name                                  = name0
-      def version                               = version0
-      def command                               = command0
-      def summary                               = summary0
-      def footer                                = footer0
-      def options                               = options0
-      def execute(model: Model): ZIO[R, E, Any] = execute0(model)
-    }
 }
