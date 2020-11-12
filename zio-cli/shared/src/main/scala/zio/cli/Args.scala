@@ -59,7 +59,7 @@ object Args {
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.text("<") + Span.weak(pseudoName) + Span.text(">") + Span.text(": " + primType.typeName + "")) ->
+          (Span.text("<") + Span.weak(pseudoName) + Span.text(": " + primType.typeName + "") + Span.text(">")) ->
             HelpDoc.blocks(description.map(HelpDoc.p(_)))
         )
       )
