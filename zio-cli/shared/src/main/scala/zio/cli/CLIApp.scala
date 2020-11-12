@@ -24,46 +24,19 @@ sealed trait CLIApp[-R, +E] {
   def completions(shellType: ShellType): String = ???
 
   def helpDoc: HelpDoc =
-    h1(text(command.name) + text(" -- ") + text(version)) +
-      p(text(command.name) + text(" -- ") + summary) +
-      generateDoc(command) +
+    h1(text(name) + text(" -- ") + text(version)) +
+      p(text(name) + text(" -- ") + summary) +
+      command.helpDoc +
       footer
 
   def run(args: List[String]): ZIO[R with console.Console, Nothing, ExitCode] = {
     val c = command
 
     (for {
-      validationResult <- c.validate(args, options)
-      (_, opts, args)  = validationResult
-      m                = c.output(opts, args)
-      result           <- execute(m)
+      validationResult <- c.parse(args, options)
+      (_, a)           = validationResult
+      result           <- execute(a)
     } yield result).exitCode
-  }
-
-  private def generateDoc(command: Command[_]): HelpDoc = {
-    val descriptionSection =
-      if (command.description != HelpDoc.Empty)
-        (h1("description") +
-          command.description)
-      else HelpDoc.Empty
-
-    val argumentsSection = {
-      val args = command.args.helpDoc
-
-      if (args == HelpDoc.Empty) HelpDoc.Empty
-      else h1("arguments") + command.args.helpDoc
-    }
-
-    val optionsSection = {
-      val opts = command.options.helpDoc
-
-      if (opts == HelpDoc.Empty) HelpDoc.Empty
-      else h1("options") + command.options.helpDoc
-    }
-
-    descriptionSection +
-      argumentsSection +
-      optionsSection
   }
 
 }

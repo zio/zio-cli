@@ -2,191 +2,166 @@ package zio.cli
 
 import zio.{ IO, ZIO }
 
+import zio.cli.HelpDoc.{ h1 }
 import zio.cli.HelpDoc.Span
 import scala.collection.immutable.Nil
 
 /**
- * OptionsType `Command[R, E]` is a model of a command that can be given to a command-
- * line application.
- *
- * Commands may have children, which represent subcommands.
+ * A `Command` represents a command in a command-line application. Every command-line application
+ * will have at least one command: the application itself. Other command-line applications may
+ * support multiple commands.
  */
 sealed trait Command[+A] { self =>
-  type OptionsType
-  type ArgsType
+  def helpDoc: HelpDoc
 
-  def name: String
-  def description: HelpDoc
-  def options: Options[OptionsType]
-  def args: Args[ArgsType]
-  def output(options: OptionsType, args: ArgsType): A
+  final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
 
-  def ??(string: String): Command[A] =
-    new Command[A] {
-      override type OptionsType = self.OptionsType
-      override type ArgsType    = self.ArgsType
+  final def as[B](b: => B): Command[B] = self.map(_ => b)
 
-      override def name: String = self.name
+  final def map[B](f: A => B): Command[B] = Command.Map(self, f)
 
-      override def description: HelpDoc = self.description + HelpDoc.p(HelpDoc.Span.text(string))
+  def parse(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 
-      override def options: Options[OptionsType] = self.options
+  final def subcommands[B](that: Command[B]): Command[(A, B)] = Command.Subcommands(self, that)
 
-      override def args: Args[ArgsType] = self.args
-
-      def output(options: OptionsType, args: ArgsType): A = self.output(options, args)
-    }
-
-  def args[B1](
-    args0: Args[B1]
-  )(implicit ev: Any <:< ArgsType): Command.Aux[self.OptionsType, B1, (self.OptionsType, B1)] =
-    new Command[(self.OptionsType, B1)] {
-      override type OptionsType = self.OptionsType
-      override type ArgsType    = B1
-
-      override def name: String = self.name
-
-      override def description: HelpDoc = self.description
-
-      override def options: Options[OptionsType] = self.options
-
-      override def args: Args[ArgsType] = args0
-
-      def output(options: OptionsType, args: ArgsType): (self.OptionsType, B1) = (options, args)
-    }
-
-  def as[B](b: => B): Command.Aux[OptionsType, ArgsType, B] = self.map(_ => b)
-
-  def map[B](f: A => B): Command.Aux[OptionsType, ArgsType, B] =
-    new Command[B] {
-      override type OptionsType = self.OptionsType
-      override type ArgsType    = self.ArgsType
-
-      override def name: String = self.name
-
-      override def description: HelpDoc = self.description
-
-      override def options: Options[OptionsType] = self.options
-
-      override def args: Args[ArgsType] = self.args
-
-      def output(options: OptionsType, args: ArgsType): B = f(self.output(options, args))
-    }
-
-  def options[A1](
-    options0: Options[A1]
-  )(implicit ev: Any <:< OptionsType): Command.Aux[A1, self.ArgsType, (A1, self.ArgsType)] =
-    new Command[(A1, self.ArgsType)] {
-      override type OptionsType = A1
-      override type ArgsType    = self.ArgsType
-
-      override def name: String = self.name
-
-      override def description: HelpDoc = self.description
-
-      override def options: Options[OptionsType] = options0
-
-      override def args: Args[ArgsType] = self.args
-
-      def output(options: OptionsType, args: ArgsType): (A1, self.ArgsType) = (options, args)
-    }
-
-  /**
-   * Validates the arguments from the command line, either returning a failure
-   * that includes detailed documentation, or returning a tuple that contains
-   * both options and arguments, together with remaining (unparsed) arguments
-   * from the command-line.
-   */
-  final def validate(
-    args: List[String],
-    opts: ParserOptions
-  ): IO[List[HelpDoc], (List[String], OptionsType, ArgsType)] = {
-    type Return = IO[List[HelpDoc], (List[String], OptionsType, ArgsType)]
-
-    val possibilities = partitionArgs(args, opts)
-
-    val defaultFailure =
-      ZIO.fail(HelpDoc.p(Span.error(s"Expected ${self.args.minSize} arguments and options: ")) :: Nil)
-
-    possibilities.foldLeft[Return](defaultFailure) {
-      case (acc, (args, remainingArgs)) =>
-        val tryCurrent =
-          for {
-            tuple               <- self.options.validate(args, opts)
-            (args, optionsType) = tuple
-            tuple               <- self.args.validate(args, opts)
-            (args, argsType)    = tuple
-            _ <- ZIO.when(args.nonEmpty)(
-                  ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
-                )
-          } yield (remainingArgs, optionsType, argsType)
-
-        acc orElse tryCurrent
-    }
-  }
-
-  private def partitionArgs(args: List[String], opts: ParserOptions): Set[(List[String], List[String])] = {
-    def loop(argsMatched: Int, args: List[String], opts: ParserOptions): Set[(List[String], List[String])] =
-      args match {
-        case head :: tail =>
-          self.options.recognizes(head, opts) match {
-            case Some(value) =>
-              val ourArgs = head :: tail.take(value)
-              val unknown = tail.drop(value)
-
-              loop(argsMatched, unknown, opts).map {
-                case (ourArgs2, theirArgs) =>
-                  (ourArgs ++ ourArgs2, theirArgs)
-              }
-
-            case None =>
-              val minSize = self.args.minSize
-              val maxSize = self.args.maxSize
-
-              val option1 =
-                if (argsMatched < maxSize) {
-                  loop(argsMatched + 1, tail, opts).map {
-                    case (ourArgs, theirArgs) => (head :: ourArgs, theirArgs)
-                  }
-                } else Set()
-
-              val option2 =
-                if (argsMatched >= minSize) Set((Nil, tail))
-                else Set()
-
-              option1 ++ option2
-          }
-
-        case Nil => Set((Nil, Nil))
-      }
-
-    loop(0, args, opts)
-  }
+  final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*): Command[(A, B)] =
+    subcommands(cs.foldLeft(c1 | c2)(_ | _))
 }
 
 object Command {
-  type Aux[OptionsType0, ArgsType0, +Out] = Command[Out] {
-    type OptionsType = OptionsType0
-    type ArgsType    = ArgsType0
+  final case class Single[ArgsType, OptionsType](
+    name: String,
+    description: HelpDoc,
+    args: Args[ArgsType],
+    options: Options[OptionsType]
+  ) extends Command[(ArgsType, OptionsType)] { self =>
+    def helpDoc: HelpDoc = {
+      val descriptionsSection = {
+        val desc = description
+
+        if (desc.isEmpty) HelpDoc.Empty
+        else h1("description") + self.helpDoc
+      }
+
+      val argumentsSection = {
+        val args = self.args.helpDoc
+
+        if (args == HelpDoc.Empty) HelpDoc.Empty
+        else h1("arguments") + self.args.helpDoc
+      }
+
+      val optionsSection = {
+        val opts = self.options.helpDoc
+
+        if (opts == HelpDoc.Empty) HelpDoc.Empty
+        else h1("options") + self.options.helpDoc
+      }
+
+      descriptionsSection + argumentsSection + optionsSection
+    }
+
+    final def parse(
+      args: List[String],
+      opts: ParserOptions
+    ): IO[List[HelpDoc], (List[String], (ArgsType, OptionsType))] = {
+      type Return = IO[List[HelpDoc], (List[String], (ArgsType, OptionsType))]
+
+      val possibilities = partitionArgs(args, opts)
+
+      val defaultFailure =
+        ZIO.fail(HelpDoc.p(Span.error(s"Expected ${self.args.minSize} arguments and options: ")) :: Nil)
+
+      possibilities.foldLeft[Return](defaultFailure) {
+        case (acc, (args, remainingArgs)) =>
+          val tryCurrent =
+            for {
+              tuple               <- self.options.validate(args, opts)
+              (args, optionsType) = tuple
+              tuple               <- self.args.validate(args, opts)
+              (args, argsType)    = tuple
+              _ <- ZIO.when(args.nonEmpty)(
+                    ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
+                  )
+            } yield (remainingArgs, (argsType, optionsType))
+
+          acc orElse tryCurrent
+      }
+    }
+
+    private def partitionArgs(args: List[String], opts: ParserOptions): Set[(List[String], List[String])] = {
+      def loop(argsMatched: Int, args: List[String], opts: ParserOptions): Set[(List[String], List[String])] =
+        args match {
+          case head :: tail =>
+            self.options.recognizes(head, opts) match {
+              case Some(value) =>
+                val ourArgs = head :: tail.take(value)
+                val unknown = tail.drop(value)
+
+                loop(argsMatched, unknown, opts).map {
+                  case (ourArgs2, theirArgs) =>
+                    (ourArgs ++ ourArgs2, theirArgs)
+                }
+
+              case None =>
+                val minSize = self.args.minSize
+                val maxSize = self.args.maxSize
+
+                val option1 =
+                  if (argsMatched < maxSize) {
+                    loop(argsMatched + 1, tail, opts).map {
+                      case (ourArgs, theirArgs) => (head :: ourArgs, theirArgs)
+                    }
+                  } else Set()
+
+                val option2 =
+                  if (argsMatched >= minSize) Set((Nil, tail))
+                  else Set()
+
+                option1 ++ option2
+            }
+
+          case Nil => Set((Nil, Nil))
+        }
+
+      loop(0, args, opts)
+    }
+  }
+  final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] {
+    def helpDoc = command.helpDoc
+
+    final def parse(
+      args: List[String],
+      opts: ParserOptions
+    ): IO[List[HelpDoc], (List[String], B)] = command.parse(args, opts).map {
+      case (leftover, a) => (leftover, f(a))
+    }
+  }
+  final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
+    def helpDoc = left.helpDoc + right.helpDoc
+
+    final def parse(
+      args: List[String],
+      opts: ParserOptions
+    ): IO[List[HelpDoc], (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
+  }
+  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] {
+    def helpDoc = parent.helpDoc + h1("subcommands") + child.helpDoc
+
+    final def parse(
+      args: List[String],
+      opts: ParserOptions
+    ): IO[List[HelpDoc], (List[String], (A, B))] = parent.parse(args, opts).flatMap {
+      case (leftover, a) => child.parse(leftover, opts).map(t => (t._1, (a, t._2)))
+    }
   }
 
   /**
-   * Construct a new command with the specified command name.
+   * Construct a new command.
    */
-  def apply(
-    name0: String
-  ): Command.Aux[Any, Any, Unit] = new Command[Unit] {
-    override type OptionsType = Any
-    override type ArgsType    = Any
-
-    override def name: String = name0
-
-    override def description: HelpDoc = HelpDoc.Empty
-
-    override def options: Options[OptionsType] = Options.Empty
-
-    override def args: Args[ArgsType] = Args.Empty
-
-    def output(options: OptionsType, args: ArgsType): Unit = ()
-  }
+  def apply[ArgsType, OptionsType](
+    name: String,
+    args: Args[ArgsType],
+    options: Options[OptionsType],
+    helpDoc: HelpDoc = HelpDoc.Empty
+  ): Command[(ArgsType, OptionsType)] = Single(name, helpDoc, args, options)
 }

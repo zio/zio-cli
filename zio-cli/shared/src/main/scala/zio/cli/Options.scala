@@ -337,8 +337,6 @@ object Options {
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
     Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
 
-  val empty: Options[Unit] = Empty
-
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
     Single(name, Vector.empty, Primitive(PrimType.Path(PathType.File, exists)), Vector.empty)
 
@@ -368,6 +366,8 @@ object Options {
 
   def monthDay(name: String): Options[JMonthDay] =
     Single(name, Vector.empty, Primitive(PrimType.MonthDay), Vector.empty)
+
+  val none: Options[Unit] = Empty
 
   def offsetDateTime(name: String): Options[JOffsetDateTime] =
     Single(name, Vector.empty, Primitive(PrimType.OffsetDateTime), Vector.empty)

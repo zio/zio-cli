@@ -54,16 +54,13 @@ object Args {
     self =>
     def ??(that: String): Args[A] = copy(description = description :+ that)
 
-    def helpDoc: HelpDoc = {
-      import HelpDoc.Span._
-
+    def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.text("<") + weak(pseudoName) + Span.text(">") + Span.text(" (" + primType.render + ")")) ->
+          (Span.text("<") + Span.weak(pseudoName) + Span.text(">") + Span.text(" (" + primType.render + ")")) ->
             HelpDoc.blocks(description.map(HelpDoc.p(_)))
         )
       )
-    }
 
     def maxSize: Int = 1
 
@@ -111,9 +108,6 @@ object Args {
   final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
     def ??(that: String): Args[List[A]] = Variadic(value ?? that, min, max)
 
-    import HelpDoc.Span
-
-    // TODO
     def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList {
       case (span, block) =>
         val newSpan = span + Span.text(" ") + Span.text(
@@ -123,7 +117,7 @@ object Args {
           block +
             HelpDoc.p(
               if (max.isDefined)
-                s"This argument must be repeated at least ${minSize} times and up to ${maxSize} times."
+                s"This argument must be repeated at least ${minSize} times and may be repeated up to ${maxSize} times."
               else s"This argument must be repeated at least ${minSize} times."
             )
 
@@ -154,8 +148,6 @@ object Args {
 
   def bool(name: String): Args[Boolean] = Single(name, PrimType.Boolean)
 
-  val empty: Args[Unit] = Empty
-
   def file(name: String, exists: Exists = Exists.Either): Args[JPath] =
     Single(name, PrimType.Path(PathType.File, exists))
 
@@ -185,6 +177,8 @@ object Args {
 
   def monthDay(name: String): Args[JMonthDay] =
     Single(name, PrimType.MonthDay)
+
+  val none: Args[Unit] = Empty
 
   def offsetDateTime(name: String): Args[JOffsetDateTime] =
     Single(name, PrimType.OffsetDateTime)

@@ -72,14 +72,12 @@ object WordCountExample {
 
   val args = Args.file("files", Exists.Yes) *
 
-  val wc = Command("wc")
-    .options(options)
-    .args(args)
+  val wc = Command("wc", args, options)
 
-  val execute: (WcOptions, List[Path]) => URIO[Console, Unit] = (opts, paths) =>
+  val execute: (List[Path], WcOptions) => URIO[Console, Unit] = (opts, paths) =>
     zio.console.putStrLn(s"${opts} ${paths}")
 
-  val wcApp = CLIApp[Console, Nothing, (WcOptions, List[Path])](
+  val wcApp = CLIApp(
     "ZIO Word Count",
     "0.1.2",
     wc,
@@ -106,16 +104,12 @@ trait GitExample {
     sealed case class Remote() extends Subcommand
   }
 
-  val add = Command("add")
-    .options(modifiedFlag)
-    .args(Args.directory("directory", Exists.Yes))
+  val add = Command("add", Args.directory("directory", Exists.Yes), modifiedFlag)
 
-  val remote = Command("remote")
-    .options(verboseFlag)
+  val remote = Command("remote", Args.none, verboseFlag)
 
   // Command[Subcommands, Env, Error]
-  val git = Command("git")
-    .options(configPath)
+  val git = Command("git", Args.none, configPath)
   // .subcommand(remote)
   // .subcommand(add)
   // .execute {
