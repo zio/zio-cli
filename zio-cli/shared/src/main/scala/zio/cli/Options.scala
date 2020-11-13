@@ -87,8 +87,11 @@ sealed trait Options[+A] { self =>
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
+  final def mapOrFail[B](f: A => Either[HelpDoc, B]): Options[B] =
+    Options.Map(self, (a: A) => f(a))
+
   final def mapTry[B](f: A => B): Options[B] =
-    Options.Map(self, (a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(error(e.getMessage))))
+    self.mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(e.getMessage())))
 
   def optional: Options[Option[A]] = Optional(self)
 
@@ -353,6 +356,9 @@ object Options {
    */
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
     Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
+
+  def enumeration[A](name: String)(cases: (String, A)*): Options[A] =
+    Single(name, Vector.empty, Primitive(PrimType.Enumeration(cases: _*)), Vector.empty)
 
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
     Single(name, Vector.empty, Primitive(PrimType.Path(PathType.File, exists)), Vector.empty)

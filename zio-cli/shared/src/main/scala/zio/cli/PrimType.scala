@@ -82,6 +82,18 @@ object PrimType {
     }
   }
 
+  final case class Enumeration[A](cases: (String, A)*) extends PrimType[A] {
+    def helpDoc: HelpDoc.Span = text("One of the following cases: " + cases.map(_._1).mkString(", ") + ".")
+
+    def typeName: String = "enum"
+
+    def validate(value: String): IO[String, A] =
+      cases.find(_._1 == value) match {
+        case None         => IO.fail("Expected one of the following cases: " + cases.map(_._1).mkString(", "))
+        case Some((_, a)) => IO.succeed(a)
+      }
+  }
+
   case object Text extends PrimType[String] {
     override def typeName: String = "text"
 

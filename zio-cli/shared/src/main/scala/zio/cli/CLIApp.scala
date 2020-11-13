@@ -19,12 +19,20 @@ final case class CLIApp[-R, +E, Model](
   footer: HelpDoc = HelpDoc.Empty,
   options: ParserOptions = ParserOptions.default
 ) { self =>
+  def builtIn(builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
+    if (builtIn.help) putStrLn(helpDoc.toPlaintext(80))
+    else
+      builtIn.shellCompletions match {
+        case None        => IO.unit
+        case Some(value) => putStrLn(completions(value))
+      }
+
   def completions(shellType: ShellType): String = ???
 
-  final def footer(f: HelpDoc): CLIApp[R, E, Model] =
+  def footer(f: HelpDoc): CLIApp[R, E, Model] =
     copy(footer = self.footer + f)
 
-  final def helpDoc: HelpDoc =
+  def helpDoc: HelpDoc =
     h1(text(name) + text(" ") + text(version)) +
       p(text(name) + text(" -- ") + summary) +
       h1("synopsis") +
@@ -32,16 +40,20 @@ final case class CLIApp[-R, +E, Model](
       command.helpDoc +
       footer
 
-  final def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
-    builtInCommands(args) orElse (for {
-      validationResult <- command.parse(args, options)
-      (_, a)           = validationResult
-      result           <- execute(a)
+  def options(o: ParserOptions): CLIApp[R, E, Model] =
+    copy(options = o)
+
+  def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] = {
+    val extended =
+      Command("zio-cli", BuiltIn.options, Args.none).map(_._1)
+
+    (for {
+      validationResult <- (command orElseEither extended).parse(args, options)
+      (_, e)           = validationResult
+      result           <- e.fold(execute(_), builtIn(_))
     } yield result).exitCode
+  }
 
-  final def builtInCommands(args: List[String]): ZIO[Console, None.type, ExitCode] =
-    if (args.length == 0 || args.headOption.map(_.toLowerCase) == Some("--help"))
-      putStrLn(command.helpDoc.toPlaintext()).exitCode
-    else ZIO.fail(None)
-
+  def summary(s: HelpDoc.Span): CLIApp[R, E, Model] =
+    copy(summary = self.summary + s)
 }

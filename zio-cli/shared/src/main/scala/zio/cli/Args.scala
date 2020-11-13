@@ -38,6 +38,14 @@ sealed trait Args[+A] { self =>
 
   def helpDoc: HelpDoc
 
+  final def map[B](f: A => B): Args[B] = Args.Map(self, (a: A) => Right(f(a)))
+
+  final def mapOrFail[B](f: A => Either[HelpDoc, B]): Args[B] =
+    Args.Map(self, (a: A) => f(a))
+
+  final def mapTry[B](f: A => B): Args[B] =
+    self.mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => HelpDoc.p(e.getMessage())))
+
   def maxSize: Int
 
   def minSize: Int
@@ -159,9 +167,36 @@ object Args {
     }
   }
 
+  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] {
+    def ??(that: String): Args[B] = Map(value ?? that, f)
+
+    def helpDoc: HelpDoc = value.helpDoc
+
+    def maxSize: Int = value.maxSize
+
+    def minSize: Int = value.minSize
+
+    def synopsis: UsageSynopsis = value.synopsis
+
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], B)] =
+      value.validate(args, opts).flatMap {
+        case (r, a) =>
+          f(a) match {
+            case Left(value)  => IO.fail(List(value))
+            case Right(value) => IO.succeed((r, value))
+          }
+      }
+  }
+
   def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Boolean)
 
   val bool: Args[Boolean] = Single(None, PrimType.Boolean)
+
+  def enumeration[A](name: String)(cases: (String, A)*): Args[A] =
+    Single(Some(name), PrimType.Enumeration(cases: _*))
+
+  def enumeration[A](cases: (String, A)*): Args[A] =
+    Single(None, PrimType.Enumeration(cases: _*))
 
   def file(name: String, exists: Exists = Exists.Either): Args[JPath] =
     Single(Some(name), PrimType.Path(PathType.File, exists))

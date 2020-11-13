@@ -27,6 +27,9 @@ sealed trait UsageSynopsis { self =>
         case Sequence(left, right) =>
           render(left) + Span.text(" ") + render(right)
 
+        case Alternation(left, right) =>
+          render(left) + Span.text("|") + render(right)
+
         case Mixed =>
           Span.text("<command> [<args>]")
 
@@ -37,12 +40,13 @@ sealed trait UsageSynopsis { self =>
   }
 }
 object UsageSynopsis {
-  final case class Command(name: String)                                 extends UsageSynopsis
-  final case class Option(name: String, valueType: scala.Option[String]) extends UsageSynopsis
-  final case class Optional(value: UsageSynopsis)                        extends UsageSynopsis
-  final case class Repeated(value: UsageSynopsis)                        extends UsageSynopsis
-  final case class Argument(name: String)                                extends UsageSynopsis
-  final case class Sequence(left: UsageSynopsis, right: UsageSynopsis)   extends UsageSynopsis
-  case object Mixed                                                      extends UsageSynopsis
-  case object None                                                       extends UsageSynopsis
+  final case class Command(name: String)                                  extends UsageSynopsis
+  final case class Option(name: String, valueType: scala.Option[String])  extends UsageSynopsis
+  final case class Optional(value: UsageSynopsis)                         extends UsageSynopsis
+  final case class Repeated(value: UsageSynopsis)                         extends UsageSynopsis
+  final case class Argument(name: String)                                 extends UsageSynopsis
+  final case class Sequence(left: UsageSynopsis, right: UsageSynopsis)    extends UsageSynopsis
+  final case class Alternation(left: UsageSynopsis, right: UsageSynopsis) extends UsageSynopsis
+  case object Mixed                                                       extends UsageSynopsis
+  case object None                                                        extends UsageSynopsis
 }

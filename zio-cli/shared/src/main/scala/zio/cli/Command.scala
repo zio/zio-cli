@@ -12,13 +12,17 @@ import scala.collection.immutable.Nil
  * support multiple commands.
  */
 sealed trait Command[+A] { self =>
-  def helpDoc: HelpDoc
-
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
 
+  def helpDoc: HelpDoc
+
   final def map[B](f: A => B): Command[B] = Command.Map(self, f)
+
+  final def orElse[A1 >: A](that: Command[A1]): Command[A1] = self | that
+
+  final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
 
   def parse(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 
