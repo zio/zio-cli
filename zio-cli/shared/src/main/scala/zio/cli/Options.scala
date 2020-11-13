@@ -205,9 +205,6 @@ object Options {
     def synopsis: UsageSynopsis = UsageSynopsis.Optional(options.synopsis)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Option[A])] =
-      // single.validate(args, opts).map {
-      //   case (args, a) => (args, Some(a))
-      // } orElse ZIO.succeed((args, None))
       args match {
         case l @ head :: _ if options.supports(head, opts) =>
           options.validate(l, opts).map(r => r._1 -> Some(r._2))
@@ -219,7 +216,7 @@ object Options {
       }
 
     override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList { (span, block) =>
-      (span, blocks(block, p("This option is optional.")))
+      (span, blocks(block, p("This setting is optional.")))
     }
 
     override def uid: Option[String] = options.uid

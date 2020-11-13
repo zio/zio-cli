@@ -51,7 +51,7 @@ sealed trait Args[+A] { self =>
 
 object Args {
 
-  final case class Single[+A](pseudoName: String, primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
+  final case class Single[+A](pseudoName: Option[String], primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
       extends Args[A] {
     self =>
     def ??(that: String): Args[A] = copy(description = description + HelpDoc.p(that))
@@ -59,7 +59,7 @@ object Args {
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.weak(pseudoName) + Span.text(": " + primType.typeName)) ->
+          (Span.weak(pseudoPrefix + primType.typeName)) ->
             (description | HelpDoc.p(primType.helpDoc))
         )
       )
@@ -68,7 +68,7 @@ object Args {
 
     def minSize: Int = 1
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Argument("<" + pseudoName.toLowerCase + ": " + primType.typeName + ">")
+    def synopsis: UsageSynopsis = UsageSynopsis.Argument("<" + pseudoPrefix + primType.typeName + ">")
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
@@ -76,6 +76,8 @@ object Args {
         case Nil =>
           IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> of type ${primType.typeName}.") :: Nil)
       }
+
+    private def pseudoPrefix: String = pseudoName.fold("")(_ + "-")
   }
 
   case object Empty extends Args[Unit] {
@@ -157,61 +159,115 @@ object Args {
     }
   }
 
-  def bool(name: String): Args[Boolean] = Single(name, PrimType.Boolean)
+  def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Boolean)
+
+  val bool: Args[Boolean] = Single(None, PrimType.Boolean)
 
   def file(name: String, exists: Exists = Exists.Either): Args[JPath] =
-    Single(name, PrimType.Path(PathType.File, exists))
+    Single(Some(name), PrimType.Path(PathType.File, exists))
+
+  def file(exists: Exists): Args[JPath] =
+    Single(None, PrimType.Path(PathType.File, exists))
+
+  val file: Args[JPath] = file(Exists.Either)
 
   def directory(name: String, exists: Exists = Exists.Either): Args[JPath] =
-    Single(name, PrimType.Path(PathType.Directory, exists))
+    Single(Some(name), PrimType.Path(PathType.Directory, exists))
+
+  def directory(exists: Exists): Args[JPath] =
+    Single(None, PrimType.Path(PathType.Directory, exists))
+
+  val directory: Args[JPath] = directory(Exists.Either)
 
   def text(name: String): Args[String] =
-    Single(name, PrimType.Text)
+    Single(Some(name), PrimType.Text)
+
+  val text: Args[String] =
+    Single(None, PrimType.Text)
 
   def decimal(name: String): Args[BigDecimal] =
-    Single(name, PrimType.Decimal)
+    Single(Some(name), PrimType.Decimal)
 
-  def integer(name: String): Args[BigInt] =
-    Single(name, PrimType.Integer)
+  val decimal: Args[BigDecimal] =
+    Single(None, PrimType.Decimal)
+
+  val integer: Args[BigInt] =
+    Single(None, PrimType.Integer)
 
   def instant(name: String): Args[JInstant] =
-    Single(name, PrimType.Instant)
+    Single(Some(name), PrimType.Instant)
+
+  val instant: Args[JInstant] =
+    Single(None, PrimType.Instant)
 
   def localDate(name: String): Args[JLocalDate] =
-    Single(name, PrimType.LocalDate)
+    Single(Some(name), PrimType.LocalDate)
 
   def localDateTime(name: String): Args[JLocalDateTime] =
-    Single(name, PrimType.LocalDateTime)
+    Single(Some(name), PrimType.LocalDateTime)
+
+  val localDateTime: Args[JLocalDateTime] =
+    Single(None, PrimType.LocalDateTime)
 
   def localTime(name: String): Args[JLocalTime] =
-    Single(name, PrimType.LocalTime)
+    Single(Some(name), PrimType.LocalTime)
+
+  val localTime: Args[JLocalTime] =
+    Single(None, PrimType.LocalTime)
 
   def monthDay(name: String): Args[JMonthDay] =
-    Single(name, PrimType.MonthDay)
+    Single(Some(name), PrimType.MonthDay)
+
+  val monthDay: Args[JMonthDay] =
+    Single(None, PrimType.MonthDay)
 
   val none: Args[Unit] = Empty
 
   def offsetDateTime(name: String): Args[JOffsetDateTime] =
-    Single(name, PrimType.OffsetDateTime)
+    Single(Some(name), PrimType.OffsetDateTime)
+
+  val offsetDateTime: Args[JOffsetDateTime] =
+    Single(None, PrimType.OffsetDateTime)
 
   def offsetTime(name: String): Args[JOffsetTime] =
-    Single(name, PrimType.OffsetTime)
+    Single(Some(name), PrimType.OffsetTime)
+
+  val offsetTime: Args[JOffsetTime] =
+    Single(None, PrimType.OffsetTime)
 
   def period(name: String): Args[JPeriod] =
-    Single(name, PrimType.Period)
+    Single(Some(name), PrimType.Period)
+
+  val period: Args[JPeriod] =
+    Single(None, PrimType.Period)
 
   def year(name: String): Args[JYear] =
-    Single(name, PrimType.Year)
+    Single(Some(name), PrimType.Year)
+
+  val year: Args[JYear] =
+    Single(None, PrimType.Year)
 
   def yearMonth(name: String): Args[JYearMonth] =
-    Single(name, PrimType.YearMonth)
+    Single(Some(name), PrimType.YearMonth)
+
+  val yearMonth: Args[JYearMonth] =
+    Single(None, PrimType.YearMonth)
 
   def zonedDateTime(name: String): Args[JZonedDateTime] =
-    Single(name, PrimType.ZonedDateTime)
+    Single(Some(name), PrimType.ZonedDateTime)
+
+  val zonedDateTime: Args[JZonedDateTime] =
+    Single(None, PrimType.ZonedDateTime)
 
   def zoneId(name: String): Args[JZoneId] =
-    Single(name, PrimType.ZoneId)
+    Single(Some(name), PrimType.ZoneId)
+
+  val zoneId: Args[JZoneId] =
+    Single(None, PrimType.ZoneId)
 
   def zoneOffset(name: String): Args[JZoneOffset] =
-    Single(name, PrimType.ZoneOffset)
+    Single(Some(name), PrimType.ZoneOffset)
+
+  val zoneOffset: Args[JZoneOffset] =
+    Single(None, PrimType.ZoneOffset)
 }

@@ -8,8 +8,6 @@ import zio.console.Console
 
 import zio.cli.HelpDoc.Span.text
 
-import scala.language.postfixOps
-
 object WcApp extends App {
   @Override
   def run(args: List[String]) = WordCountExample.wcApp.run(args)
@@ -70,7 +68,7 @@ object WordCountExample {
 
   val options = (bytesFlag :: linesFlag :: wordsFlag :: charFlag).as(WcOptions)
 
-  val args = Args.file("files", Exists.Yes) *
+  val args = Args.file(Exists.Yes).repeat
 
   val wc = Command("wc", options, args)
 
