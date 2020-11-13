@@ -44,23 +44,23 @@ sealed trait Args[+A] { self =>
 
   final def repeat: Args[List[A]] = self.*
 
-  def synopsis: CLIGrammar
+  def synopsis: UsageSynopsis
 
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 }
 
 object Args {
 
-  final case class Single[+A](pseudoName: String, primType: PrimType[A], description: Vector[String] = Vector())
+  final case class Single[+A](pseudoName: String, primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
       extends Args[A] {
     self =>
-    def ??(that: String): Args[A] = copy(description = description :+ that)
+    def ??(that: String): Args[A] = copy(description = description + HelpDoc.p(that))
 
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.weak(pseudoName) + Span.text(": " + primType.typeName + "")) ->
-            HelpDoc.blocks(description.map(HelpDoc.p(_)))
+          (Span.weak(pseudoName) + Span.text(": " + primType.typeName)) ->
+            (description | HelpDoc.p(primType.helpDoc))
         )
       )
 
@@ -68,7 +68,7 @@ object Args {
 
     def minSize: Int = 1
 
-    def synopsis: CLIGrammar = CLIGrammar.Argument("<" + pseudoName.toLowerCase + ": " + primType.typeName + ">")
+    def synopsis: UsageSynopsis = UsageSynopsis.Argument("<" + pseudoName.toLowerCase + ": " + primType.typeName + ">")
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
@@ -87,7 +87,7 @@ object Args {
 
     def minSize: Int = 0
 
-    def synopsis: CLIGrammar = CLIGrammar.None
+    def synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
       IO.succeed((args, ()))
@@ -102,7 +102,7 @@ object Args {
 
     def minSize: Int = head.minSize + tail.minSize
 
-    def synopsis: CLIGrammar = head.synopsis + tail.synopsis
+    def synopsis: UsageSynopsis = head.synopsis + tail.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
       for {
@@ -116,7 +116,7 @@ object Args {
   final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
     def ??(that: String): Args[List[A]] = Variadic(value ?? that, min, max)
 
-    def synopsis: CLIGrammar = CLIGrammar.Repeated(value.synopsis)
+    def synopsis: UsageSynopsis = UsageSynopsis.Repeated(value.synopsis)
 
     def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList {
       case (span, block) =>

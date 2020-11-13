@@ -27,7 +27,7 @@ sealed trait Command[+A] { self =>
   final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*): Command[(A, B)] =
     subcommands(cs.foldLeft(c1 | c2)(_ | _))
 
-  def synopsis: CLIGrammar
+  def synopsis: UsageSynopsis
 }
 
 object Command {
@@ -90,8 +90,8 @@ object Command {
       }
     }
 
-    def synopsis: CLIGrammar =
-      CLIGrammar.Command(name) + options.synopsis + args.synopsis
+    def synopsis: UsageSynopsis =
+      UsageSynopsis.Command(name) + options.synopsis + args.synopsis
 
     private def partitionArgs(args: List[String], opts: ParserOptions): Set[(List[String], List[String])] = {
       def loop(argsMatched: Int, args: List[String], opts: ParserOptions): Set[(List[String], List[String])] =
@@ -141,7 +141,7 @@ object Command {
       case (leftover, a) => (leftover, f(a))
     }
 
-    def synopsis: CLIGrammar = command.synopsis
+    def synopsis: UsageSynopsis = command.synopsis
   }
   final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
     def helpDoc = left.helpDoc + right.helpDoc
@@ -151,7 +151,7 @@ object Command {
       opts: ParserOptions
     ): IO[List[HelpDoc], (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
 
-    def synopsis: CLIGrammar = CLIGrammar.Mixed
+    def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] {
     def helpDoc = parent.helpDoc + h1("subcommands") + child.helpDoc
@@ -163,7 +163,7 @@ object Command {
       case (leftover, a) => child.parse(leftover, opts).map(t => (t._1, (a, t._2)))
     }
 
-    def synopsis: CLIGrammar = parent.synopsis
+    def synopsis: UsageSynopsis = parent.synopsis
   }
 
   /**

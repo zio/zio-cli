@@ -1,6 +1,7 @@
 package zio.cli
 
 import zio._
+import zio.console._
 
 import zio.cli.HelpDoc.{ h1, p }
 import zio.cli.HelpDoc.Span.text
@@ -31,14 +32,16 @@ final case class CLIApp[-R, +E, Model](
       command.helpDoc +
       footer
 
-  final def run(args: List[String]): ZIO[R with console.Console, Nothing, ExitCode] = {
-    val c = command
-
-    (for {
-      validationResult <- c.parse(args, options)
+  final def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
+    builtInCommands(args) orElse (for {
+      validationResult <- command.parse(args, options)
       (_, a)           = validationResult
       result           <- execute(a)
     } yield result).exitCode
-  }
+
+  final def builtInCommands(args: List[String]): ZIO[Console, None.type, ExitCode] =
+    if (args.length == 0 || args.headOption.map(_.toLowerCase) == Some("--help"))
+      putStrLn(command.helpDoc.toPlaintext()).exitCode
+    else ZIO.fail(None)
 
 }

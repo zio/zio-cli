@@ -24,22 +24,29 @@ sealed trait HelpDoc { self =>
       case _                                                               => HelpDoc.Sequence(self, that)
     }
 
+  def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
+
   def isHeader: Boolean =
     self match {
-      case HelpDoc.Header(_, _) => true
-      case _                    => false
+      case HelpDoc.Empty                 => true
+      case HelpDoc.DescriptionList(xs)   => true
+      case HelpDoc.Sequence(left, right) => left.isDescriptionList
+      case HelpDoc.Enumeration(xs)       => false
+      case _                             => false
     }
 
   def isParagraph: Boolean =
     self match {
-      case HelpDoc.Paragraph(_) => true
-      case _                    => false
+      case HelpDoc.Header(_, _)          => true
+      case HelpDoc.Sequence(left, right) => left.isParagraph
+      case _                             => false
     }
 
   def isDescriptionList: Boolean =
     self match {
-      case HelpDoc.DescriptionList(_) => true
-      case _                          => false
+      case HelpDoc.DescriptionList(xs)   => true
+      case HelpDoc.Sequence(left, right) => left.isDescriptionList
+      case _                             => false
     }
 
   def isEmpty: Boolean =
@@ -66,11 +73,11 @@ sealed trait HelpDoc { self =>
   def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
     val _ = color
 
-    val writer         = DocWriter(0, columnWidth)
-    var uppercase      = false
-    var pendingNewline = false
-    var styles         = List.empty[String]
-    var lastStyle      = Console.RESET
+    val writer     = DocWriter(0, columnWidth)
+    var uppercase  = false
+    var styles     = List.empty[String]
+    var lastStyle  = Console.RESET
+    var printedSep = 0
 
     def setStyle(style: String): Unit = styles = style :: styles
 
@@ -81,21 +88,18 @@ sealed trait HelpDoc { self =>
     def renderText(text: String): Unit =
       renderSpan(Span.text(text))
 
-    def renderNewline(): Unit = renderText("\n")
-
-    def forceNewlines(): Unit =
-      if (pendingNewline) {
-        renderNewline()
-        pendingNewline = false
+    def renderNewline(): Unit =
+      if (printedSep < 2) {
+        printedSep += 1
+        val _ = writer.append("\n")
       }
 
-    def scheduleNewline(): Unit = pendingNewline = true
+    def clearSep() = printedSep = 0
 
     def renderHelpDoc(helpDoc: HelpDoc): Unit =
       helpDoc match {
         case Empty =>
         case HelpDoc.Header(value, level) =>
-          forceNewlines()
           writer.unindent()
           renderNewline()
           uppercase = true
@@ -103,49 +107,44 @@ sealed trait HelpDoc { self =>
           renderSpan(value)
           resetStyle()
           uppercase = false
-          writer.indent(4)
           renderNewline()
+          writer.indent(4)
 
         case HelpDoc.Paragraph(value) =>
-          forceNewlines()
           renderSpan(value)
-          scheduleNewline()
+          renderNewline()
 
         case HelpDoc.DescriptionList(definitions) =>
-          forceNewlines()
           definitions.zipWithIndex.foreach {
             case ((span, helpDoc), index) =>
               setStyle(Console.BOLD)
               renderSpan(span)
               resetStyle()
-              writer.indent(4)
               renderNewline()
+              writer.indent(4)
               renderHelpDoc(helpDoc)
               writer.unindent()
-              if (index != definitions.length - 1) {
-                forceNewlines()
-                renderNewline()
-              }
+              renderNewline()
           }
+
         case HelpDoc.Enumeration(elements) =>
-          forceNewlines()
           elements.zipWithIndex.foreach {
             case (helpDoc, index) =>
               writer.indent(2)
               renderText("- ")
               renderHelpDoc(helpDoc)
               writer.unindent()
-
-              if (index != elements.length - 1) forceNewlines()
+              renderNewline()
           }
 
         case HelpDoc.Sequence(left, right) =>
           renderHelpDoc(left)
-          scheduleNewline()
+          renderNewline()
           renderHelpDoc(right)
       }
 
     def renderSpan(span: Span): Unit = {
+      clearSep()
       val _ = span match {
         case Span.Text(value) =>
           if (color && (lastStyle != currentStyle())) {
@@ -200,12 +199,10 @@ object HelpDoc {
   final case class Sequence(left: HelpDoc, right: HelpDoc)             extends HelpDoc
 
   def blocks(bs: Iterable[HelpDoc]): HelpDoc =
-    if (bs.isEmpty) HelpDoc.Paragraph(Span.space) else blocks(bs.head, bs.tail.toSeq: _*)
+    if (bs.isEmpty) HelpDoc.Empty else blocks(bs.head, bs.tail.toSeq: _*)
 
   def blocks(helpDoc: HelpDoc, helpDocs0: HelpDoc*): HelpDoc =
-    helpDocs0.foldLeft(helpDoc) {
-      case (acc, b) => HelpDoc.Sequence(acc, b)
-    }
+    helpDocs0.foldLeft(helpDoc)(_ + _)
 
   def descriptionList(definitions: (Span, HelpDoc)*): HelpDoc = HelpDoc.DescriptionList(definitions.toList)
 
@@ -227,15 +224,31 @@ object HelpDoc {
 
   sealed trait Span {
     def +(that: Span): Span = Span.Sequence(this, that)
+
+    def size: Int
   }
   object Span {
-    final case class Text(value: String)               extends Span
-    final case class Code(value: String)               extends Span
-    final case class Error(value: Span)                extends Span
-    final case class Weak(value: Span)                 extends Span
-    final case class Strong(value: Span)               extends Span
-    final case class URI(value: java.net.URI)          extends Span
-    final case class Sequence(left: Span, right: Span) extends Span
+    final case class Text(value: String) extends Span {
+      def size = value.length
+    }
+    final case class Code(value: String) extends Span {
+      def size = value.length
+    }
+    final case class Error(value: Span) extends Span {
+      def size = value.size
+    }
+    final case class Weak(value: Span) extends Span {
+      def size = value.size
+    }
+    final case class Strong(value: Span) extends Span {
+      def size = value.size
+    }
+    final case class URI(value: java.net.URI) extends Span {
+      def size = value.toString().length
+    }
+    final case class Sequence(left: Span, right: Span) extends Span {
+      def size = left.size + right.size
+    }
 
     def text(t: String): Span                  = Span.Text(t)
     def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
@@ -284,6 +297,11 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             append("\n")
             append(after)
           } else {
+            val padding = currentMargin - currentColumn
+            if (padding > 0) {
+              stringBuilder.append(DocWriter.margin(padding))
+              currentColumn += padding
+            }
             stringBuilder.append(s)
             currentColumn += s.length
           }
@@ -292,8 +310,8 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             case (piece, index) =>
               append(piece)
 
-              stringBuilder.append("\n").append(DocWriter.margin(currentMargin))
-              currentColumn = currentMargin
+              stringBuilder.append("\n")
+              currentColumn = 0
           }
       }
 
@@ -306,14 +324,12 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
 
   def indent(adjust: Int): Unit = marginStack = adjust :: marginStack
 
-  def newline(): DocWriter = append("\n")
-
   override def toString(): String = stringBuilder.toString()
 
   def unindent(): Unit = marginStack = marginStack.drop(1)
 }
 private[cli] object DocWriter {
-  private def margin(n: Int): String = List.fill(n)(" ").mkString
+  private def margin(n: Int): String = if (n <= 0) "" else List.fill(n)(" ").mkString
   def splitNewlines(s: String): Option[Array[String]] = {
     val count = s.count(_ == '\n')
 

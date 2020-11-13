@@ -100,7 +100,7 @@ sealed trait Options[+A] { self =>
   final def requiresNot[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.RequiresNot(self, that, suchThat)
 
-  def synopsis: CLIGrammar
+  def synopsis: UsageSynopsis
 
   def uid: Option[String]
 
@@ -135,7 +135,7 @@ object Options {
   case object Empty extends Options[Unit] {
     def recognizes(value: String, opts: ParserOptions): Option[Int] = None
 
-    def synopsis: CLIGrammar = CLIGrammar.None
+    def synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
       IO.succeed((args, ()))
@@ -159,8 +159,8 @@ object Options {
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       if (supports(value, opts)) Some(1) else None
 
-    def synopsis: CLIGrammar =
-      CLIGrammar.Option(fullname, optionType match {
+    def synopsis: UsageSynopsis =
+      UsageSynopsis.Option(fullname, optionType match {
         case Type.Primitive(primType) => Some(primType.typeName)
         case _                        => None
       })
@@ -202,7 +202,7 @@ object Options {
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       options.recognizes(value, opts)
 
-    def synopsis: CLIGrammar = CLIGrammar.Optional(options.synopsis)
+    def synopsis: UsageSynopsis = UsageSynopsis.Optional(options.synopsis)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Option[A])] =
       // single.validate(args, opts).map {
@@ -231,7 +231,7 @@ object Options {
     def recognizes(value: String, opts: ParserOptions): Option[Int] =
       left.recognizes(value, opts) orElse right.recognizes(value, opts)
 
-    def synopsis: CLIGrammar = left.synopsis + right.synopsis
+    def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
     override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
       (for {
@@ -261,7 +261,7 @@ object Options {
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
-    def synopsis: CLIGrammar = options.synopsis
+    def synopsis: UsageSynopsis = options.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
@@ -284,7 +284,7 @@ object Options {
 
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
-    def synopsis: CLIGrammar = options.synopsis
+    def synopsis: UsageSynopsis = options.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       target
@@ -309,7 +309,7 @@ object Options {
 
     def recognizes(v: String, opts: ParserOptions): Option[Int] = value.recognizes(v, opts)
 
-    def synopsis: CLIGrammar = value.synopsis
+    def synopsis: UsageSynopsis = value.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], B)] =
       value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
