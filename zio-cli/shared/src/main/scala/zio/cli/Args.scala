@@ -235,6 +235,12 @@ object Args {
   val offsetTime: Args[JOffsetTime] =
     Single(None, PrimType.OffsetTime)
 
+  def path(name: String): Args[JPath] =
+    Single(Some(name), PrimType.Path(PathType.Either, Exists.Either))
+
+  val path: Args[JPath] =
+    Single(None, PrimType.Path(PathType.Either, Exists.Either))
+
   def period(name: String): Args[JPeriod] =
     Single(Some(name), PrimType.Period)
 
