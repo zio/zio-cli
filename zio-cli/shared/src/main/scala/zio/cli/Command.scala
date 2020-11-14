@@ -95,7 +95,7 @@ object Command {
     }
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Command(name) + options.synopsis + args.synopsis
+      UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
 
     private def partitionArgs(args: List[String], opts: ParserOptions): Set[(List[String], List[String])] = {
       def loop(argsMatched: Int, args: List[String], opts: ParserOptions): Set[(List[String], List[String])] =

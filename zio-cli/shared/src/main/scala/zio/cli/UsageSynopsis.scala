@@ -10,19 +10,14 @@ sealed trait UsageSynopsis { self =>
 
     def render(g: UsageSynopsis): Span =
       g match {
-        case Command(name) =>
-          Span.strong(Span.text(name))
-
-        case Option(name, valueType) =>
-          Span.text(name) + valueType.fold(Span.text(""))(valueType => Span.text(" ") + Span.text(valueType))
+        case Named(name, values) =>
+          Span.text("<" + name + ">") + values.fold(Span.text(""))(v => Span.text(" ") + Span.text(v))
 
         case Optional(value) =>
           Span.text("[") + render(value) + Span.text("]")
 
         case Repeated(value) =>
           render(value) + Span.text("...")
-
-        case Argument(name) => Span.text(name)
 
         case Sequence(left, right) =>
           render(left) + Span.text(" ") + render(right)
@@ -40,11 +35,9 @@ sealed trait UsageSynopsis { self =>
   }
 }
 object UsageSynopsis {
-  final case class Command(name: String)                                  extends UsageSynopsis
-  final case class Option(name: String, valueType: scala.Option[String])  extends UsageSynopsis
+  final case class Named(name: String, values: scala.Option[String])      extends UsageSynopsis
   final case class Optional(value: UsageSynopsis)                         extends UsageSynopsis
   final case class Repeated(value: UsageSynopsis)                         extends UsageSynopsis
-  final case class Argument(name: String)                                 extends UsageSynopsis
   final case class Sequence(left: UsageSynopsis, right: UsageSynopsis)    extends UsageSynopsis
   final case class Alternation(left: UsageSynopsis, right: UsageSynopsis) extends UsageSynopsis
   case object Mixed                                                       extends UsageSynopsis

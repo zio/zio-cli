@@ -109,6 +109,9 @@ sealed trait Options[+A] { self =>
 
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
 
+  def withDefault[A1 >: A](value: A1, valueDescription: String): Options[A1] =
+    Options.WithDefault(self, value, valueDescription)
+
   private[cli] def modifySingle(f: SingleModifier): Options[A]
 
   private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
@@ -116,9 +119,10 @@ sealed trait Options[+A] { self =>
     case s @ Single(_, _, _, _)                  => f(initial, s)
     case opt: Optional[a]                        => opt.options.foldSingle(initial)(f)
     case cons: Options.Cons[a, b]                => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
-    case Options.Requires(options, target, _)    => target.foldSingle(options.foldSingle(initial)(f))(f)
-    case Options.RequiresNot(options, target, _) => target.foldSingle(options.foldSingle(initial)(f))(f)
-    case Map(value, _)                           => value.foldSingle(initial)(f)
+    case Options.Requires(options, target, _)    => options.foldSingle(initial)(f)
+    case Options.RequiresNot(options, target, _) => options.foldSingle(initial)(f)
+    case Options.Map(value, _)                   => value.foldSingle(initial)(f)
+    case Options.WithDefault(value, _, _)        => value.foldSingle(initial)(f)
   }
 
   private[cli] def supports(arg: String, opts: ParserOptions) =
@@ -150,6 +154,30 @@ object Options {
     override def uid: Option[String] = None
   }
 
+  final case class WithDefault[A](options: Options[A], default: A, defaultDescription: String) extends Options[A] {
+    val mapped: Options[A] = options.optional.map[A] {
+      case Some(v) => v
+      case None    => default
+    }
+
+    def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
+
+    def synopsis: UsageSynopsis = options.synopsis
+
+    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
+      mapped.validate(args, opts)
+
+    override def modifySingle(f: SingleModifier): Options[A] = mapped.modifySingle(f)
+
+    override def helpDoc: HelpDoc =
+      options.helpDoc +
+        HelpDoc.p(
+          s"This setting is optional. If unspecified, the default value of this option is ${defaultDescription}."
+        )
+
+    override def uid: Option[String] = options.uid
+  }
+
   final case class Single[+A](
     name: String,
     aliases: Vector[String],
@@ -163,8 +191,8 @@ object Options {
       if (supports(value, opts)) Some(1) else None
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Option(fullname, optionType match {
-        case Type.Primitive(primType) => Some(primType.typeName)
+      UsageSynopsis.Named(fullname, optionType match {
+        case Type.Primitive(primType) => primType.choices
         case _                        => None
       })
 

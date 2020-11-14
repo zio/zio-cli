@@ -67,7 +67,7 @@ object Args {
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          (Span.weak(pseudoPrefix + primType.typeName)) ->
+          Span.weak(name) ->
             (description | HelpDoc.p(primType.helpDoc))
         )
       )
@@ -76,16 +76,16 @@ object Args {
 
     def minSize: Int = 1
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Argument("<" + pseudoPrefix + primType.typeName + ">")
+    def synopsis: UsageSynopsis = UsageSynopsis.Named(name, primType.choices)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
         case head :: tail => primType.validate(head).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
-        case Nil =>
-          IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> of type ${primType.typeName}.") :: Nil)
+        case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}.") :: Nil)
+
       }
 
-    private def pseudoPrefix: String = pseudoName.fold("")(_ + "-")
+    private def name: String = pseudoName.getOrElse(primType.typeName)
   }
 
   case object Empty extends Args[Unit] {

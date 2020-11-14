@@ -19,6 +19,8 @@ import java.time.{
 
 import zio._
 import HelpDoc.Span.text
+import zio.cli.PathType.File
+import zio.cli.PathType.Directory
 
 /**
  * A `PrimType` represents the primitive types supported by ZIO CLI.
@@ -30,18 +32,35 @@ sealed trait PrimType[+A] {
 
   def typeName: String
 
+  def choices: Option[String]
+
   def validate(value: String): IO[String, A]
 }
 
 object PrimType {
   final case class Path(pathType: PathType, exists: Exists) extends PrimType[JPath] {
     import PathType._
-    override def typeName: String =
+
+    def helpDoc: HelpDoc.Span = (pathType, exists) match {
+      case (PathType.Either, Exists.Yes)       => text("An existing file or directory.")
+      case (PathType.File, Exists.Yes)         => text("An existing file.")
+      case (PathType.Directory, Exists.Yes)    => text("An existing directory.")
+      case (PathType.Either, Exists.No)        => text("A file or directory that must not exist.")
+      case (PathType.File, Exists.No)          => text("A file that does not exist.")
+      case (PathType.Directory, Exists.No)     => text("A directory that does not exist.")
+      case (PathType.Either, Exists.Either)    => text("A file or directory.")
+      case (PathType.File, Exists.Either)      => text("A file.")
+      case (PathType.Directory, Exists.Either) => text("A directory.")
+    }
+
+    def typeName: String =
       pathType match {
+        case PathType.Either    => "path"
         case PathType.File      => "file"
         case PathType.Directory => "directory"
-        case PathType.Either    => "path"
       }
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JPath] =
       for {
@@ -68,24 +87,14 @@ object PrimType {
         case (Exists.Yes, false) => IO.fail(s"Path '$value' must exist.")
         case _                   => IO.unit
       }
-
-    override def helpDoc: HelpDoc.Span = (pathType, exists) match {
-      case (PathType.Either, Exists.Yes)       => text("An existing file or directory.")
-      case (PathType.File, Exists.Yes)         => text("An existing file.")
-      case (PathType.Directory, Exists.Yes)    => text("An existing directory.")
-      case (PathType.Either, Exists.No)        => text("A file or directory that must not exist.")
-      case (PathType.File, Exists.No)          => text("A file that does not exist.")
-      case (PathType.Directory, Exists.No)     => text("A directory that does not exist.")
-      case (PathType.Either, Exists.Either)    => text("A file or directory.")
-      case (PathType.File, Exists.Either)      => text("A file.")
-      case (PathType.Directory, Exists.Either) => text("A directory.")
-    }
   }
 
   final case class Enumeration[A](cases: (String, A)*) extends PrimType[A] {
     def helpDoc: HelpDoc.Span = text("One of the following cases: " + cases.map(_._1).mkString(", ") + ".")
 
-    def typeName: String = "enum"
+    def typeName: String = "choice"
+
+    def choices: Option[String] = Some(cases.map(_._1).mkString(" | "))
 
     def validate(value: String): IO[String, A] =
       cases.find(_._1 == value) match {
@@ -95,31 +104,39 @@ object PrimType {
   }
 
   case object Text extends PrimType[String] {
-    override def typeName: String = "text"
+    def typeName: String = "text"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, String] = attempt(value, _ => value, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
+    def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
   }
 
   case object Decimal extends PrimType[BigDecimal] {
-    override def typeName: String = "decimal"
+    def typeName: String = "decimal"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, BigDecimal] = attempt(value, BigDecimal(_), typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A decimal number.")
+    def helpDoc: HelpDoc.Span = text("A decimal number.")
   }
 
   case object Integer extends PrimType[BigInt] {
-    override def typeName: String = "integer"
+    def typeName: String = "integer"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, BigInt] = attempt(value, BigInt(_), typeName)
 
-    override def helpDoc: HelpDoc.Span = text("An integer.")
+    def helpDoc: HelpDoc.Span = text("An integer.")
   }
 
   case object Boolean extends PrimType[Boolean] {
-    override def typeName: String = "boolean"
+    def typeName: String = "boolean"
+
+    def choices: Option[String] = Some("true | false")
 
     def validate(value: String): IO[String, Boolean] = value.trim.toLowerCase match {
       case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
@@ -127,87 +144,107 @@ object PrimType {
       case _                                  => IO.fail(s"$value cannot be recognized as valid boolean.")
     }
 
-    override def helpDoc: HelpDoc.Span = text("A true or false value.")
+    def helpDoc: HelpDoc.Span = text("A true or false value.")
   }
 
   case object Instant extends PrimType[JInstant] {
-    override def typeName: String = "instant"
+    def typeName: String = "instant"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JInstant] = attempt(value, JInstant.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("An instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.")
+    def helpDoc: HelpDoc.Span = text("An instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.")
   }
 
   case object LocalDate extends PrimType[JLocalDate] {
-    override def typeName: String = "date"
+    def typeName: String = "date"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JLocalDate] = attempt(value, JLocalDate.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A date in ISO_LOCAL_DATE format, such as 2007-12-03")
+    def helpDoc: HelpDoc.Span = text("A date in ISO_LOCAL_DATE format, such as 2007-12-03")
   }
 
   case object LocalDateTime extends PrimType[JLocalDateTime] {
-    override def typeName: String = "date-time"
+    def typeName: String = "date-time"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JLocalDateTime] = attempt(value, JLocalDateTime.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span =
+    def helpDoc: HelpDoc.Span =
       text("A date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.")
   }
 
   case object LocalTime extends PrimType[JLocalTime] {
-    override def typeName: String = "local-time"
+    def typeName: String = "local-time"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JLocalTime] = attempt(value, JLocalTime.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A time without a time-zone in the ISO-8601 format, such as 10:15:30.")
+    def helpDoc: HelpDoc.Span = text("A time without a time-zone in the ISO-8601 format, such as 10:15:30.")
   }
 
   case object MonthDay extends PrimType[JMonthDay] {
-    override def typeName: String = "month-day"
+    def typeName: String = "month-day"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JMonthDay] = attempt(value, JMonthDay.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A month-day in the ISO-8601 format such as 12-03.")
+    def helpDoc: HelpDoc.Span = text("A month-day in the ISO-8601 format such as 12-03.")
   }
 
   case object OffsetDateTime extends PrimType[JOffsetDateTime] {
-    override def typeName: String = "offset-date-time"
+    def typeName: String = "offset-date-time"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JOffsetDateTime] = attempt(value, JOffsetDateTime.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span =
+    def helpDoc: HelpDoc.Span =
       text("A date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.")
   }
 
   case object OffsetTime extends PrimType[JOffsetTime] {
-    override def typeName: String = "offset-time"
+    def typeName: String = "offset-time"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JOffsetTime] = attempt(value, JOffsetTime.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span =
+    def helpDoc: HelpDoc.Span =
       text("A time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00}.")
   }
 
   case object Period extends PrimType[JPeriod] {
-    override def typeName: String = "period"
+    def typeName: String = "period"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JPeriod] = attempt(value, JPeriod.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span =
+    def helpDoc: HelpDoc.Span =
       text("A date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.")
   }
 
   case object Year extends PrimType[JYear] {
-    override def typeName: String = "year"
+    def typeName: String = "year"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JYear] = attempt(value, s => JYear.of(s.toInt), typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A year in the ISO-8601 format, such as 2007.")
+    def helpDoc: HelpDoc.Span = text("A year in the ISO-8601 format, such as 2007.")
   }
 
   case object YearMonth extends PrimType[JYearMonth] {
-    override def typeName: String = "year-month"
+    def typeName: String = "year-month"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
@@ -219,33 +256,39 @@ object PrimType {
       parse(value) orElse IO.fail(s"${value} is not a ${typeName}.")
     }
 
-    override def helpDoc: HelpDoc.Span = text("A year-month in the ISO-8601 format, such as 2007-12.")
+    def helpDoc: HelpDoc.Span = text("A year-month in the ISO-8601 format, such as 2007-12.")
   }
 
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
-    override def typeName: String = "zoned-date-time"
+    def typeName: String = "zoned-date-time"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JZonedDateTime] = attempt(value, JZonedDateTime.parse, typeName)
 
-    override def helpDoc: HelpDoc.Span =
+    def helpDoc: HelpDoc.Span =
       text("A date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.")
   }
 
   case object ZoneId extends PrimType[JZoneId] {
-    override def typeName: String = "zone-id"
+    def typeName: String = "zone-id"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JZoneId] = attempt(value, JZoneId.of, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A time-zone ID, such as Europe/Paris.")
+    def helpDoc: HelpDoc.Span = text("A time-zone ID, such as Europe/Paris.")
   }
   case object ZoneOffset extends PrimType[JZoneOffset] {
-    override def typeName: String = "zone-offset"
+    def typeName: String = "zone-offset"
+
+    def choices: Option[String] = None
 
     def validate(value: String): IO[String, JZoneOffset] = attempt(value, JZoneOffset.of, typeName)
 
-    override def helpDoc: HelpDoc.Span = text("A time-zone offset from Greenwich/UTC, such as +02:00.")
+    def helpDoc: HelpDoc.Span = text("A time-zone offset from Greenwich/UTC, such as +02:00.")
   }
 
-  private def attempt[A, E](value: String, parse: String => A, typeName: String): IO[String, A] =
-    IO(parse(value)) orElseFail (s"${value} is not a ${typeName}.")
+  private def attempt[A, E](value: String, parse: String => A, choices: String): IO[String, A] =
+    IO(parse(value)) orElseFail (s"${value} is not a ${choices}.")
 }
