@@ -21,7 +21,6 @@ import zio.IO
 import zio.cli.HelpDoc.Span
 import zio.cli.HelpDoc.{ blocks, p }
 import zio.cli.HelpDoc.Span._
-import zio.cli.Options.{ Map, Optional, Single }
 
 import scala.collection.immutable.Nil
 
@@ -29,11 +28,10 @@ import scala.collection.immutable.Nil
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
 sealed trait Options[+A] { self =>
+  import Options.Single 
 
   final def ::[That, A1 >: A](that: Options[That]): Options[(That, A1)] =
     Options.Cons(that, self)
-
-  def ? : Options[Option[A]] = optional
 
   def ??(that: String): Options[A] =
     modifySingle(new SingleModifier {
@@ -68,7 +66,7 @@ sealed trait Options[+A] { self =>
     self.map(ev).map { case ((b, (c, (d, (e, (f, g)))))) => f0(b, c, d, e, f, g) }
 
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
-    Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc, B]](Left(p(error(message))))(Right(_)))
+    Options.Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc, B]](Left(p(error(message))))(Right(_)))
 
   final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
 
@@ -93,7 +91,7 @@ sealed trait Options[+A] { self =>
   final def mapTry[B](f: A => B): Options[B] =
     self.mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(e.getMessage())))
 
-  def optional: Options[Option[A]] = Optional(self)
+  final def optional(desc: String): Options[Option[A]] = self.map(Some(_)).withDefault(None, desc)
 
   def recognizes(value: String, opts: ParserOptions): Option[Int]
 
@@ -117,7 +115,6 @@ sealed trait Options[+A] { self =>
   private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
     case _: Options.Empty.type                   => initial
     case s @ Single(_, _, _, _)                  => f(initial, s)
-    case opt: Optional[a]                        => opt.options.foldSingle(initial)(f)
     case cons: Options.Cons[a, b]                => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
     case Options.Requires(options, target, _)    => options.foldSingle(initial)(f)
     case Options.RequiresNot(options, target, _) => options.foldSingle(initial)(f)
@@ -135,7 +132,7 @@ sealed trait Options[+A] { self =>
 }
 
 trait SingleModifier {
-  def apply[A](single: Single[A]): Single[A]
+  def apply[A](single: Options.Single[A]): Options.Single[A]
 }
 
 object Options {
@@ -155,19 +152,14 @@ object Options {
   }
 
   final case class WithDefault[A](options: Options[A], default: A, defaultDescription: String) extends Options[A] {
-    val mapped: Options[A] = options.optional.map[A] {
-      case Some(v) => v
-      case None    => default
-    }
-
     def recognizes(value: String, opts: ParserOptions): Option[Int] = options.recognizes(value, opts)
 
     def synopsis: UsageSynopsis = options.synopsis
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
-      mapped.validate(args, opts)
+      options.validate(args, opts) orElseSucceed (args -> default)
 
-    override def modifySingle(f: SingleModifier): Options[A] = mapped.modifySingle(f)
+    override def modifySingle(f: SingleModifier): Options[A] = WithDefault(options.modifySingle(f), default, defaultDescription)
 
     override def helpDoc: HelpDoc =
       options.helpDoc +
@@ -181,7 +173,7 @@ object Options {
   final case class Single[+A](
     name: String,
     aliases: Vector[String],
-    optionType: Options.Type[A],
+    primType: PrimType[A],
     description: Vector[String]
   ) extends Options[A] { self =>
 
@@ -191,15 +183,13 @@ object Options {
       if (supports(value, opts)) Some(1) else None
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Named(fullname, optionType match {
-        case Type.Primitive(primType) => primType.choices
-        case _                        => None
-      })
+      UsageSynopsis.Named(fullname, primType.choices)
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
-          optionType.validate(fullname, tail)
+          primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
+
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
@@ -221,36 +211,10 @@ object Options {
           spans(allNames.map(weak(_)).zipWithIndex.map {
             case (span, index) => if (index != allNames.length - 1) span + Span.text(", ") else span
           }) ->
-            blocks(optionType.helpDoc, blocks(description.map(p(_))))
+            (p(primType.helpDoc) + blocks(description.map(p(_))))
         )
       )
     }
-  }
-
-  final case class Optional[A](options: Options[A]) extends Options[Option[A]] { self =>
-    override def modifySingle(f: SingleModifier): Options[Option[A]] = Optional(options.modifySingle(f))
-
-    def recognizes(value: String, opts: ParserOptions): Option[Int] =
-      options.recognizes(value, opts)
-
-    def synopsis: UsageSynopsis = UsageSynopsis.Optional(options.synopsis)
-
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Option[A])] =
-      args match {
-        case l @ head :: _ if options.supports(head, opts) =>
-          options.validate(l, opts).map(r => r._1 -> Some(r._2))
-        case head :: tail =>
-          validate(tail, opts).map {
-            case (args, a) => (head :: args, a)
-          }
-        case Nil => IO.succeed(args -> None)
-      }
-
-    override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList { (span, block) =>
-      (span, blocks(block, p("This setting is optional.")))
-    }
-
-    override def uid: Option[String] = options.uid
   }
 
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
@@ -347,100 +311,74 @@ object Options {
     override def helpDoc: HelpDoc = value.helpDoc
   }
 
-  sealed trait Type[+A] {
-    def validate(name: String, args: List[String]): IO[List[HelpDoc], (List[String], A)]
-    def helpDoc: HelpDoc
-
-  }
-  object Type {
-    final case class Toggle(negationName: Option[String], ifPresent: Boolean) extends Type[Boolean] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc], (List[String], Boolean)] =
-        IO.effectTotal((args, ifPresent))
-
-      override def helpDoc: HelpDoc =
-        p(s"A boolean toggle. If present, this option will be ${ifPresent}." + (negationName match {
-          case None                     => ""
-          case Some(value) if ifPresent => s" To turn this toggle off, use --${value}."
-          case Some(value)              => s" To turn this toggle on, use --${value}."
-        }))
-    }
-
-    final case class Primitive[A](primType: PrimType[A]) extends Type[A] {
-      def validate(name: String, args: List[String]): IO[List[HelpDoc], (List[String], A)] =
-        args match {
-          case head :: tail => primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
-          case Nil          => IO.fail(p(error(s"Value for option ${name} was not found!")) :: Nil)
-        }
-
-      override def helpDoc: HelpDoc = p(primType.helpDoc)
-    }
-  }
-
-  import Type._
-
   /**
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    */
-  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] =
-    Single(name, Vector.empty, Type.Toggle(negationName, ifPresent), Vector.empty).optional.map(_.getOrElse(!ifPresent))
+  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] = {
+    // TODO
+    val _ = negationName
+    Single(name, Vector.empty, PrimType.Boolean, Vector.empty)
+      .map(_ => ifPresent)
+      .withDefault(!ifPresent, (!ifPresent).toString)
+  }
 
   def enumeration[A](name: String)(cases: (String, A)*): Options[A] =
-    Single(name, Vector.empty, Primitive(PrimType.Enumeration(cases: _*)), Vector.empty)
+    Single(name, Vector.empty, PrimType.Enumeration(cases: _*), Vector.empty)
 
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
-    Single(name, Vector.empty, Primitive(PrimType.Path(PathType.File, exists)), Vector.empty)
+    Single(name, Vector.empty, PrimType.Path(PathType.File, exists), Vector.empty)
 
   def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
-    Single(name, Vector.empty, Primitive(PrimType.Path(PathType.Directory, exists)), Vector.empty)
+    Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists), Vector.empty)
 
   def text(name: String): Options[String] =
-    Single(name, Vector.empty, Primitive(PrimType.Text), Vector.empty)
+    Single(name, Vector.empty, PrimType.Text, Vector.empty)
 
   def decimal(name: String): Options[BigDecimal] =
-    Single(name, Vector.empty, Primitive(PrimType.Decimal), Vector.empty)
+    Single(name, Vector.empty, PrimType.Decimal, Vector.empty)
 
   def integer(name: String): Options[BigInt] =
-    Single(name, Vector.empty, Primitive(PrimType.Integer), Vector.empty)
+    Single(name, Vector.empty, PrimType.Integer, Vector.empty)
 
   def instant(name: String): Options[JInstant] =
-    Single(name, Vector.empty, Primitive(PrimType.Instant), Vector.empty)
+    Single(name, Vector.empty, PrimType.Instant, Vector.empty)
 
   def localDate(name: String): Options[JLocalDate] =
-    Single(name, Vector.empty, Primitive(PrimType.LocalDate), Vector.empty)
+    Single(name, Vector.empty, PrimType.LocalDate, Vector.empty)
 
   def localDateTime(name: String): Options[JLocalDateTime] =
-    Single(name, Vector.empty, Primitive(PrimType.LocalDateTime), Vector.empty)
+    Single(name, Vector.empty, PrimType.LocalDateTime, Vector.empty)
 
   def localTime(name: String): Options[JLocalTime] =
-    Single(name, Vector.empty, Primitive(PrimType.LocalTime), Vector.empty)
+    Single(name, Vector.empty, PrimType.LocalTime, Vector.empty)
 
   def monthDay(name: String): Options[JMonthDay] =
-    Single(name, Vector.empty, Primitive(PrimType.MonthDay), Vector.empty)
+    Single(name, Vector.empty, PrimType.MonthDay, Vector.empty)
 
   val none: Options[Unit] = Empty
 
   def offsetDateTime(name: String): Options[JOffsetDateTime] =
-    Single(name, Vector.empty, Primitive(PrimType.OffsetDateTime), Vector.empty)
+    Single(name, Vector.empty, PrimType.OffsetDateTime, Vector.empty)
 
   def offsetTime(name: String): Options[JOffsetTime] =
-    Single(name, Vector.empty, Primitive(PrimType.OffsetTime), Vector.empty)
+    Single(name, Vector.empty, PrimType.OffsetTime, Vector.empty)
 
   def period(name: String): Options[JPeriod] =
-    Single(name, Vector.empty, Primitive(PrimType.Period), Vector.empty)
+    Single(name, Vector.empty, PrimType.Period, Vector.empty)
 
   def year(name: String): Options[JYear] =
-    Single(name, Vector.empty, Primitive(PrimType.Year), Vector.empty)
+    Single(name, Vector.empty, PrimType.Year, Vector.empty)
 
   def yearMonth(name: String): Options[JYearMonth] =
-    Single(name, Vector.empty, Primitive(PrimType.YearMonth), Vector.empty)
+    Single(name, Vector.empty, PrimType.YearMonth, Vector.empty)
 
   def zonedDateTime(name: String): Options[JZonedDateTime] =
-    Single(name, Vector.empty, Primitive(PrimType.ZonedDateTime), Vector.empty)
+    Single(name, Vector.empty, PrimType.ZonedDateTime, Vector.empty)
 
   def zoneId(name: String): Options[JZoneId] =
-    Single(name, Vector.empty, Primitive(PrimType.ZoneId), Vector.empty)
+    Single(name, Vector.empty, PrimType.ZoneId, Vector.empty)
 
   def zoneOffset(name: String): Options[JZoneOffset] =
-    Single(name, Vector.empty, Primitive(PrimType.ZoneOffset), Vector.empty)
+    Single(name, Vector.empty, PrimType.ZoneOffset, Vector.empty)
 }

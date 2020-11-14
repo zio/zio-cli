@@ -85,7 +85,7 @@ object Args {
 
       }
 
-    private def name: String = pseudoName.getOrElse(primType.typeName)
+    private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
   }
 
   case object Empty extends Args[Unit] {

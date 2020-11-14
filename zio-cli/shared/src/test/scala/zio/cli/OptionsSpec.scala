@@ -8,7 +8,7 @@ object OptionsSpec extends DefaultRunnableSpec {
   val f: Options[String]            = Options.text("firstname").alias("f")
   val l: Options[String]            = Options.text("lastname")
   val a: Options[BigInt]            = Options.integer("age")
-  val aOpt: Options[Option[BigInt]] = Options.integer("age").optional
+  val aOpt: Options[Option[BigInt]] = Options.integer("age").optional("N/A")
 
   val options = f :: l :: a
 
