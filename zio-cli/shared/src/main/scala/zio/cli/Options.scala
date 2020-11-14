@@ -28,14 +28,14 @@ import scala.collection.immutable.Nil
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
 sealed trait Options[+A] { self =>
-  import Options.Single 
+  import Options.Single
 
   final def ::[That, A1 >: A](that: Options[That]): Options[(That, A1)] =
     Options.Cons(that, self)
 
   def ??(that: String): Options[A] =
     modifySingle(new SingleModifier {
-      override def apply[A](single: Single[A]): Single[A] = single.copy(description = single.description :+ that)
+      override def apply[A](single: Single[A]): Single[A] = single.copy(description = single.description + p(that))
     })
 
   def alias(name: String): Options[A] =
@@ -159,13 +159,16 @@ object Options {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       options.validate(args, opts) orElseSucceed (args -> default)
 
-    override def modifySingle(f: SingleModifier): Options[A] = WithDefault(options.modifySingle(f), default, defaultDescription)
+    override def modifySingle(f: SingleModifier): Options[A] =
+      WithDefault(options.modifySingle(f), default, defaultDescription)
 
     override def helpDoc: HelpDoc =
-      options.helpDoc +
-        HelpDoc.p(
-          s"This setting is optional. If unspecified, the default value of this option is ${defaultDescription}."
-        )
+      options.helpDoc.mapDescriptionList {
+        case (span, block) =>
+          span -> (block + HelpDoc.p(
+            s"This setting is optional. If unspecified, the default value of this option is ${defaultDescription}."
+          ))
+      }
 
     override def uid: Option[String] = options.uid
   }
@@ -174,7 +177,7 @@ object Options {
     name: String,
     aliases: Vector[String],
     primType: PrimType[A],
-    description: Vector[String]
+    description: HelpDoc = HelpDoc.Empty
   ) extends Options[A] { self =>
 
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
@@ -211,7 +214,7 @@ object Options {
           spans(allNames.map(weak(_)).zipWithIndex.map {
             case (span, index) => if (index != allNames.length - 1) span + Span.text(", ") else span
           }) ->
-            (p(primType.helpDoc) + blocks(description.map(p(_))))
+            (p(primType.helpDoc) + description)
         )
       )
     }
@@ -318,67 +321,67 @@ object Options {
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] = {
     // TODO
     val _ = negationName
-    Single(name, Vector.empty, PrimType.Boolean, Vector.empty)
+    Single(name, Vector.empty, PrimType.Boolean)
       .map(_ => ifPresent)
       .withDefault(!ifPresent, (!ifPresent).toString)
   }
 
   def enumeration[A](name: String)(cases: (String, A)*): Options[A] =
-    Single(name, Vector.empty, PrimType.Enumeration(cases: _*), Vector.empty)
+    Single(name, Vector.empty, PrimType.Enumeration(cases: _*))
 
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
-    Single(name, Vector.empty, PrimType.Path(PathType.File, exists), Vector.empty)
+    Single(name, Vector.empty, PrimType.Path(PathType.File, exists))
 
   def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
-    Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists), Vector.empty)
+    Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists))
 
   def text(name: String): Options[String] =
-    Single(name, Vector.empty, PrimType.Text, Vector.empty)
+    Single(name, Vector.empty, PrimType.Text)
 
   def decimal(name: String): Options[BigDecimal] =
-    Single(name, Vector.empty, PrimType.Decimal, Vector.empty)
+    Single(name, Vector.empty, PrimType.Decimal)
 
   def integer(name: String): Options[BigInt] =
-    Single(name, Vector.empty, PrimType.Integer, Vector.empty)
+    Single(name, Vector.empty, PrimType.Integer)
 
   def instant(name: String): Options[JInstant] =
-    Single(name, Vector.empty, PrimType.Instant, Vector.empty)
+    Single(name, Vector.empty, PrimType.Instant)
 
   def localDate(name: String): Options[JLocalDate] =
-    Single(name, Vector.empty, PrimType.LocalDate, Vector.empty)
+    Single(name, Vector.empty, PrimType.LocalDate)
 
   def localDateTime(name: String): Options[JLocalDateTime] =
-    Single(name, Vector.empty, PrimType.LocalDateTime, Vector.empty)
+    Single(name, Vector.empty, PrimType.LocalDateTime)
 
   def localTime(name: String): Options[JLocalTime] =
-    Single(name, Vector.empty, PrimType.LocalTime, Vector.empty)
+    Single(name, Vector.empty, PrimType.LocalTime)
 
   def monthDay(name: String): Options[JMonthDay] =
-    Single(name, Vector.empty, PrimType.MonthDay, Vector.empty)
+    Single(name, Vector.empty, PrimType.MonthDay)
 
   val none: Options[Unit] = Empty
 
   def offsetDateTime(name: String): Options[JOffsetDateTime] =
-    Single(name, Vector.empty, PrimType.OffsetDateTime, Vector.empty)
+    Single(name, Vector.empty, PrimType.OffsetDateTime)
 
   def offsetTime(name: String): Options[JOffsetTime] =
-    Single(name, Vector.empty, PrimType.OffsetTime, Vector.empty)
+    Single(name, Vector.empty, PrimType.OffsetTime)
 
   def period(name: String): Options[JPeriod] =
-    Single(name, Vector.empty, PrimType.Period, Vector.empty)
+    Single(name, Vector.empty, PrimType.Period)
 
   def year(name: String): Options[JYear] =
-    Single(name, Vector.empty, PrimType.Year, Vector.empty)
+    Single(name, Vector.empty, PrimType.Year)
 
   def yearMonth(name: String): Options[JYearMonth] =
-    Single(name, Vector.empty, PrimType.YearMonth, Vector.empty)
+    Single(name, Vector.empty, PrimType.YearMonth)
 
   def zonedDateTime(name: String): Options[JZonedDateTime] =
-    Single(name, Vector.empty, PrimType.ZonedDateTime, Vector.empty)
+    Single(name, Vector.empty, PrimType.ZonedDateTime)
 
   def zoneId(name: String): Options[JZoneId] =
-    Single(name, Vector.empty, PrimType.ZoneId, Vector.empty)
+    Single(name, Vector.empty, PrimType.ZoneId)
 
   def zoneOffset(name: String): Options[JZoneOffset] =
-    Single(name, Vector.empty, PrimType.ZoneOffset, Vector.empty)
+    Single(name, Vector.empty, PrimType.ZoneOffset)
 }

@@ -17,11 +17,9 @@ sealed trait HelpDoc { self =>
 
   def +(that: HelpDoc): HelpDoc =
     (self, that) match {
-      case (self, that) if self.isEmpty                                    => that
-      case (self, that) if (that.isEmpty)                                  => this
-      case (HelpDoc.DescriptionList(left), HelpDoc.DescriptionList(right)) => HelpDoc.DescriptionList(left ++ right)
-      case (HelpDoc.Enumeration(left), HelpDoc.Enumeration(right))         => HelpDoc.Enumeration(left ++ right)
-      case _                                                               => HelpDoc.Sequence(self, that)
+      case (self, that) if self.isEmpty   => that
+      case (self, that) if (that.isEmpty) => this
+      case _                              => HelpDoc.Sequence(self, that)
     }
 
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
