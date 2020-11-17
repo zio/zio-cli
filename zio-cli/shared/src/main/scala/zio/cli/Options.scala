@@ -48,6 +48,8 @@ sealed trait Options[+A] { self =>
       override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases ++ names)
     })
 
+  //TODO : spend time to understand usage of implicit here
+
   final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< ((B, C))): Options[Z] =
     self.map(ev).map { case ((b, c)) => f(b, c) }
 
@@ -125,7 +127,7 @@ sealed trait Options[+A] { self =>
   private[cli] def supports(arg: String, opts: ParserOptions) =
     foldSingle(false) {
       case (bool, single) =>
-        bool || opts.normalizeCase(arg) == single.uid || single.aliases
+        bool || Some(opts.normalizeCase(arg)) == single.uid || single.aliases
           .map("-" + opts.normalizeCase(_))
           .contains(arg)
     }
@@ -191,7 +193,10 @@ object Options {
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
-          primType.validate(head).bimap(f => p(f) :: Nil, a => tail -> a)
+          (tail match {
+            case Nil         => primType.validate("")
+            case ::(head, _) => primType.validate(head)
+          }).bimap(f => p(f) :: Nil, a => tail.drop(1) -> a)
 
         case head :: tail =>
           validate(tail, opts).map {

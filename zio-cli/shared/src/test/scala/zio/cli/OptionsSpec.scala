@@ -13,7 +13,7 @@ object OptionsSpec extends DefaultRunnableSpec {
   val options = f :: l :: a
 
   def spec = suite("Options Suite")(
-    testM("validate text option") {
+    testM("validate text option 1") {
       val r = f.validate(List("--firstname", "John"), ParserOptions.default)
       assertM(r)(equalTo(List() -> "John"))
     },

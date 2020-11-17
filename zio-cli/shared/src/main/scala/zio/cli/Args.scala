@@ -52,6 +52,11 @@ sealed trait Args[+A] { self =>
 
   final def repeat: Args[List[A]] = self.*
 
+  final def repeat1[A1 >: A]: Args[::[A1]] = Args.Variadic(self, Some(1), None).map {
+    case head :: tail => ::(head, tail)
+    case Nil          => throw new IllegalStateException("Args.Variadic is not respecting the minimum.")
+  }
+
   def synopsis: UsageSynopsis
 
   def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
