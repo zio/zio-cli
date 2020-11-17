@@ -20,12 +20,14 @@ final case class CLIApp[-R, +E, Model](
   options: ParserOptions = ParserOptions.default
 ) { self =>
   def builtIn(builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
-    if (builtIn.help) putStrLn(helpDoc.toPlaintext(80))
-    else
-      builtIn.shellCompletions match {
-        case None        => IO.unit
-        case Some(value) => putStrLn(completions(value))
-      }
+    putStrLn(builtIn.toString) *> {
+      if (builtIn.help) putStrLn(helpDoc.toPlaintext(80))
+      else
+        builtIn.shellCompletions match {
+          case None        => IO.unit
+          case Some(value) => putStrLn(completions(value))
+        }
+    }
 
   def completions(shellType: ShellType): String = ???
 
