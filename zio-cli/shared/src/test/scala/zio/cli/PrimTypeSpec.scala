@@ -35,14 +35,14 @@ object PrimTypeSpec extends DefaultRunnableSpec {
       }
     },
     suite("Boolean Suite") {
-      testM("validate true cominations returns proper Boolean representation") {
+      testM("validate true combinations returns proper Boolean representation") {
         checkM(anyTrueBooleanString) { i =>
-          assertM(PrimType.Boolean.validate(i))(equalTo(true))
+          assertM(PrimType.Bool(None).validate(i))(equalTo(true))
         }
       };
       testM("validate false combinations returns proper Boolean representation") {
         checkM(anyFalseBooleanString) { i =>
-          assertM(PrimType.Boolean.validate(i))(equalTo(false))
+          assertM(PrimType.Bool(None).validate(i))(equalTo(false))
         }
       }
     },

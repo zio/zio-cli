@@ -85,9 +85,8 @@ object Args {
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
-        case head :: tail => primType.validate(head).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
+        case head :: tail => primType.validate(Some(head)).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
         case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}.") :: Nil)
-
       }
 
     private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
@@ -193,9 +192,9 @@ object Args {
       }
   }
 
-  def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Boolean)
+  def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Bool(None))
 
-  val bool: Args[Boolean] = Single(None, PrimType.Boolean)
+  val bool: Args[Boolean] = Single(None, PrimType.Bool(None))
 
   def enumeration[A](name: String)(cases: (String, A)*): Args[A] =
     Single(Some(name), PrimType.Enumeration(cases: _*))

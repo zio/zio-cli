@@ -19,15 +19,13 @@ final case class CLIApp[-R, +E, Model](
   footer: HelpDoc = HelpDoc.Empty,
   options: ParserOptions = ParserOptions.default
 ) { self =>
-  def builtIn(builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
-    putStrLn(builtIn.toString) *> {
-      if (builtIn.help) putStrLn(helpDoc.toPlaintext(80))
-      else
-        builtIn.shellCompletions match {
-          case None        => IO.unit
-          case Some(value) => putStrLn(completions(value))
-        }
-    }
+  def builtIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
+    if (args.length == 0 || builtIn.help) putStrLn(helpDoc.toPlaintext(80))
+    else
+      builtIn.shellCompletions match {
+        case None        => IO.unit
+        case Some(value) => putStrLn(completions(value))
+      }
 
   def completions(shellType: ShellType): String = ???
 
@@ -52,7 +50,7 @@ final case class CLIApp[-R, +E, Model](
     (for {
       validationResult <- (command orElseEither extended).parse(args, options)
       (_, e)           = validationResult
-      result           <- e.fold(execute(_), builtIn(_))
+      result           <- e.fold(execute(_), builtIn(args, _))
     } yield result).exitCode
   }
 

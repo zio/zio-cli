@@ -194,8 +194,8 @@ object Options {
       args match {
         case head :: tail if supports(head, opts) =>
           (tail match {
-            case Nil         => primType.validate("")
-            case ::(head, _) => primType.validate(head)
+            case Nil         => primType.validate(None)
+            case ::(head, _) => primType.validate(Some(head))
           }).bimap(f => p(f) :: Nil, a => tail.drop(1) -> a)
 
         case head :: tail =>
@@ -326,8 +326,7 @@ object Options {
   def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] = {
     // TODO
     val _ = negationName
-    Single(name, Vector.empty, PrimType.Boolean)
-      .map(_ => ifPresent)
+    Single(name, Vector.empty, PrimType.Bool(Some(ifPresent)))
       .withDefault(!ifPresent, (!ifPresent).toString)
   }
 
