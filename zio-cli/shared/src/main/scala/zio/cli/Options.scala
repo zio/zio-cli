@@ -195,7 +195,7 @@ object Options {
         case head :: tail if supports(head, opts) =>
           (tail match {
             case Nil         => IO.fail("")
-            case ::(head, _) => primType.validate(head)
+            case ::(head, _) => primType.validate(head, opts)
           }).bimap(f => p(f) :: Nil, a => tail.drop(1) -> a)
 
         case head :: tail =>
