@@ -24,7 +24,7 @@ sealed trait Command[+A] { self =>
 
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
 
-  def parse(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
+  def parse(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)]
 
   final def subcommands[B](that: Command[B]): Command[(A, B)] = Command.Subcommands(self, that)
 
@@ -69,13 +69,13 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))] = {
-      type Return = IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))]
+    ): IO[HelpDoc, (List[String], (OptionsType, ArgsType))] = {
+      type Return = IO[HelpDoc, (List[String], (OptionsType, ArgsType))]
 
       val possibilities = partitionArgs(args, opts)
 
       val defaultFailure =
-        ZIO.fail(HelpDoc.p(Span.error(s"Expected ${self.args.minSize} arguments and options: ")) :: Nil)
+        ZIO.fail(HelpDoc.p(Span.error(s"Expected ${self.args.minSize} arguments and options: ")))
 
       possibilities.foldLeft[Return](defaultFailure) {
         case (acc, (args, remainingArgs)) =>
@@ -86,7 +86,7 @@ object Command {
               tuple               <- self.args.validate(args, opts)
               (args, argsType)    = tuple
               _ <- ZIO.when(args.nonEmpty)(
-                    ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
+                    ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")))
                   )
             } yield (remainingArgs, (optionsType, argsType))
 
@@ -141,7 +141,7 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], B)] = command.parse(args, opts).map {
+    ): IO[HelpDoc, (List[String], B)] = command.parse(args, opts).map {
       case (leftover, a) => (leftover, f(a))
     }
 
@@ -153,7 +153,7 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
+    ): IO[HelpDoc, (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
@@ -163,7 +163,7 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], (A, B))] = parent.parse(args, opts).flatMap {
+    ): IO[HelpDoc, (List[String], (A, B))] = parent.parse(args, opts).flatMap {
       case (leftover, a) => child.parse(leftover, opts).map(t => (t._1, (a, t._2)))
     }
 

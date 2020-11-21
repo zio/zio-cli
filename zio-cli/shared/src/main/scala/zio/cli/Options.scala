@@ -107,7 +107,7 @@ sealed trait Options[+A] { self =>
 
   def uid: Option[String]
 
-  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
+  def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)]
 
   def withDefault[A1 >: A](value: A1, valueDescription: String): Options[A1] =
     Options.WithDefault(self, value, valueDescription)
@@ -143,7 +143,7 @@ object Options {
 
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], Unit)] =
       IO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
@@ -158,7 +158,7 @@ object Options {
 
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       options.validate(args, opts) orElseSucceed (args -> default)
 
     override def modifySingle(f: SingleModifier): Options[A] =
@@ -190,20 +190,20 @@ object Options {
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(fullname, primType.choices)
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
           (tail match {
             case Nil         => primType.validate(None, opts)
             case ::(head, _) => primType.validate(Some(head), opts)
-          }).bimap(f => p(f) :: Nil, a => tail.drop(1) -> a)
+          }).bimap(f => p(f), a => tail.drop(1) -> a)
 
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
           }
         case Nil =>
-          IO.fail(p(error(s"Expected to find ${fullname} option.")) :: Nil)
+          IO.fail(p(error(s"Expected to find ${fullname} option.")))
       }
 
     def uid = Some(fullname)
@@ -233,7 +233,7 @@ object Options {
 
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
-    override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
+    override def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], (A, B))] =
       (for {
         tuple     <- left.validate(args, opts)
         (args, a) = tuple
@@ -263,7 +263,7 @@ object Options {
 
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       target.validate(args, opts).foldM(f => IO.fail(f), _ => options.validate(args, opts))
 
     override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList {
@@ -286,12 +286,12 @@ object Options {
 
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       target
         .validate(args, opts)
         .foldM(
           _ => options.validate(args, opts),
-          _ => IO.fail(p(error("Requires not conditions were not satisfied.")) :: Nil)
+          _ => IO.fail(p(error("Requires not conditions were not satisfied.")))
         )
 
     override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList { (span, block) =>
@@ -311,8 +311,8 @@ object Options {
 
     def synopsis: UsageSynopsis = value.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], B)] =
-      value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e :: Nil), s => IO.succeed(r._1 -> s)))
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], B)] =
+      value.validate(args, opts).flatMap(r => f(r._2).fold(e => IO.fail(e), s => IO.succeed(r._1 -> s)))
 
     override def uid: Option[String] = value.uid
 
