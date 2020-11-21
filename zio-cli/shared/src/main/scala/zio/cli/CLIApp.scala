@@ -46,7 +46,7 @@ final case class CLIApp[-R, +E, Model](
   def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
     (for {
       builtInValidationResult  <- command.parseBuiltIn(args, options)
-      (remainingArgs, builtIn)  = builtInValidationResult
+      (remainingArgs, builtIn) = builtInValidationResult
       _                        <- handleBuiltIn(args, builtIn)
       validationResult         <- command.parse(remainingArgs, options)
     } yield validationResult)

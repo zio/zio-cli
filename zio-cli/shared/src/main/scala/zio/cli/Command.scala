@@ -1,7 +1,7 @@
 package zio.cli
 
 import zio.cli.BuiltIn.BuiltInOptions
-import zio.{IO, ZIO}
+import zio.{ IO, ZIO }
 import zio.cli.HelpDoc.h1
 import zio.cli.HelpDoc.Span
 import scala.collection.immutable.Nil
