@@ -21,6 +21,11 @@ object AutoCorrectSpec extends DefaultRunnableSpec {
       val opts = ParserOptions(caseSensitive = false)
       assert(levensteinDistance("--force", "--force", opts))(equalTo(0))
       assert(levensteinDistance("--FORCE", "--force", opts))(equalTo(0))
+    },
+    test("calculates the correct levenstein distance for non ascii characters") {
+      val opts = ParserOptions.default
+      assert(levensteinDistance("とんかつ", "とかつ", opts))(equalTo(1))
+      assert(levensteinDistance("¯\\_(ツ)_/¯", "_(ツ)_/¯", opts))(equalTo(2))
     }
   )
 }
