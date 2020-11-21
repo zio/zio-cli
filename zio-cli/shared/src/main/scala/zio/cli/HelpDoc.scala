@@ -29,7 +29,6 @@ sealed trait HelpDoc { self =>
       case HelpDoc.Empty                 => true
       case HelpDoc.DescriptionList(xs)   => true
       case HelpDoc.Sequence(left, right) => left.isDescriptionList
-      case HelpDoc.Enumeration(xs)       => false
       case _                             => false
     }
 
@@ -52,7 +51,6 @@ sealed trait HelpDoc { self =>
       case HelpDoc.Empty                 => true
       case HelpDoc.DescriptionList(xs)   => xs.forall(_._2.isEmpty)
       case HelpDoc.Sequence(left, right) => left.isEmpty && right.isEmpty
-      case HelpDoc.Enumeration(xs)       => xs.forall(_.isEmpty)
       case _                             => false
     }
 
@@ -82,9 +80,6 @@ sealed trait HelpDoc { self =>
     def currentStyle(): String = styles.headOption.getOrElse(Console.RESET)
 
     def resetStyle(): Unit = styles = styles.drop(1)
-
-    def renderText(text: String): Unit =
-      renderSpan(Span.text(text))
 
     def renderNewline(): Unit =
       if (printedSep < 2) {
@@ -120,16 +115,6 @@ sealed trait HelpDoc { self =>
               resetStyle()
               renderNewline()
               writer.indent(4)
-              renderHelpDoc(helpDoc)
-              writer.unindent()
-              renderNewline()
-          }
-
-        case HelpDoc.Enumeration(elements) =>
-          elements.zipWithIndex.foreach {
-            case (helpDoc, index) =>
-              writer.indent(2)
-              renderText("- ")
               renderHelpDoc(helpDoc)
               writer.unindent()
               renderNewline()
@@ -193,7 +178,6 @@ object HelpDoc {
   final case class Header(value: Span, level: Int)                     extends HelpDoc
   final case class Paragraph(value: Span)                              extends HelpDoc
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
-  final case class Enumeration(elements: List[HelpDoc])                extends HelpDoc
   final case class Sequence(left: HelpDoc, right: HelpDoc)             extends HelpDoc
 
   def blocks(bs: Iterable[HelpDoc]): HelpDoc =
@@ -205,8 +189,6 @@ object HelpDoc {
   def descriptionList(definitions: (Span, HelpDoc)*): HelpDoc = HelpDoc.DescriptionList(definitions.toList)
 
   val empty: HelpDoc = Empty
-
-  def enumeration(elements: HelpDoc*): HelpDoc = HelpDoc.Enumeration(elements.toList)
 
   def h1(t: String): HelpDoc  = h1(Span.text(t))
   def h1(span: Span): HelpDoc = HelpDoc.Header(span, 1)
