@@ -9,17 +9,14 @@
 # detected on target system, user can set environment variable
 # ENSURE_NATIVE_IMAGE to download GraalVM and native-image. GraalVM version is
 # also configurable through environment variables `GRAALVM_VERSION` and
-# `GRAALVM_JAVA_VERSION` Otherwise script will fallbac to running JAR file directly..
+# `GRAALVM_JAVA_VERSION` Otherwise script will fallback to running JAR file
+# directly.
 
 set -e
 
 appName="APP_NAME"
 version="VERSION"
 downloadUrl="DOWNLOAD_URL"
-
-# appName="zio_cli_test"
-# version="0.0.1"
-# downloadUrl="https://github.com/JakDar/zio-cli-test/releases/download/0.0.1/zio-cli-test-0.0.1.jar"
 
 shouldEnsureNativeImage="${ENSURE_NATIVE_IMAGE}"
 graalvmVersion="${GRAALVM_VERSION:-20.3.0}"
@@ -114,7 +111,6 @@ success() {
 	jar) printf "Downloaded %s" "${appName}" ;;
 	esac
 	printf "\033[0m\n"
-	exit 1
 }
 
 ensureCli
