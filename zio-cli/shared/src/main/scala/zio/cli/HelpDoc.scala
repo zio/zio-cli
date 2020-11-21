@@ -68,6 +68,80 @@ sealed trait HelpDoc { self =>
       case x                             => x
     }
 
+  def toHTML(): String = {
+
+    val w = new StringBuilder
+
+    val escape: String => String =
+      _.replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+
+    def renderSpan: Span => StringBuilder = {
+      case Span.Text(value) => w.append(escape(value))
+      case Span.Code(value) => w.append(s"<code>${escape(value)}</code>")
+      case Span.URI(value)  => w.append(s"""<a href="$value">$value</a>""")
+      case Span.Weak(value) => renderSpan(value)
+
+      case Span.Strong(value) =>
+        w.append("<b>")
+        renderSpan(value)
+        w.append("</b>")
+
+      case Span.Error(value) =>
+        w.append(s"<span style='color:red'>")
+        renderSpan(value)
+        w.append("</span>")
+
+      case Span.Sequence(left, right) =>
+        renderSpan(left)
+        renderSpan(right)
+    }
+
+    def render: HelpDoc => StringBuilder = {
+      case HelpDoc.Empty => w
+
+      case HelpDoc.Header(value, level) =>
+        w.append(s"<h$level>")
+        renderSpan(value)
+        w.append(s"</h$level>")
+
+      case HelpDoc.Paragraph(value) =>
+        w.append(s"<p>")
+        renderSpan(value)
+        w.append(s"</p>")
+
+      case HelpDoc.DescriptionList(definitions) =>
+        definitions.foldRight(w) {
+          case ((span, helpDoc), _) =>
+            renderSpan(span)
+            render(helpDoc)
+        }
+
+      case HelpDoc.Enumeration(elements) =>
+        w.append("<ul>")
+        elements.foreach { hd =>
+          w.append("<li>")
+          render(hd)
+          w.append("</li>")
+        }
+        w.append("</ul>")
+
+      case HelpDoc.Sequence(left, right) =>
+        render(left)
+        w.append("<br/>")
+        render(right)
+    }
+
+    val css = """<style>
+      
+    </style>"""
+    w.append(s"<html><head>$css</head><body>")
+    render(this)
+    w.append("</body></html>")
+
+    w.toString()
+  }
+
   def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
     val _ = color
 
