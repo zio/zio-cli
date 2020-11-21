@@ -1,6 +1,15 @@
 #!/usr/bin/env sh
 
-# TODO: readme
+# This is the zio-cli launcher template. Distribute this file in a Git
+# repository to make it easier for users to run your zio-cli app. You will need
+# to replace `APP_NAME`, `VERSION` and `DOWNLOAD_URL`. downloadUrl is expected
+# to be standalone jar file.
+
+# Application will be compiled via GraalVM native-image, if `native-image` is
+# detected on target system, user can set environment variable
+# ENSURE_NATIVE_IMAGE to download GraalVM and native-image. GraalVM version is
+# also configurable through environment variables `GRAALVM_VERSION` and
+# `GRAALVM_JAVA_VERSION` Otherwise script will fallbac to running JAR file directly..
 
 set -e
 
@@ -13,18 +22,18 @@ downloadUrl="DOWNLOAD_URL"
 # downloadUrl="https://github.com/JakDar/zio-cli-test/releases/download/0.0.1/zio-cli-test-0.0.1.jar"
 
 shouldEnsureNativeImage="${ENSURE_NATIVE_IMAGE}"
-graalvmVersion="${GRAALVM_JAVA_VERSION:-20.3.0}"
+graalvmVersion="${GRAALVM_VERSION:-20.3.0}"
 javaVersion="${GRAALVM_JAVA_VERSION:-java8}"
 
 xdgUsrHome="${XDG_DATA_HOME:-"$HOME/.local/share"}"
 xdgSysHome="${XDG_DATA_HOME:-/usr/share}"
 xdgHome="$([ "$EUID" = "0" ] && echo "${xdgSysHome}" || echo "${xdgUsrHome}")"
 appDir="${xdgHome}/${appName}"
-mkdir -p "${appDir}/bin"
 versionedBin="${appDir}/bin/${appName}_${version}" # native executable
 versionedJar="${versionedBin}.jar"                 # downloaded JAR
-
 graalvmDir="${xdgHome}/graalvm-ce-${javaVersion}-${graalvmVersion}"
+
+mkdir -p "${appDir}/bin"
 
 installGraalVm() {
 	if ! [ -d "${graalvmDir}" ]; then
@@ -45,21 +54,20 @@ installGraalVm() {
 		downloadFile="/tmp/${file}"
 		[ -f "${downloadFile}" ] || curl -Lo "${downloadFile}" "$url"
 		tar xzf "${downloadFile}" -C "${xdgHome}"
-		echo "Installed GraalVM"
+		success graalvm
 	fi
 }
 
 installNativeImage() {
-	echo "Installing GraalVM native image"
 	gu install native-image
+	success graalvm-native-image
 }
 
 ensureAppJar() {
-	# TODO:bcm  handle targz and zip
 	if ! [ -f "${versionedBin}" ] && ! [ -f "${versionedJar}" ]; then
 		echo "Downloading ${appName}, saving to ${versionedJar}"
 		curl -Lso "${versionedJar}" "$downloadUrl"
-		echo "Downloaded ${appName}."
+		success jar
 	fi
 }
 
@@ -82,8 +90,8 @@ ensureCli() {
 buildNativeImage() {
 	PATH="${PATH}:${graalvmDir}/bin"
 	export GRAALVM_HOME="${graalvmDir}"
-
 	native-image -jar "${versionedJar}" "${versionedBin}"
+	success native-image
 }
 
 fail() {
@@ -101,6 +109,9 @@ success() {
 	printf "success\n\033[1m\033[42m SUCCESS \033[0m \033[1m"
 	case "$1" in
 	graalvm) printf "GraalVM successfully installed!" ;;
+	graalvm-native-image) printf "GraalVM native-image successfully installed!" ;;
+	native-image) printf "Built native image for %s." "${appName}" ;;
+	jar) printf "Downloaded %s" "${appName}" ;;
 	esac
 	printf "\033[0m\n"
 	exit 1
