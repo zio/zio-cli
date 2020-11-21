@@ -1,8 +1,8 @@
 package zio.cli
 
-import zio.{ IO, ZIO }
-
-import zio.cli.HelpDoc.{ h1 }
+import zio.cli.BuiltIn.BuiltInOptions
+import zio.{IO, ZIO}
+import zio.cli.HelpDoc.h1
 import zio.cli.HelpDoc.Span
 import scala.collection.immutable.Nil
 
@@ -11,7 +11,7 @@ import scala.collection.immutable.Nil
  * will have at least one command: the application itself. Other command-line applications may
  * support multiple commands.
  */
-sealed trait Command[+A] { self =>
+sealed trait Command[+A] extends BuiltInOptions[A] { self =>
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
@@ -46,7 +46,7 @@ object Command {
         val desc = description
 
         if (desc.isEmpty) HelpDoc.Empty
-        else h1("description") + self.helpDoc
+        else h1("description") + desc
       }
 
       val argumentsSection = {
@@ -57,10 +57,10 @@ object Command {
       }
 
       val optionsSection = {
-        val opts = self.options.helpDoc
+        val opts = (self.options :: self.builtInOptions).helpDoc
 
         if (opts == HelpDoc.Empty) HelpDoc.Empty
-        else h1("options") + self.options.helpDoc
+        else h1("options") + opts
       }
 
       descriptionsSection + argumentsSection + optionsSection
