@@ -23,5 +23,5 @@ object ParserOptions {
   /**
    * The default options are case sensitive parsing
    */
-  val default: ParserOptions = ParserOptions(true)
+  val default: ParserOptions = ParserOptions(false)
 }

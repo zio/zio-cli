@@ -1,112 +1,106 @@
 package zio.cli
 
+import java.time._
+
 import zio.test.Assertion._
 import zio.test._
 
-import java.time.ZoneOffset
-import java.time.LocalDateTime
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.MonthDay
-import java.time.Year
-import java.time.YearMonth
-
 object PrimTypeSpec extends DefaultRunnableSpec {
-  
+
   def spec = suite("PrimTypeTests")(
     suite("Text Suite") {
       testM("validates everything") {
         checkM(Gen.anyString) { i =>
-          assertM(PrimType.Text.validate(i))(equalTo(i))
+          assertM(PrimType.Text.validate(i, ParserOptions.default))(equalTo(i))
         }
       }
     },
     suite("Decimal Suite") {
       testM("validate returns proper BigDecimal representation") {
         checkM(Gen.bigDecimal(BigDecimal("1.41421356237309504880168"), BigDecimal("50.4"))) { i =>
-          assertM(PrimType.Decimal.validate(i.toString()))(equalTo(i))
+          assertM(PrimType.Decimal.validate(i.toString(), ParserOptions.default))(equalTo(i))
         }
       }
     },
     suite("Integer Suite") {
       testM("validate returns proper BigInt representation") {
         checkM(anyBigIntString) { i =>
-          assertM(PrimType.Integer.validate(i.toString()))(equalTo(BigInt(i)))
+          assertM(PrimType.Integer.validate(i, ParserOptions.default))(equalTo(BigInt(i)))
         }
       }
     },
-    suite("Boolean Suite") {
+    suite("Boolean Suite")(
       testM("validate true combinations returns proper Boolean representation") {
         checkM(anyTrueBooleanString) { i =>
-          assertM(PrimType.Bool(None).validate(i))(equalTo(true))
+          assertM(PrimType.Bool(None).validate(i, ParserOptions.default))(equalTo(true))
         }
-      };
+      },
       testM("validate false combinations returns proper Boolean representation") {
         checkM(anyFalseBooleanString) { i =>
-          assertM(PrimType.Bool(None).validate(i))(equalTo(false))
+          assertM(PrimType.Bool(None).validate(i, ParserOptions.default))(equalTo(false))
         }
       }
-    },
+    ),
     suite("Instant Suite") {
       testM("validate returns proper Instant representation") {
         checkM(Gen.anyInstant) { i =>
-          assertM(PrimType.Instant.validate(i.toString()))(equalTo(i))
+          assertM(PrimType.Instant.validate(i.toString, ParserOptions.default))(equalTo(i))
         }
       }
     },
     suite("LocalDateTime Suite") {
       testM("validate returns proper LocalDateTime representation") {
         checkM(anyLocalDateTime) { i =>
-          assertM(PrimType.LocalDateTime.validate(i))(equalTo(LocalDateTime.parse(i)))
+          assertM(PrimType.LocalDateTime.validate(i, ParserOptions.default))(equalTo(LocalDateTime.parse(i)))
         }
       }
     },
     suite("LocalDate Suite") {
       testM("validate returns proper LocalDate representation") {
         checkM(anyLocalDate) { i =>
-          assertM(PrimType.LocalDate.validate(i))(equalTo(LocalDate.parse(i)))
+          assertM(PrimType.LocalDate.validate(i, ParserOptions.default))(equalTo(LocalDate.parse(i)))
         }
       }
     },
     suite("LocalTime Suite") {
       testM("validate returns proper LocalTime representation") {
         checkM(anyLocalTime) { i =>
-          assertM(PrimType.LocalTime.validate(i))(equalTo(LocalTime.parse(i)))
+          assertM(PrimType.LocalTime.validate(i, ParserOptions.default))(equalTo(LocalTime.parse(i)))
         }
       }
     },
     suite("MonthDay Suite") {
       testM("validate returns proper MonthDay representation") {
         checkM(anyMonthDay) { i =>
-          assertM(PrimType.MonthDay.validate(i))(equalTo(MonthDay.parse(i)))
+          assertM(PrimType.MonthDay.validate(i, ParserOptions.default))(equalTo(MonthDay.parse(i)))
         }
       }
     },
     suite("OffsetDateTime Suite") {
       testM("validate returns proper OffsetDateTime representation") {
         checkM(Gen.anyOffsetDateTime) { i =>
-          assertM(PrimType.OffsetDateTime.validate(i.toString))(equalTo(i))
+          assertM(PrimType.OffsetDateTime.validate(i.toString, ParserOptions.default))(equalTo(i))
         }
       }
     },
     suite("OffsetTime Suite") {
       testM("validate returns proper OffsetTime representation") {
         checkM(Gen.anyOffsetDateTime.map(_.toOffsetTime)) { i =>
-          assertM(PrimType.OffsetTime.validate(i.toString))(equalTo(i))
+          assertM(PrimType.OffsetTime.validate(i.toString, ParserOptions.default))(equalTo(i))
         }
       }
     },
     suite("Year Suite") {
       testM("validate returns proper Year representation") {
         checkM(anyYear) { i =>
-          assertM(PrimType.Year.validate(i.toString))(equalTo(i))
+          assertM(PrimType.Year.validate(i.toString, ParserOptions.default))(equalTo(i))
         }
       }
     },
     suite("YearMonth Suite") {
       testM("validate returns proper YearMonth representation") {
         checkM(anyYearMonth) { i =>
-          assertM(PrimType.YearMonth.validate(i.toString))(equalTo(i))
+          assertM(PrimType.YearMonth.validate(i.toString, ParserOptions.default))(equalTo(i))
         }
       }
     }
