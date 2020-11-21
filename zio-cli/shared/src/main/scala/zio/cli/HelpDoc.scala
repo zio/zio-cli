@@ -68,7 +68,7 @@ sealed trait HelpDoc { self =>
       case x                             => x
     }
 
-  def toHTML(): String = {
+  def toHTML: String = {
 
     val w = new StringBuilder
 
@@ -78,7 +78,7 @@ sealed trait HelpDoc { self =>
 
     def renderSpan: Span => StringBuilder = {
       case Span.Text(value) => w.append(escape(value))
-      case Span.Code(value) => w.append(s"<code>${escape(value)}</code>")
+      case Span.Code(value) => w.append(s"<pre><code>${escape(value)}</code></pre>")
       case Span.URI(value)  => w.append(s"""<a href="$value">$value</a>""")
       case Span.Weak(value) => renderSpan(value)
 
@@ -88,7 +88,7 @@ sealed trait HelpDoc { self =>
         w.append("</b>")
 
       case Span.Error(value) =>
-        w.append(s"<span style='color:red'>")
+        w.append(s"<span class='error'>")
         renderSpan(value)
         w.append("</span>")
 
@@ -132,9 +132,71 @@ sealed trait HelpDoc { self =>
         render(right)
     }
 
-    val css = """<style>
-      
+    val css =
+      """<style>
+        h1 {
+            color: rgb(36, 41, 46);
+            font-weight: 600;
+            line-height: 1.25;
+            margin-bottom: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+        }
+
+        h2 {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+            font-size: 24px;
+            letter-spacing: 0px;
+            word-spacing: 2px;
+            color: rgb(36, 41, 46);
+            font-weight: 600;
+        }
+
+        h3 {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+            font-size: 21px;
+            letter-spacing: 0px;
+            word-spacing: 2px;
+            color: rgb(36, 41, 46);
+            font-weight: 700;
+        }
+
+        p {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+            color: #24292e;
+        }
+
+        .error {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+            color: #24292e;
+        }
+
+        a {
+            border: 0;
+            color: rgb(189, 39, 26);
+            text-decoration: none;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+            font-size: inherit;
+            font-size: 100%;
+            margin: 0;
+            padding: 0;
+            vertical-align: baseline;
+        }
+
+        a:hover {
+            color: rgb(0, 0, 0);
+        }
+
+        code {
+            background-color: rgba(27, 31, 35, .05);
+            border-radius: 3px;
+            color: rgb(36, 41, 46);
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+            font-size: 85%;
+            margin: 0;
+            padding: 3.2px 6.4px;
+        }
     </style>"""
+
     w.append(s"<html><head>$css</head><body>")
     render(this)
     w.append("</body></html>")
