@@ -323,12 +323,10 @@ object Options {
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    */
-  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] = {
+  def bool(name: String, default: Boolean, negationName: Option[String] = None): Options[Boolean] = {
     // TODO
     val _ = negationName
-    Single(name, Vector.empty, PrimType.Boolean)
-      .map(_ => ifPresent)
-      .withDefault(!ifPresent, (!ifPresent).toString)
+    Single(name, Vector.empty, PrimType.Boolean).withDefault(default, default.toString)
   }
 
   def enumeration[A](name: String)(cases: (String, A)*): Options[A] =
