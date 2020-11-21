@@ -1,15 +1,17 @@
 package zio.cli
 
-import java.io.File
-import java.nio.file.Paths
+import java.io.{File => JFile}
+import java.nio.file.{Path => JPath, Paths}
+
 import zio.cli.HelpDoc.Paragraph
 import zio.cli.HelpDoc.Span.Text
 import zio.test.{suite, _}
 import zio.test.Assertion._
 
 object ArgsSpec extends DefaultRunnableSpec {
-  val argsFile = new File("zio-cli/shared/src/test/scala/zio/cli","ArgsFileExample")
-  val argsFilePath = Paths.get(argsFile.getAbsolutePath)
+
+  val argsFile: JFile     = new JFile("zio-cli/shared/src/test/scala/zio/cli","ArgsFileExample")
+  val argsFilePath: JPath = Paths.get(argsFile.getAbsolutePath)
 
   def spec = suite("ArgsSpec")(
     suite("File Arguments Spec")(
