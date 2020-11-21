@@ -19,8 +19,8 @@ final case class CLIApp[-R, +E, Model](
   footer: HelpDoc = HelpDoc.Empty,
   options: ParserOptions = ParserOptions.default
 ) { self =>
-  def handleBuiltIn(builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
-    if (builtIn.help) putStrLn(helpDoc.toPlaintext(80))
+  def handleBuiltIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
+    if (args.isEmpty || builtIn.help) printDocs(helpDoc)
     else
       builtIn.shellCompletions match {
         case None        => IO.unit
@@ -47,14 +47,14 @@ final case class CLIApp[-R, +E, Model](
     (for {
       builtInValidationResult  <- command.parseBuiltIn(args, options)
       (remainingArgs, builtIn)  = builtInValidationResult
-      _                        <- handleBuiltIn(builtIn)
+      _                        <- handleBuiltIn(args, builtIn)
       validationResult         <- command.parse(remainingArgs, options)
     } yield validationResult)
-      .foldM(
-        failureHelpDocs => putStrLn(failureHelpDocs.map(_.toPlaintext(80)).mkString("")),
-        success => execute(success._2)
-      )
+      .foldM(printDocs, success => execute(success._2))
       .exitCode
+
+  def printDocs(helpDoc: HelpDoc): URIO[Console, Unit] =
+    putStrLn(helpDoc.toPlaintext(80))
 
   def summary(s: HelpDoc.Span): CLIApp[R, E, Model] =
     copy(summary = self.summary + s)

@@ -6,9 +6,9 @@ final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
 object BuiltIn {
   trait BuiltInOptions {
     lazy val builtInOptions: Options[BuiltIn] =
-      (Options.bool("help", default = false) :: ShellType.option.optional("N/A")).as(BuiltIn(_, _))
+      (Options.bool("help", false) :: ShellType.option.optional("N/A")).as(BuiltIn(_, _))
 
-    final def parseBuiltIn(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], BuiltIn)] =
+    final def parseBuiltIn(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], BuiltIn)] =
       builtInOptions.validate(args, opts)
   }
 }
