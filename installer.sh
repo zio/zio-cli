@@ -12,7 +12,7 @@ downloadUrl="DOWNLOAD_URL"
 # version="0.0.1"
 # downloadUrl="https://github.com/JakDar/zio-cli-test/releases/download/0.0.1/zio-cli-test-0.0.1.jar"
 
-wantsNative="${USE_NATIVE_IMAGE}"
+shouldEnsureNativeImage="${ENSURE_NATIVE_IMAGE}"
 graalvmVersion="${GRAALVM_JAVA_VERSION:-20.3.0}"
 javaVersion="${GRAALVM_JAVA_VERSION:-java8}"
 
@@ -54,21 +54,28 @@ installNativeImage() {
 	gu install native-image
 }
 
-ensureCli() {
-	# TODO:bcm  handle targz
+ensureAppJar() {
+	# TODO:bcm  handle targz and zip
 	if ! [ -f "${versionedBin}" ] && ! [ -f "${versionedJar}" ]; then
 		echo "Downloading ${appName}, saving to ${versionedJar}"
 		curl -Lso "${versionedJar}" "$downloadUrl"
 		echo "Downloaded ${appName}."
 	fi
+}
 
-	if [ -n "$wantsNative" ] && ! [ -f "${versionedBin}" ]; then
-		PATH="${PATH}:${graalvmDir}/bin"
-		if ! command -v native-image >/dev/null; then
+ensureCli() {
+	ensureAppJar
+
+	if ! [ -f "${versionedBin}" ]; then
+
+		if [ -n "${shouldEnsureNativeImage}" ] && ! command -v native-image >/dev/null; then
+			PATH="${PATH}:${graalvmDir}/bin"
 			installGraalVm && installNativeImage
 		fi
 
-		buildNativeImage
+		if command -v native-image >/dev/null; then
+			buildNativeImage
+		fi
 	fi
 }
 
@@ -100,7 +107,7 @@ success() {
 }
 
 ensureCli
-if [ -n "$wantsNative" ] && [ -f "${versionedBin}" ]; then
+if [ -f "${versionedBin}" ]; then
 	"${versionedBin}" "${@}"
 elif [ -f "${versionedJar}" ]; then
 	java -jar "${versionedJar}" "${@}"
