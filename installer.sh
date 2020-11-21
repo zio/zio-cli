@@ -1,74 +1,109 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
-# TODO: read from command line
-cliDownloadUrl="https://github.com/JakDar/zio-cli-test/releases/download/0.0.1/zio-cli-test-0.0.1.jar"
-cliFile=$(basename "$cliDownloadUrl")
-graalvmVersion="20.3.0"
-javaVersion="java8"
-# TODO: allow to customize
-downloadDir="/tmp/test"
-installLocation="./local/bin"
+# TODO: readme
 
+set -e
 
-case $(uname -s) in
-  Darwin*) os="mac" ;;
-  Linux*)  os="linux" ;;
-  CYGWIN*) os="windows" ;;
-  MINGW*)  os="windows" ;;
-  MSYS*)   os="windows" ;;
-  *)       fail os ;;
-esac
+appName="APP_NAME"
+version="VERSION"
+downloadUrl="DOWNLOAD_URL"
 
-graalvmPath="${downloadDir}/graalvm-ce-${javaVersion}-${graalvmVersion}"
+# appName="zio_cli_test"
+# version="0.0.1"
+# downloadUrl="https://github.com/JakDar/zio-cli-test/releases/download/0.0.1/zio-cli-test-0.0.1.jar"
 
-# TODO: check if graalvm exists locally
+wantsNative="${USE_NATIVE_IMAGE}"
+graalvmVersion="${GRAALVM_JAVA_VERSION:-20.3.0}"
+javaVersion="${GRAALVM_JAVA_VERSION:-java8}"
+
+xdgUsrHome="${XDG_DATA_HOME:-"$HOME/.local/share"}"
+xdgSysHome="${XDG_DATA_HOME:-/usr/share}"
+xdgHome="$([ "$EUID" = "0" ] && echo "${xdgSysHome}" || echo "${xdgUsrHome}")"
+appDir="${xdgHome}/${appName}"
+mkdir -p "${appDir}/bin"
+versionedBin="${appDir}/bin/${appName}_${version}" # native executable
+versionedJar="${versionedBin}.jar"                 # downloaded JAR
+
+graalvmDir="${xdgHome}/graalvm-ce-${javaVersion}-${graalvmVersion}"
+
 installGraalVm() {
-    command -v curl > /dev/null || fail curl
-    printf "Downloading GraalVM\n"
-    mkdir -p "$downloadDir"
-    file="graalvm-ce-${javaVersion}-${os}-amd64-${graalvmVersion}.tar.gz"
-    url="github.com/graalvm/graalvm-ce-builds/releases/download/vm-${graalvmVersion}/${file}"
-    downloadFile="${downloadDir}/${file}"
-    [ -f "${downloadFile}" ] || curl -Lso "${downloadFile}" "$url"
-    [ -d "${graalvmPath}" ] || tar xzf "${downloadFile}" -C "${downloadDir}" 
+	if ! [ -d "${graalvmDir}" ]; then
+
+		case "$(uname -s)" in
+		Darwin*) os="mac" ;;
+		Linux*) os="linux" ;;
+		CYGWIN*) os="windows" ;;
+		MINGW*) os="windows" ;;
+		MSYS*) os="windows" ;;
+		*) fail os ;;
+		esac
+
+		command -v curl >/dev/null || fail curl
+		printf "Downloading GraalVM\n"
+		file="graalvm-ce-${javaVersion}-${os}-amd64-${graalvmVersion}.tar.gz"
+		url="github.com/graalvm/graalvm-ce-builds/releases/download/vm-${graalvmVersion}/${file}"
+		downloadFile="/tmp/${file}"
+		[ -f "${downloadFile}" ] || curl -Lo "${downloadFile}" "$url"
+		tar xzf "${downloadFile}" -C "${xdgHome}"
+		echo "Installed GraalVM"
+	fi
 }
 
 installNativeImage() {
-    PATH="${PATH}:${graalvmPath}/bin"
-    gu install native-image
+	echo "Installing GraalVM native image"
+	gu install native-image
 }
 
-downloadCli() {
-    downloadFile="${downloadDir}/${cliFile}"
-    [ -f "${downloadFile}" ] || curl -Lso "${downloadFile}" "$cliDownloadUrl"
+ensureCli() {
+	# TODO:bcm  handle targz
+	if ! [ -f "${versionedBin}" ] && ! [ -f "${versionedJar}" ]; then
+		echo "Downloading ${appName}, saving to ${versionedJar}"
+		curl -Lso "${versionedJar}" "$downloadUrl"
+		echo "Downloaded ${appName}."
+	fi
+
+	if [ -n "$wantsNative" ] && ! [ -f "${versionedBin}" ]; then
+		PATH="${PATH}:${graalvmDir}/bin"
+		if ! command -v native-image >/dev/null; then
+			installGraalVm && installNativeImage
+		fi
+
+		buildNativeImage
+	fi
 }
 
 buildNativeImage() {
-    PATH="${PATH}:${graalvmPath}/bin"
-    GRAALVM_HOME="${graalvmPath}"
+	PATH="${PATH}:${graalvmDir}/bin"
+	export GRAALVM_HOME="${graalvmDir}"
 
-    # TODO: do not rebuild every time
-    # TODO: set the install location
-    native-image -jar "${downloadDir}/${cliFile}" application
+	native-image -jar "${versionedJar}" "${versionedBin}"
 }
 
 fail() {
-  printf "fail\n\033[1m\033[41m FAIL \033[0m \033[1m"
-  case "$1" in
-    curl)     printf "Could not find \033[0;36mcurl\033[0m, which is required by the install script." ;;
-    os)       printf "Could not identify the operating system type" ;;
-  esac
-  printf "\033[0m\n"
-  exit 1
+	printf "fail\n\033[1m\033[41m FAIL \033[0m \033[1m"
+	case "$1" in
+	curl) printf "Could not find \033[0;36mcurl\033[0m, which is required by the install script." ;;
+	os) printf "Could not identify the operating system type" ;;
+	general) printf "Couldn't find %s nor %s." "${versionedJar}" "${versionedBin}" ;;
+	esac
+	printf "\033[0m\n"
+	exit 1
 }
 
 success() {
-  printf "success\n\033[1m\033[42m SUCCESS \033[0m \033[1m"
-  case "$1" in 
-      graalvm) printf "GraalVM successfully installed!" 
-  esac
-  printf "\033[0m\n"
-  exit 1
+	printf "success\n\033[1m\033[42m SUCCESS \033[0m \033[1m"
+	case "$1" in
+	graalvm) printf "GraalVM successfully installed!" ;;
+	esac
+	printf "\033[0m\n"
+	exit 1
 }
 
-buildNativeImage
+ensureCli
+if [ -n "$wantsNative" ] && [ -f "${versionedBin}" ]; then
+	"${versionedBin}" "${@}"
+elif [ -f "${versionedJar}" ]; then
+	java -jar "${versionedJar}" "${@}"
+else
+	fail general
+fi
