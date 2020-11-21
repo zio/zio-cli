@@ -186,14 +186,16 @@ sealed trait HelpDoc { self =>
             color: rgb(0, 0, 0);
         }
 
+        pre {
+          background-color: rgba(27, 31, 35, .05);
+        }
+
         code {
-            background-color: rgba(27, 31, 35, .05);
             border-radius: 3px;
             color: rgb(36, 41, 46);
             font-family: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
             font-size: 85%;
             margin: 0;
-            padding: 3.2px 6.4px;
         }
     </style>"""
 

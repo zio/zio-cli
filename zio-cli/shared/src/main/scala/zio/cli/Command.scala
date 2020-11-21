@@ -46,7 +46,7 @@ object Command {
         val desc = description
 
         if (desc.isEmpty) HelpDoc.Empty
-        else h1("description") + self.helpDoc
+        else h1("description") + desc
       }
 
       val argumentsSection = {
