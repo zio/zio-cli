@@ -34,7 +34,7 @@ sealed trait PrimType[+A] {
 
   def choices: Option[String]
 
-  final def validate(value: String, opts: ParserOptions): IO[String, A] = validate(Option(value))
+  final def validate(value: String, opts: ParserOptions): IO[String, A] = validate(Option(value), opts)
 
   def validate(value: Option[String], opts: ParserOptions): IO[String, A]
 }
