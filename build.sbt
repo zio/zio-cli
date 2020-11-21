@@ -1,5 +1,6 @@
 import BuildHelper._
 import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
+import sbt.addSbtPlugin
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 inThisBuild(
@@ -57,8 +58,17 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
 lazy val zioCliJS = zioCli.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
+// Currently to Test,
+// 1. publishLocal the sbtZioCli project
+// 2. Uncomment the addSbtPlugin line in project.plugins.sbt
+// 3. Uncomment the lines below
+// uncomment these out along with the line for the plugin in
 lazy val zioCliJVM = zioCli.jvm
-  .settings(dottySettings)
+//  .enablePlugins(CLIPlugin)
+  .settings(
+    dottySettings,
+//    CLIPlugin.zioCliMainClass := Some("zio.cli.WcApp")
+  )
 
 lazy val docs = project
   .in(file("zio-cli-docs"))
@@ -78,3 +88,15 @@ lazy val docs = project
   )
   .dependsOn(root)
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+
+lazy val sbtZioCli = project
+  .in(file("sbt-zio-cli"))
+  .settings(
+    name := "sbt-zio-cli",
+    organization := "zio.cli.sbt",
+    scalaVersion := "2.12.10",
+    version := "0.0.0-SNAPSHOT",
+    addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.2.2")
+  )
+  .enablePlugins(SbtPlugin)
+
