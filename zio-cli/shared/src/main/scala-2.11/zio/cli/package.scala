@@ -1,6 +1,6 @@
 package zio
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 package object cli {
 
