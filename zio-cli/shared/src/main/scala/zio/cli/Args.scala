@@ -85,7 +85,7 @@ object Args {
 
     def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
       args match {
-        case head :: tail => primType.validate(Some(head)).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
+        case head :: tail => primType.validate(Some(head), opts).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
         case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}.") :: Nil)
       }
 

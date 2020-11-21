@@ -12,6 +12,7 @@ import java.time.Year
 import java.time.YearMonth
 
 object PrimTypeSpec extends DefaultRunnableSpec {
+  
   def spec = suite("PrimTypeTests")(
     suite("Text Suite") {
       testM("validates everything") {
