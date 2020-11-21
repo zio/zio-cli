@@ -11,7 +11,7 @@ import scala.collection.immutable.Nil
  * will have at least one command: the application itself. Other command-line applications may
  * support multiple commands.
  */
-sealed trait Command[+A] extends BuiltInOptions[A] { self =>
+sealed trait Command[+A] extends BuiltInOptions { self =>
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)

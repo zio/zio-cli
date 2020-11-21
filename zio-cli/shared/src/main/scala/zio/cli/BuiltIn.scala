@@ -4,7 +4,7 @@ import zio.IO
 
 final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
 object BuiltIn {
-  trait BuiltInOptions[+A] {
+  trait BuiltInOptions {
     lazy val builtInOptions: Options[BuiltIn] =
       (Options.bool("help", default = false) :: ShellType.option.optional("N/A")).as(BuiltIn(_, _))
 
