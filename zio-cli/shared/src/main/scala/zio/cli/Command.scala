@@ -1,9 +1,10 @@
 package zio.cli
 
-import zio.cli.BuiltIn.BuiltInOptions
+import zio.cli.Command.BuiltIn
 import zio.{ IO, ZIO }
 import zio.cli.HelpDoc.h1
 import zio.cli.HelpDoc.Span
+
 import scala.collection.immutable.Nil
 
 /**
@@ -11,7 +12,7 @@ import scala.collection.immutable.Nil
  * will have at least one command: the application itself. Other command-line applications may
  * support multiple commands.
  */
-sealed trait Command[+A] extends BuiltInOptions { self =>
+sealed trait Command[+A] { self =>
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
@@ -32,9 +33,17 @@ sealed trait Command[+A] extends BuiltInOptions { self =>
     subcommands(cs.foldLeft(c1 | c2)(_ | _))
 
   def synopsis: UsageSynopsis
+
+  lazy val builtInOptions: Options[BuiltIn] =
+    (Options.bool("help", ifPresent = true) :: ShellType.option.optional("N/A")).as(BuiltIn)
+
+  final def parseBuiltIn(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], BuiltIn)] =
+    builtInOptions.validate(args, opts)
 }
 
 object Command {
+  final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
+
   final case class Single[OptionsType, ArgsType](
     name: String,
     description: HelpDoc,

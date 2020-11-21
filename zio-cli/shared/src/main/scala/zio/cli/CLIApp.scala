@@ -1,8 +1,8 @@
 package zio.cli
 
 import zio._
+import zio.cli.Command.BuiltIn
 import zio.console._
-
 import zio.cli.HelpDoc.{ h1, p }
 import zio.cli.HelpDoc.Span.text
 
