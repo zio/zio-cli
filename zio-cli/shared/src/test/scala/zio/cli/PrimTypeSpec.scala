@@ -58,7 +58,7 @@ object PrimTypeSpec extends DefaultRunnableSpec {
       },
       testM("validate uses default value if value is not provided") {
         checkM(anyBoolean) { b =>
-          assertM(PrimType.Bool(Some(b)).validate(None, ParserOptions.default))((equalTo(b)))
+          assertM(PrimType.Bool(Some(b)).validate(None, CLIConfig.default))((equalTo(b)))
         }
       }
     ),

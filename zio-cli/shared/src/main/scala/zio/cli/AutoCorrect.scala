@@ -1,15 +1,15 @@
 package zio.cli
 
 private[cli] object AutoCorrect {
-  def levensteinDistance(first: String, second: String, opts: ParserOptions): Int =
+  def levensteinDistance(first: String, second: String, conf: CLIConfig): Int =
     (first.length, second.length) match {
       case (0, 0)            => 0
       case (0, secondLength) => secondLength
       case (firstLength, 0)  => firstLength
       case (rowCount, columnCount) => {
         val matrix       = Array.ofDim[Int](rowCount + 1, columnCount + 1)
-        val normalFirst  = opts.normalizeCase(first)
-        val normalSecond = opts.normalizeCase(second)
+        val normalFirst  = conf.normalizeCase(first)
+        val normalSecond = conf.normalizeCase(second)
 
         (0 to rowCount).foreach(x => matrix(x)(0) = x)
         (0 to columnCount).foreach(x => matrix(0)(x) = x)

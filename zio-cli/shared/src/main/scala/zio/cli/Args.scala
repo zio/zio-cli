@@ -62,7 +62,7 @@ sealed trait Args[+A] { self =>
 
   def synopsis: UsageSynopsis
 
-  def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)]
+  def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)]
 }
 
 object Args {
@@ -86,9 +86,9 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.Named(name, primType.choices)
 
-    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
+    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)] =
       args match {
-        case head :: tail => primType.validate(Some(head), opts).bimap(text => HelpDoc.p(text), a => tail -> a)
+        case head :: tail => primType.validate(Some(head), conf).bimap(text => HelpDoc.p(text), a => tail -> a)
         case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}."))
       }
 
@@ -106,7 +106,7 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], Unit)] =
+    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], Unit)] =
       IO.succeed((args, ()))
   }
 
@@ -121,11 +121,11 @@ object Args {
 
     def synopsis: UsageSynopsis = head.synopsis + tail.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], (A, B))] =
+    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], (A, B))] =
       for {
-        tuple     <- head.validate(args, opts)
+        tuple     <- head.validate(args, conf)
         (args, a) = tuple
-        tuple     <- tail.validate(args, opts)
+        tuple     <- tail.validate(args, conf)
         (args, b) = tuple
       } yield (args, (a, b))
   }
@@ -156,7 +156,7 @@ object Args {
 
     def minSize: Int = min.getOrElse(0) * value.minSize
 
-    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], List[A])] = {
+    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
       val max1 = max.getOrElse(Int.MaxValue)
 
@@ -164,7 +164,7 @@ object Args {
         if (acc.length >= max1) IO.succeed(args -> acc)
         else
           value
-            .validate(args, opts)
+            .validate(args, conf)
             .foldM(
               failure => if (acc.length >= min1 && args.isEmpty) IO.succeed(args -> acc) else IO.fail(failure),
               { case (args, a) => loop(args, a :: acc) }
@@ -185,8 +185,8 @@ object Args {
 
     def synopsis: UsageSynopsis = value.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], B)] =
-      value.validate(args, opts).flatMap {
+    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], B)] =
+      value.validate(args, conf).flatMap {
         case (r, a) =>
           f(a) match {
             case Left(value)  => IO.fail(value)

@@ -33,11 +33,11 @@ sealed trait PrimType[+A] {
 
   def choices: Option[String]
 
-  final def validate(value: String): IO[String, A] = validate(Option(value), ParserOptions.default)
+  final def validate(value: String): IO[String, A] = validate(Option(value), CLIConfig.default)
 
-  final def validate(value: String, opts: ParserOptions): IO[String, A] = validate(Option(value), opts)
+  final def validate(value: String, conf: CLIConfig): IO[String, A] = validate(Option(value), conf)
 
-  def validate(value: Option[String], opts: ParserOptions): IO[String, A]
+  def validate(value: Option[String], conf: CLIConfig): IO[String, A]
 }
 
 object PrimType {
@@ -73,7 +73,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JPath] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JPath] =
       (ZIO.fromOption(value) orElseFail "Path options do not have a default value").flatMap { value =>
         for {
           p <- fileSystem.parsePath(value)
@@ -109,7 +109,7 @@ object PrimType {
 
     def choices: Option[String] = Some(cases.map(_._1).mkString(" | "))
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, A] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, A] =
       (ZIO.fromOption(value) orElseFail "Enumeration options do not have a default value.").flatMap { value =>
         cases.find(_._1 == value) match {
           case None         => IO.fail("Expected one of the following cases: " + cases.map(_._1).mkString(", "))
@@ -126,7 +126,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, String] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, String] =
       attempt(value, v => v, typeName)
 
     def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
@@ -140,7 +140,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, BigDecimal] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, BigDecimal] =
       attempt(value, BigDecimal(_), typeName)
 
     def helpDoc: HelpDoc.Span = text("A decimal number.")
@@ -154,7 +154,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, BigInt] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, BigInt] =
       attempt(value, BigInt(_), typeName)
 
     def helpDoc: HelpDoc.Span = text("An integer.")
@@ -171,8 +171,8 @@ object PrimType {
 
     def choices: Option[String] = Some("true | false")
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, Boolean] =
-      value.map(opts.normalizeCase) match {
+    def validate(value: Option[String], conf: CLIConfig): IO[String, Boolean] =
+      value.map(conf.normalizeCase) match {
         case Some(s) =>
           s match {
             case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
@@ -193,7 +193,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JInstant] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JInstant] =
       attempt(value, JInstant.parse, typeName)
 
     def helpDoc: HelpDoc.Span = text("An instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.")
@@ -207,7 +207,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JLocalDate] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JLocalDate] =
       attempt(value, JLocalDate.parse, typeName)
 
     def helpDoc: HelpDoc.Span = text("A date in ISO_LOCAL_DATE format, such as 2007-12-03")
@@ -221,7 +221,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JLocalDateTime] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JLocalDateTime] =
       attempt(value, JLocalDateTime.parse, typeName)
 
     def helpDoc: HelpDoc.Span =
@@ -236,7 +236,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JLocalTime] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JLocalTime] =
       attempt(value, JLocalTime.parse, typeName)
 
     def helpDoc: HelpDoc.Span = text("A time without a time-zone in the ISO-8601 format, such as 10:15:30.")
@@ -250,7 +250,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JMonthDay] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JMonthDay] =
       attempt(value, JMonthDay.parse, typeName)
 
     def helpDoc: HelpDoc.Span = text("A month-day in the ISO-8601 format such as 12-03.")
@@ -264,7 +264,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JOffsetDateTime] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JOffsetDateTime] =
       attempt(value, JOffsetDateTime.parse, typeName)
 
     def helpDoc: HelpDoc.Span =
@@ -279,7 +279,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JOffsetTime] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JOffsetTime] =
       attempt(value, JOffsetTime.parse, typeName)
 
     def helpDoc: HelpDoc.Span =
@@ -294,7 +294,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JPeriod] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JPeriod] =
       attempt(value, JPeriod.parse, typeName)
 
     def helpDoc: HelpDoc.Span =
@@ -309,7 +309,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JYear] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JYear] =
       attempt(value, s => JYear.of(s.toInt), typeName)
 
     def helpDoc: HelpDoc.Span = text("A year in the ISO-8601 format, such as 2007.")
@@ -323,7 +323,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JYearMonth] = {
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
       def parse(input: String) = input match {
         case AcceptedFormat(y, m) => IO.effect(JYearMonth.of(y.toInt, m.toInt))
@@ -346,7 +346,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JZonedDateTime] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JZonedDateTime] =
       attempt(value, JZonedDateTime.parse, typeName)
 
     def helpDoc: HelpDoc.Span =
@@ -361,7 +361,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JZoneId] = attempt(value, JZoneId.of, typeName)
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JZoneId] = attempt(value, JZoneId.of, typeName)
 
     def helpDoc: HelpDoc.Span = text("A time-zone ID, such as Europe/Paris.")
   }
@@ -374,7 +374,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, JZoneOffset] =
+    def validate(value: Option[String], conf: CLIConfig): IO[String, JZoneOffset] =
       attempt(value, JZoneOffset.of, typeName)
 
     def helpDoc: HelpDoc.Span = text("A time-zone offset from Greenwich/UTC, such as +02:00.")

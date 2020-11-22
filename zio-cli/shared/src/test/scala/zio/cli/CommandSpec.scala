@@ -12,21 +12,21 @@ object CommandSpec extends DefaultRunnableSpec {
     suite("Toplevel Command Spec")(
       suite("Command with options followed by args")(
         testM("Should validate successfully") {
-          assertM(Tail.command.parse(List("-n", "100", "foo.log"), ParserOptions.default))(
+          assertM(Tail.command.parse(List("-n", "100", "foo.log"), CLIConfig.default))(
             equalTo((List.empty[String], (BigInt(100), "foo.log")))
           ) *>
-            assertM(Ag.command.parse(List("--after", "2", "--before", "3", "fooBar"), ParserOptions.default))(
+            assertM(Ag.command.parse(List("--after", "2", "--before", "3", "fooBar"), CLIConfig.default))(
               equalTo((List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
             )
         },
         testM("Should provide auto correct suggestions for misspelled options") {
-          assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
+          assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), CLIConfig.default).either)(
             equalTo(Left(p(error("""the flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
-            assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
+            assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), CLIConfig.default).either)(
               equalTo(Left(p(error("""the flag "--efore" is not recognized. Did you mean --before?"""))))
             ) *>
-            assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
+            assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), CLIConfig.default).either)(
               equalTo(
                 Left(
                   Sequence(
@@ -38,7 +38,7 @@ object CommandSpec extends DefaultRunnableSpec {
             )
         },
         testM("Shows an error if an option is missing") {
-          assertM(Ag.command.parse(List("--a", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
+          assertM(Ag.command.parse(List("--a", "2", "--before", "3", "fooBar"), CLIConfig.default).either)(
             equalTo(Left(p(error("Expected to find --after option."))))
           )
         }
