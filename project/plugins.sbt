@@ -12,6 +12,3 @@ addSbtPlugin("com.github.cb372"                  % "sbt-explicit-dependencies" %
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          % "3.0.0")
 addSbtPlugin("ch.epfl.lamp"                      % "sbt-dotty"                 % "0.4.1")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.9.13")
-
-// TODO - will need to publishLocal before you can use it to test
-// addSbtPlugin("zio.cli.sbt"                       % "sbt-zio-cli"               % "0.0.0-SNAPSHOT")
