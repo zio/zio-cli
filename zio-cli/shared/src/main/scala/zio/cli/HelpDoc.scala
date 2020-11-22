@@ -3,7 +3,7 @@ package zio.cli
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
  *
- * `HelpDoc` is composed of optional header and footers, and in-between, a o
+ * `HelpDoc` is composed of optional header and footers, and in-between, a
  * list of HelpDoc-level content items.
  *
  * HelpDoc-level content items, in turn, can be headers, paragraphs, description
@@ -26,16 +26,14 @@ sealed trait HelpDoc { self =>
 
   def isHeader: Boolean =
     self match {
-      case HelpDoc.Empty                 => true
-      case HelpDoc.DescriptionList(xs)   => true
-      case HelpDoc.Sequence(left, right) => left.isDescriptionList
-      case HelpDoc.Enumeration(xs)       => false
+      case HelpDoc.Header(_, _)          => true
+      case HelpDoc.Sequence(left, right) => left.isHeader
       case _                             => false
     }
 
   def isParagraph: Boolean =
     self match {
-      case HelpDoc.Header(_, _)          => true
+      case HelpDoc.Paragraph(_)          => true
       case HelpDoc.Sequence(left, right) => left.isParagraph
       case _                             => false
     }
