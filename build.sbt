@@ -75,7 +75,7 @@ lazy val examples = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings("zio.cli.examples"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-streams"  % zioVersion
+      "dev.zio" %% "zio-streams" % zioVersion
     )
   )
   .dependsOn(zioCli)

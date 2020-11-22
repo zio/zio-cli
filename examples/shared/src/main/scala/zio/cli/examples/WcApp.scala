@@ -6,8 +6,7 @@ import zio.blocking.Blocking
 import zio.cli.HelpDoc.Span.text
 import zio.cli._
 import zio.console.{ putStrLn, Console }
-import zio.stream.ZStream.DefaultChunkSize
-import zio.stream.{ ZStream, ZTransducer }
+import zio.stream.{ ZSink, ZStream, ZTransducer }
 import zio.{ App, URIO, ZIO }
 
 object WcApp extends App {
@@ -47,10 +46,13 @@ object WcApp extends App {
           )
         }
       }
+
       def format(res: WcResult) = {
         def opt(option: Option[Long]): String = option.map(l => f"${l}%9d").getOrElse("")
+
         s"${opt(res.countLines)} ${opt(res.countWords)} ${opt(res.countChar)} ${opt(res.countBytes)} ${res.fileName}"
       }
+
       ZIO.foreach(res)(r => putStrLn(format(r))) *> ZIO.when(res.length > 1)(putStrLn(format(wcTotal(res)))).ignore
     }
 
@@ -58,34 +60,23 @@ object WcApp extends App {
       zio.console.putStrLn(s"executing wc with args: ${opts} ${paths}") *>
         ZIO
           .foreachParN[Blocking, Throwable, Path, WcResult, List](4)(paths) { path =>
-            ZStream.fromFile(path).broadcastDynamic(DefaultChunkSize).use { bytesFanOut =>
-              val utf8FanOut = bytesFanOut.map(_.transduce(ZTransducer.utfDecode))
-              val chars      = utf8FanOut.map(_.map(_.length))
-              val words      = utf8FanOut.map(_.transduce(ZTransducer.splitOn(" ")))
-              val lines      = utf8FanOut.map(_.transduce(ZTransducer.splitLines))
+            def option(bool: Boolean, sink: ZSink[Any, Nothing, Byte, Byte, Long])
+              : ZSink[Any, Nothing, Byte, Byte, Option[Long]] =
+              if (bool) sink.map(Some(_)) else ZSink.succeed[Byte, Option[Long]](None)
 
-              def runCountOrNone(optStream: Option[ZStream[Any, Throwable, _]]) =
-                optStream.map(_.runCount.orDie.optional).getOrElse(ZIO.none)
-              def runSumOrNone[A](optStream: Option[ZStream[Any, Throwable, Int]]): ZIO[Any, Throwable, Option[Long]] =
-                optStream.map(_.runSum.orDie.optional).getOrElse(ZIO.none).map(_.map(_.asInstanceOf[Long]))
+            val byteCount = option(opts.bytes, ZSink.count)
+            val lineCount = option(opts.lines, ZTransducer.utfDecode >>> ZTransducer.splitLines >>> ZSink.count)
+            val wordCount = option(opts.words, ZTransducer.utfDecode >>> ZTransducer.splitOn(" ") >>> ZSink.count)
+            val charCount =
+              option(opts.char, ZTransducer.utfDecode >>> ZSink.foldLeft[String, Long](0L)((s, e) => s + e.length))
 
-              for {
-                bytesStream <- if (opts.bytes) bytesFanOut.optional else ZIO.none
-                charsStream <- if (opts.char) chars.optional else ZIO.none
-                wordsStream <- if (opts.words) words.optional else ZIO.none
-                linesStream <- if (opts.lines) lines.optional else ZIO.none
+            val zippedSinks: ZSink[Any, Nothing, Byte, Byte, (Option[Long], Option[Long], Option[Long], Option[Long])] =
+              (byteCount <&> lineCount <&> wordCount <&> charCount).map(t => (t._1._1._1, t._1._1._2, t._1._2, t._2))
 
-                bytesFiber <- runCountOrNone(bytesStream).fork
-                charsFiber <- runSumOrNone(charsStream).fork
-                wordsFiber <- runCountOrNone(wordsStream).fork
-                linesFiber <- runCountOrNone(linesStream).fork
-
-                bytes <- bytesFiber.join
-                chars <- charsFiber.join
-                words <- wordsFiber.join
-                lines <- linesFiber.join
-              } yield WcResult(path.getFileName.toString, bytes, lines, words, chars)
-            }
+            ZStream
+              .fromFile(path)
+              .run(zippedSinks)
+              .map(t => WcResult(path.getFileName.toString, t._1, t._2, t._3, t._4))
           }
           .orDie
           .provideLayer(zio.blocking.Blocking.live)
