@@ -1,6 +1,6 @@
 package zio.cli
 
-object AutoCorrect {
+private[cli] object AutoCorrect {
   def levensteinDistance(first: String, second: String, opts: ParserOptions): Int =
     (first.length, second.length) match {
       case (0, 0)            => 0
