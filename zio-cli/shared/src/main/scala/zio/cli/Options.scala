@@ -193,11 +193,14 @@ object Options {
     def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
-          (tail match {
-            case Nil         => primType.validate(None, opts)
-            case ::(head, _) => primType.validate(Some(head), opts)
-          }).bimap(f => p(f), a => tail.drop(1) -> a)
-
+          primType match {
+            case _: PrimType.Bool => primType.validate(None, opts).bimap(f => p(f), tail -> _)
+            case _ =>
+              (tail match {
+                case Nil         => primType.validate(None, opts)
+                case ::(head, _) => primType.validate(Some(head), opts)
+              }).bimap(f => p(f), a => tail.drop(1) -> a)
+          }
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)

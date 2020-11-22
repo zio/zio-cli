@@ -1,9 +1,10 @@
 package zio.cli
 
+import zio.cli.Command.BuiltIn
 import zio.{ IO, ZIO }
-
-import zio.cli.HelpDoc.{ h1 }
+import zio.cli.HelpDoc.h1
 import zio.cli.HelpDoc.Span
+
 import scala.collection.immutable.Nil
 
 /**
@@ -32,9 +33,17 @@ sealed trait Command[+A] { self =>
     subcommands(cs.foldLeft(c1 | c2)(_ | _))
 
   def synopsis: UsageSynopsis
+
+  lazy val builtInOptions: Options[BuiltIn] =
+    (Options.bool("help", ifPresent = true) :: ShellType.option.optional("N/A")).as(BuiltIn)
+
+  final def parseBuiltIn(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], BuiltIn)] =
+    builtInOptions.validate(args, opts)
 }
 
 object Command {
+  final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
+
   final case class Single[OptionsType, ArgsType](
     name: String,
     description: HelpDoc,
@@ -46,7 +55,7 @@ object Command {
         val desc = description
 
         if (desc.isEmpty) HelpDoc.Empty
-        else h1("description") + self.helpDoc
+        else h1("description") + desc
       }
 
       val argumentsSection = {
@@ -57,10 +66,10 @@ object Command {
       }
 
       val optionsSection = {
-        val opts = self.options.helpDoc
+        val opts = (self.options :: self.builtInOptions).helpDoc
 
         if (opts == HelpDoc.Empty) HelpDoc.Empty
-        else h1("options") + self.options.helpDoc
+        else h1("options") + opts
       }
 
       descriptionsSection + argumentsSection + optionsSection

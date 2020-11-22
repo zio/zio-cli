@@ -47,10 +47,24 @@ object ArgsSpec extends DefaultRunnableSpec {
       assertM(
         arg.validate(List(argsFile.getAbsolutePath, argsFile.getAbsolutePath), ParserOptions.default)
       )(equalTo(List.empty[String] -> List(argsFilePath, argsFilePath)))
+    },
+    testM("validate boolean arguments") {
+      val a = Args.bool("boolArg1") ++ Args.bool("boolArg2").repeat
+
+      for {
+        v1 <- a.validate("yes" :: Nil, ParserOptions.default)
+        v2 <- a.validate("yes" :: "yes" :: Nil, ParserOptions.default)
+        v3 <- a.validate("yes" :: "no" :: "yes" :: Nil, ParserOptions.default)
+      } yield {
+        assert(v1)(equalTo(List.empty[String] -> (true -> List.empty[Boolean])) ?? "v2") &&
+        assert(v2)(equalTo(List.empty[String] -> (true -> List(true))) ?? "v3") &&
+        assert(v3)(equalTo(List.empty[String] -> (true -> List(false, true))) ?? "v3")
+      }
     }
   )
 
   val argsFile     = new File("zio-cli/shared/src/test/scala/zio/cli/ArgsFileExample")
   val argsFilePath = Paths.get(argsFile.getAbsolutePath)
+
 
 }
