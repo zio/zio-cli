@@ -97,10 +97,16 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = l.requiresNot(f).validate(List("--firstname", "John"), CLIConfig.default)
       assertM(r.either)(isLeft)
     },
-    testM("returns a HelpDoc if an option is not an exact match, but close") {
+    testM("returns a HelpDoc if an option is not an exact match, but is close") {
       val r = f.validate(List("--firstme", "Alice"), CLIConfig.default)
       assertM(r.either)(
-        equalTo(Left(p(error("""the flag "--firstme" is not recognized. Did you mean --firstname?"""))))
+        equalTo(Left(p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))))
+      )
+    },
+    testM("returns a HelpDoc if an option is not an exact match and it's a short option") {
+      val r = a.validate(List("--ag", "20"), CLIConfig.default)
+      assertM(r.either)(
+        equalTo(Left(p(error("Expected to find --age option."))))
       )
     }
   )

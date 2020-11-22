@@ -21,17 +21,17 @@ object CommandSpec extends DefaultRunnableSpec {
         },
         testM("Should provide auto correct suggestions for misspelled options") {
           assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), CLIConfig.default).either)(
-            equalTo(Left(p(error("""the flag "--afte" is not recognized. Did you mean --after?"""))))
+            equalTo(Left(p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
             assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), CLIConfig.default).either)(
-              equalTo(Left(p(error("""the flag "--efore" is not recognized. Did you mean --before?"""))))
+              equalTo(Left(p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))))
             ) *>
             assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), CLIConfig.default).either)(
               equalTo(
                 Left(
                   Sequence(
-                    p(error("""the flag "--afte" is not recognized. Did you mean --after?""")),
-                    p(error("""the flag "--efore" is not recognized. Did you mean --before?"""))
+                    p(error("""The flag "--afte" is not recognized. Did you mean --after?""")),
+                    p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))
                   )
                 )
               )
