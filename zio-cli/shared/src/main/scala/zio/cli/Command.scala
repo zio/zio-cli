@@ -5,8 +5,6 @@ import zio.{ IO, ZIO }
 import zio.cli.HelpDoc.h1
 import zio.cli.HelpDoc.Span
 
-import scala.collection.immutable.Nil
-
 /**
  * A `Command` represents a command in a command-line application. Every command-line application
  * will have at least one command: the application itself. Other command-line applications may
@@ -78,14 +76,14 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))] =
+    ): IO[HelpDoc, (List[String], (OptionsType, ArgsType))] =
       for {
         tuple               <- self.options.validate(args, opts)
         (args, optionsType) = tuple
         tuple               <- self.args.validate(args, opts)
         (args, argsType)    = tuple
         _ <- ZIO.when(args.nonEmpty)(
-              ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
+              ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")))
             )
       } yield (args, (optionsType, argsType))
 

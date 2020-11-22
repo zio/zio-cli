@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.test._
 import zio.test.Assertion._
-import zio.cli.HelpDoc.p
+import zio.cli.HelpDoc.{ p, Sequence }
 import zio.cli.HelpDoc.Span.error
 
 import scala.language.postfixOps
@@ -18,22 +18,22 @@ object CommandSpec extends DefaultRunnableSpec {
         },
         testM("Should provide auto correct suggestions for misspelled options") {
           assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(p(error(s"""the flag "--afte" is not recognized. Did you mean --after?""")) :: Nil))
+            equalTo(Left(p(error(s"""the flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
           assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(p(error(s"""the flag "--efore" is not recognized. Did you mean --before?""")) :: Nil))
+            equalTo(Left(p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))))
           ) *>
           assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(
-              p(error(s"""the flag "--afte" is not recognized. Did you mean --after?""")) ::
-              p(error(s"""the flag "--efore" is not recognized. Did you mean --before?""")) ::
-              Nil
+            equalTo(Left(Sequence(
+                p(error(s"""the flag "--afte" is not recognized. Did you mean --after?""")),
+                p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))
+              )
             ))
           )
         },
         testM("Shows an error if an option is missing") {
           assertM(Ag.command.parse(List("--a", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(p(error("Expected to find --after option.")) :: Nil))
+            equalTo(Left(p(error("Expected to find --after option."))))
           )
         }
       )

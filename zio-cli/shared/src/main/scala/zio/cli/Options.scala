@@ -199,7 +199,7 @@ object Options {
             case ::(head, _) => primType.validate(Some(head), opts)
           }).bimap(f => p(f), a => tail.drop(1) -> a)
         case head :: tail if AutoCorrect.levensteinDistance(head, fullname, opts) < opts.autoCorrectLimit =>
-          IO.fail(p(error(s"""the flag "${head}" is not recognized. Did you mean ${fullname}?""")) :: Nil)
+          IO.fail(p(error(s"""the flag "${head}" is not recognized. Did you mean ${fullname}?""")))
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
@@ -235,7 +235,7 @@ object Options {
 
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
-    override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
+    override def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], (A, B))] =
       for {
         tuple <- left
                   .validate(args, opts)
@@ -243,7 +243,7 @@ object Options {
                     right
                       .validate(args, opts)
                       .foldM(
-                        err2 => IO.fail(err1 ++ err2),
+                        err2 => IO.fail(err1 + err2),
                         _ => IO.fail(err1)
                       )
                   )
