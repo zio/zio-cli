@@ -62,7 +62,7 @@ sealed trait Args[+A] { self =>
 
   def synopsis: UsageSynopsis
 
-  def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
+  def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)]
 }
 
 object Args {
@@ -86,11 +86,10 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.Named(name, primType.choices)
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       args match {
-        case head :: tail => primType.validate(head, opts).bimap(text => HelpDoc.p(text) :: Nil, a => tail -> a)
-        case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}.") :: Nil)
-
+        case head :: tail => primType.validate(Some(head), opts).bimap(text => HelpDoc.p(text), a => tail -> a)
+        case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}."))
       }
 
     private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
@@ -107,7 +106,7 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], Unit)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], Unit)] =
       IO.succeed((args, ()))
   }
 
@@ -122,7 +121,7 @@ object Args {
 
     def synopsis: UsageSynopsis = head.synopsis + tail.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], (A, B))] =
       for {
         tuple     <- head.validate(args, opts)
         (args, a) = tuple
@@ -157,11 +156,11 @@ object Args {
 
     def minSize: Int = min.getOrElse(0) * value.minSize
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], List[A])] = {
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
       val max1 = max.getOrElse(Int.MaxValue)
 
-      def loop(args: List[String], acc: List[A]): IO[List[HelpDoc], (List[String], List[A])] =
+      def loop(args: List[String], acc: List[A]): IO[HelpDoc, (List[String], List[A])] =
         if (acc.length >= max1) IO.succeed(args -> acc)
         else
           value
@@ -186,11 +185,11 @@ object Args {
 
     def synopsis: UsageSynopsis = value.synopsis
 
-    def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], B)] =
+    def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], B)] =
       value.validate(args, opts).flatMap {
         case (r, a) =>
           f(a) match {
-            case Left(value)  => IO.fail(List(value))
+            case Left(value)  => IO.fail(value)
             case Right(value) => IO.succeed((r, value))
           }
       }
@@ -201,12 +200,12 @@ object Args {
    * @param name Argument name
    * @return Boolean argument
    */
-  def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Boolean)
+  def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Bool(None))
 
   /**
    * Creates a boolean argument with boolean as argument name
    */
-  val bool: Args[Boolean] = Single(None, PrimType.Boolean)
+  val bool: Args[Boolean] = Single(None, PrimType.Bool(None))
 
   /** Creates a enumeration argument with a custom argument name
    *

@@ -37,7 +37,9 @@ lazy val root = project
   )
   .aggregate(
     zioCliJVM,
-    zioCliJS
+    zioCliJS,
+    examplesJVM,
+    examplesJS
   )
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
@@ -54,11 +56,24 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
+lazy val zioCliJVM = zioCli.jvm
+  .settings(dottySettings)
+
 lazy val zioCliJS = zioCli.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
-lazy val zioCliJVM = zioCli.jvm
+lazy val examplesJVM = examples.jvm
   .settings(dottySettings)
+
+lazy val examplesJS = examples.js
+  .settings(scalaJSUseMainModuleInitializer := true)
+
+lazy val examples = crossProject(JSPlatform, JVMPlatform)
+  .in(file("examples"))
+  .settings(stdSettings("examples"))
+  .settings(crossProjectSettings)
+  .settings(buildInfoSettings("zio.cli.examples"))
+  .dependsOn(zioCli)
 
 lazy val docs = project
   .in(file("zio-cli-docs"))
