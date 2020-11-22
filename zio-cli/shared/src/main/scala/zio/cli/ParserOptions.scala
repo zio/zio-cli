@@ -5,9 +5,11 @@ package zio.cli
  * be parsed by ZIO CLI.
  *
  * @param caseSensitive     Whether or not to be case sensitive.
+ * @param autoCorrectLimit  Threshold for when to show auto correct suggestions
  */
 final case class ParserOptions(
-  caseSensitive: Boolean
+  caseSensitive: Boolean,
+  autoCorrectLimit: Int,
 ) {
   def normalizeCase(text: String): String = if (caseSensitive) text else text.toLowerCase()
 
@@ -23,5 +25,5 @@ object ParserOptions {
   /**
    * The default options are case sensitive parsing
    */
-  val default: ParserOptions = ParserOptions(true)
+  val default: ParserOptions = ParserOptions(true, 2)
 }

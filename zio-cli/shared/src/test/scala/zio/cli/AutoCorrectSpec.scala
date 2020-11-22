@@ -18,7 +18,7 @@ object AutoCorrectSpec extends DefaultRunnableSpec {
       assert(levensteinDistance("foo", "bar", opts))(equalTo(3))
     },
     test("takes into account the provided parserOptions case sensitivity") {
-      val opts = ParserOptions(caseSensitive = false)
+      val opts = ParserOptions(caseSensitive = false, 2)
       assert(levensteinDistance("--force", "--force", opts))(equalTo(0))
       assert(levensteinDistance("--FORCE", "--force", opts))(equalTo(0))
     },

@@ -2,6 +2,8 @@ package zio.cli
 
 import zio.test._
 import zio.test.Assertion._
+import zio.cli.HelpDoc.p
+import zio.cli.HelpDoc.Span.error
 
 import scala.language.postfixOps
 
@@ -12,6 +14,11 @@ object CommandSpec extends DefaultRunnableSpec {
         testM("Should validate successfully") {
           assertM(Tail.command.parse(List("-n", "100", "foo.log"), ParserOptions.default))(
             equalTo((List.empty[String], (BigInt(100), "foo.log")))
+          )
+        },
+        testM("Should provide auto correct suggestions for misspelled options") {
+          assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
+            equalTo(Left(p(error(s"""the flag "--afte" is not recognized. Did you mean --after""")) :: Nil))
           )
         }
       )
@@ -38,5 +45,17 @@ object CommandSpec extends DefaultRunnableSpec {
     val args = Args.text("files") *
 
     val command = Command("wc", options, args)
+  }
+
+  object Ag {
+    val afterFlag: Options[BigInt] = Options.integer("after").alias("A")
+    val beforeFlag: Options[BigInt] = Options.integer("before").alias("B")
+
+    val options = afterFlag :: beforeFlag
+
+    val args = Args.text
+
+    val command = Command("grep", options, args)
+
   }
 }
