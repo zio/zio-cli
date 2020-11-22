@@ -108,7 +108,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, String] = 
+    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, String] =
       attempt(value, _ => value, typeName)
 
     def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
@@ -119,7 +119,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, BigDecimal] = 
+    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, BigDecimal] =
       attempt(value, BigDecimal(_), typeName)
 
     def helpDoc: HelpDoc.Span = text("A decimal number.")
@@ -130,7 +130,7 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, BigInt] = 
+    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, BigInt] =
       attempt(value, BigInt(_), typeName)
 
     def helpDoc: HelpDoc.Span = text("An integer.")
@@ -141,7 +141,7 @@ object PrimType {
 
     def choices: Option[String] = Some("true | false")
 
-    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, Boolean] = 
+    def validate(value: String, opts: ParserOptions = ParserOptions.default): IO[String, Boolean] =
       value.trim.toLowerCase match {
         case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
         case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
