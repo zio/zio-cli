@@ -127,9 +127,10 @@ sealed trait Options[+A] { self =>
   private[cli] def supports(arg: String, opts: ParserOptions) =
     foldSingle(false) {
       case (bool, single) =>
-        bool || Some(opts.normalizeCase(arg)) == single.uid || single.aliases
-          .map("-" + opts.normalizeCase(_))
-          .contains(arg)
+        bool || Some(opts.normalizeCase(arg)) == single.uid ||
+          single.aliases
+            .map("-" + opts.normalizeCase(_))
+            .contains(arg)
     }
 }
 
@@ -198,7 +199,7 @@ object Options {
             case ::(head, _) => primType.validate(head, opts)
           }).bimap(f => p(f) :: Nil, a => tail.drop(1) -> a)
         case head :: tail if AutoCorrect.levensteinDistance(head, fullname, opts) < opts.autoCorrectLimit =>
-          IO.fail(p(error(s"""the flag "${head}" is not recognized. Did you mean ${fullname}""")) :: Nil)
+          IO.fail(p(error(s"""the flag "${head}" is not recognized. Did you mean ${fullname}?""")) :: Nil)
         case head :: tail =>
           validate(tail, opts).map {
             case (args, a) => (head :: args, a)
@@ -235,18 +236,21 @@ object Options {
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
     override def validate(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], (A, B))] =
-      (for {
-        tuple     <- left.validate(args, opts)
+      for {
+        tuple <- left
+                  .validate(args, opts)
+                  .catchAll(err1 =>
+                    right
+                      .validate(args, opts)
+                      .foldM(
+                        err2 => IO.fail(err1 ++ err2),
+                        _ => IO.fail(err1)
+                      )
+                  )
         (args, a) = tuple
         tuple     <- right.validate(args, opts)
         (args, b) = tuple
-      } yield (args -> (a -> b))) orElse
-        (for {
-          tuple     <- right.validate(args, opts)
-          (args, b) = tuple
-          tuple     <- left.validate(args, opts)
-          (args, a) = tuple
-        } yield (args -> (a -> b)))
+      } yield (args -> (a -> b))
 
     override def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 

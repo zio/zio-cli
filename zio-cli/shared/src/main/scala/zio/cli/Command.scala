@@ -69,72 +69,22 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))] = {
-      type Return = IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))]
-
-      val possibilities = partitionArgs(args, opts)
-
-      val defaultFailure =
-        ZIO.fail(HelpDoc.p(Span.error(s"Expected ${self.args.minSize} arguments and options: ")) :: Nil)
-
-      possibilities.foldLeft[Return](defaultFailure) {
-        case (acc, (args, remainingArgs)) =>
-          val tryCurrent =
-            for {
-              tuple               <- self.options.validate(args, opts)
-              (args, optionsType) = tuple
-              tuple               <- self.args.validate(args, opts)
-              (args, argsType)    = tuple
-              _ <- ZIO.when(args.nonEmpty)(
-                    ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
-                  )
-            } yield (remainingArgs, (optionsType, argsType))
-
-          acc orElse tryCurrent
-      }
-    }
+    ): IO[List[HelpDoc], (List[String], (OptionsType, ArgsType))] =
+      for {
+        tuple               <- self.options.validate(args, opts)
+        (args, optionsType) = tuple
+        tuple               <- self.args.validate(args, opts)
+        (args, argsType)    = tuple
+        _ <- ZIO.when(args.nonEmpty)(
+              ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")) :: Nil)
+            )
+      } yield (args, (optionsType, argsType))
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
 
-    private def partitionArgs(args: List[String], opts: ParserOptions): Set[(List[String], List[String])] = {
-      def loop(argsMatched: Int, args: List[String], opts: ParserOptions): Set[(List[String], List[String])] =
-        args match {
-          case head :: tail =>
-            self.options.recognizes(head, opts) match {
-              case Some(value) =>
-                val ourArgs = head :: tail.take(value)
-                val unknown = tail.drop(value)
-
-                loop(argsMatched, unknown, opts).map {
-                  case (ourArgs2, theirArgs) =>
-                    (ourArgs ++ ourArgs2, theirArgs)
-                }
-
-              case None =>
-                val minSize = self.args.minSize
-                val maxSize = self.args.maxSize
-
-                val option1 =
-                  if (argsMatched < maxSize) {
-                    loop(argsMatched + 1, tail, opts).map {
-                      case (ourArgs, theirArgs) => (head :: ourArgs, theirArgs)
-                    }
-                  } else Set()
-
-                val option2 =
-                  if (argsMatched >= minSize) Set((Nil, tail))
-                  else Set()
-
-                option1 ++ option2
-            }
-
-          case Nil => Set((Nil, Nil))
-        }
-
-      loop(0, args, opts)
-    }
   }
+
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] {
     def helpDoc = command.helpDoc
 

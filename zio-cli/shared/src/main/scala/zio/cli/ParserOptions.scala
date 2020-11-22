@@ -9,7 +9,7 @@ package zio.cli
  */
 final case class ParserOptions(
   caseSensitive: Boolean,
-  autoCorrectLimit: Int,
+  autoCorrectLimit: Int
 ) {
   def normalizeCase(text: String): String = if (caseSensitive) text else text.toLowerCase()
 
