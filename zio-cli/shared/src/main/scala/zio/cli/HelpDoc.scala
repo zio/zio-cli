@@ -24,10 +24,20 @@ sealed trait HelpDoc { self =>
 
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
 
+  def isEmpty: Boolean =
+    self match {
+      case HelpDoc.Empty                 => true
+      case HelpDoc.DescriptionList(xs)   => xs.forall(_._2.isEmpty)
+      case HelpDoc.Sequence(left, right) => left.isEmpty && right.isEmpty
+      case HelpDoc.Enumeration(xs)       => xs.forall(_.isEmpty)
+      case _                             => false
+    }
+
   def isHeader: Boolean =
     self match {
       case HelpDoc.Header(_, _)          => true
       case HelpDoc.Sequence(left, right) => left.isHeader
+      case HelpDoc.Enumeration(xs)       => xs.head.isHeader
       case _                             => false
     }
 
@@ -35,6 +45,7 @@ sealed trait HelpDoc { self =>
     self match {
       case HelpDoc.Paragraph(_)          => true
       case HelpDoc.Sequence(left, right) => left.isParagraph
+      case HelpDoc.Enumeration(xs)       => xs.head.isParagraph
       case _                             => false
     }
 
@@ -45,19 +56,18 @@ sealed trait HelpDoc { self =>
       case _                             => false
     }
 
-  def isEmpty: Boolean =
+  def isEnumeration: Boolean =
     self match {
-      case HelpDoc.Empty                 => true
-      case HelpDoc.DescriptionList(xs)   => xs.forall(_._2.isEmpty)
-      case HelpDoc.Sequence(left, right) => left.isEmpty && right.isEmpty
-      case HelpDoc.Enumeration(xs)       => xs.forall(_.isEmpty)
-      case _                             => false
+      case HelpDoc.Enumeration(_)    => true
+      case HelpDoc.Sequence(left, _) => left.isEnumeration
+      case _                         => false
     }
-
+    
   def isSequence: Boolean =
     self match {
-      case HelpDoc.Sequence(_, _) => true
-      case _                      => false
+      case HelpDoc.Sequence(_, _)  => true
+      case HelpDoc.Enumeration(xs) => xs.head.isSequence
+      case _                       => false
     }
 
   def mapDescriptionList(f: (HelpDoc.Span, HelpDoc) => (HelpDoc.Span, HelpDoc)): HelpDoc =
