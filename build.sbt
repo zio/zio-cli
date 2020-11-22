@@ -58,17 +58,8 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
 lazy val zioCliJS = zioCli.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
-// Currently to Test,
-// 1. publishLocal the sbtZioCli project
-// 2. Uncomment the addSbtPlugin line in project.plugins.sbt
-// 3. Uncomment the lines below
-// uncomment these out along with the line for the plugin in
 lazy val zioCliJVM = zioCli.jvm
-//  .enablePlugins(CLIPlugin)
-  .settings(
-    dottySettings,
-//    CLIPlugin.zioCliMainClass := Some("zio.cli.WcApp")
-  )
+  .settings(dottySettings)
 
 lazy val docs = project
   .in(file("zio-cli-docs"))
