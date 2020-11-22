@@ -114,7 +114,8 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, String] = attempt(value, v => v, typeName)
+    def validate(value: Option[String], opts: ParserOptions): IO[String, String] =
+      attempt(value, v => v, typeName)
 
     def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
   }
@@ -135,7 +136,8 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], opts: ParserOptions): IO[String, BigInt] = attempt(value, BigInt(_), typeName)
+    def validate(value: Option[String], opts: ParserOptions): IO[String, BigInt] =
+      attempt(value, BigInt(_), typeName)
 
     def helpDoc: HelpDoc.Span = text("An integer.")
   }
