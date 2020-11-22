@@ -20,16 +20,19 @@ object CommandSpec extends DefaultRunnableSpec {
           assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
             equalTo(Left(p(error(s"""the flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
-          assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))))
-          ) *>
-          assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(Sequence(
-                p(error(s"""the flag "--afte" is not recognized. Did you mean --after?""")),
-                p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))
+            assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
+              equalTo(Left(p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))))
+            ) *>
+            assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
+              equalTo(
+                Left(
+                  Sequence(
+                    p(error(s"""the flag "--afte" is not recognized. Did you mean --after?""")),
+                    p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))
+                  )
+                )
               )
-            ))
-          )
+            )
         },
         testM("Shows an error if an option is missing") {
           assertM(Ag.command.parse(List("--a", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
@@ -63,7 +66,7 @@ object CommandSpec extends DefaultRunnableSpec {
   }
 
   object Ag {
-    val afterFlag: Options[BigInt] = Options.integer("after").alias("A")
+    val afterFlag: Options[BigInt]  = Options.integer("after").alias("A")
     val beforeFlag: Options[BigInt] = Options.integer("before").alias("B")
 
     val options = afterFlag :: beforeFlag
