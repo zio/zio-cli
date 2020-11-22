@@ -1,8 +1,8 @@
 package zio.cli
 
 import zio._
+import zio.cli.Command.BuiltIn
 import zio.console._
-
 import zio.cli.HelpDoc.{ h1, p }
 import zio.cli.HelpDoc.Span.text
 
@@ -19,8 +19,8 @@ final case class CLIApp[-R, +E, Model](
   footer: HelpDoc = HelpDoc.Empty,
   options: ParserOptions = ParserOptions.default
 ) { self =>
-  def builtIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
-    if (args.length == 0 || builtIn.help) putStrLn(helpDoc.toPlaintext(80))
+  def handleBuiltIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
+    if (args.isEmpty || builtIn.help) printDocs(helpDoc)
     else
       builtIn.shellCompletions match {
         case None        => IO.unit
@@ -43,16 +43,18 @@ final case class CLIApp[-R, +E, Model](
   def options(o: ParserOptions): CLIApp[R, E, Model] =
     copy(options = o)
 
-  def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] = {
-    val extended =
-      Command("zio-cli", BuiltIn.options, Args.none).map(_._1)
-
+  def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
     (for {
-      validationResult <- (command orElseEither extended).parse(args, options)
-      (_, e)           = validationResult
-      result           <- e.fold(execute(_), builtIn(args, _))
-    } yield result).exitCode
-  }
+      builtInValidationResult  <- command.parseBuiltIn(args, options)
+      (remainingArgs, builtIn) = builtInValidationResult
+      _                        <- handleBuiltIn(args, builtIn)
+      validationResult         <- command.parse(remainingArgs, options)
+    } yield validationResult)
+      .foldM(printDocs, success => execute(success._2))
+      .exitCode
+
+  def printDocs(helpDoc: HelpDoc): URIO[Console, Unit] =
+    putStrLn(helpDoc.toPlaintext(80))
 
   def summary(s: HelpDoc.Span): CLIApp[R, E, Model] =
     copy(summary = self.summary + s)

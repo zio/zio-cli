@@ -8,7 +8,7 @@ import zio.cli.HelpDoc.Span.Text
 import zio.test.Assertion._
 import zio.test._
 
-object ArgsSpec extends DefaultRunnableSpec {
+object FileArgsSpec extends DefaultRunnableSpec {
   def spec = suite("ArgsSpec")(
     testM("Existing file") {
       val arg = Args.file("files", Exists.Yes).repeat
