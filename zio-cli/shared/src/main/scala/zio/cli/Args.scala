@@ -166,7 +166,7 @@ object Args {
           value
             .validate(args, opts)
             .foldM(
-              failure => if (acc.length >= min1) IO.succeed(args -> acc) else IO.fail(failure),
+              failure => if (acc.length >= min1 && args.isEmpty) IO.succeed(args -> acc) else IO.fail(failure),
               { case (args, a) => loop(args, a :: acc) }
             )
 
