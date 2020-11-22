@@ -194,10 +194,14 @@ object Options {
     def validate(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail if supports(head, opts) =>
-          (tail match {
-            case Nil         => primType.validate(None, opts)
-            case ::(head, _) => primType.validate(Some(head), opts)
-          }).bimap(f => p(f), a => tail.drop(1) -> a)
+          primType match {
+            case _: PrimType.Bool => primType.validate(None, opts).bimap(f => p(f), tail -> _)
+            case _ =>
+              (tail match {
+                case Nil         => primType.validate(None, opts)
+                case ::(head, _) => primType.validate(Some(head), opts)
+              }).bimap(f => p(f), a => tail.drop(1) -> a)
+          }
         case head :: tail if AutoCorrect.levensteinDistance(head, fullname, opts) <= opts.autoCorrectLimit =>
           IO.fail(p(error(s"""the flag "${head}" is not recognized. Did you mean ${fullname}?""")))
         case head :: tail =>
@@ -335,62 +339,119 @@ object Options {
       .withDefault(!ifPresent, (!ifPresent).toString)
   }
 
+  /**
+   * Creates a parameter accepting one valye from set of allowed elements.
+   */
   def enumeration[A](name: String)(cases: (String, A)*): Options[A] =
     Single(name, Vector.empty, PrimType.Enumeration(cases: _*))
 
+  /**
+   * Creates a parameter expecting path to the file.
+   */
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
     Single(name, Vector.empty, PrimType.Path(PathType.File, exists))
 
+  /**
+   * Creates a parameter expecting path to the directory.
+   * */
   def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
     Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists))
 
+  /**
+   * Creates a parameter expecting an arbitrary text.
+   */
   def text(name: String): Options[String] =
     Single(name, Vector.empty, PrimType.Text)
 
+  /**
+   * Creates a parameter expecting a decimal number.
+   */
   def decimal(name: String): Options[BigDecimal] =
     Single(name, Vector.empty, PrimType.Decimal)
 
+  /**
+   * Creates a parameter expecting an integer.
+   */
   def integer(name: String): Options[BigInt] =
     Single(name, Vector.empty, PrimType.Integer)
 
+  /**
+   * Creates a parameter expecting a parameter for instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.
+   */
   def instant(name: String): Options[JInstant] =
     Single(name, Vector.empty, PrimType.Instant)
 
+  /**
+   * Creates a parameter excepting parameter for a date in ISO_LOCAL_DATE format, such as 2007-12-03.
+   */
   def localDate(name: String): Options[JLocalDate] =
     Single(name, Vector.empty, PrimType.LocalDate)
 
+  /**
+   * Creates a parameter excepting a date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.
+   */
   def localDateTime(name: String): Options[JLocalDateTime] =
     Single(name, Vector.empty, PrimType.LocalDateTime)
 
+  /**
+   * Creates a parameter excepting a time without a time-zone in the ISO-8601 format, such as 10:15:30.
+   */
   def localTime(name: String): Options[JLocalTime] =
     Single(name, Vector.empty, PrimType.LocalTime)
 
+  /**
+   * Creates a parameter excepting a month-day in the ISO-8601 format such as 12-03.
+   */
   def monthDay(name: String): Options[JMonthDay] =
     Single(name, Vector.empty, PrimType.MonthDay)
 
   val none: Options[Unit] = Empty
 
+  /**
+   * Creates a parameter excepting a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.
+   */
   def offsetDateTime(name: String): Options[JOffsetDateTime] =
     Single(name, Vector.empty, PrimType.OffsetDateTime)
 
+  /**
+   * Creates a parameter excepting a time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00.
+   */
   def offsetTime(name: String): Options[JOffsetTime] =
     Single(name, Vector.empty, PrimType.OffsetTime)
 
+  /**
+   * Createsa parameter excepting  a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
+   */
   def period(name: String): Options[JPeriod] =
     Single(name, Vector.empty, PrimType.Period)
 
+  /**
+   * Creates a parameter expecting a year in the ISO-8601 format, such as 2007.
+   */
   def year(name: String): Options[JYear] =
     Single(name, Vector.empty, PrimType.Year)
 
+  /**
+   * Creates a parameter expecting a year-month in the ISO-8601 format, such as 2007-12..
+   */
   def yearMonth(name: String): Options[JYearMonth] =
     Single(name, Vector.empty, PrimType.YearMonth)
 
+  /**
+   * Creates a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.
+   */
   def zonedDateTime(name: String): Options[JZonedDateTime] =
     Single(name, Vector.empty, PrimType.ZonedDateTime)
 
+  /**
+   * Creates a parameter expecting a time-zone ID, such as Europe/Paris.
+   */
   def zoneId(name: String): Options[JZoneId] =
     Single(name, Vector.empty, PrimType.ZoneId)
 
+  /**
+   * Creates a parameter expecting a time-zone offset from Greenwich/UTC, such as +02:00.
+   */
   def zoneOffset(name: String): Options[JZoneOffset] =
     Single(name, Vector.empty, PrimType.ZoneOffset)
 }

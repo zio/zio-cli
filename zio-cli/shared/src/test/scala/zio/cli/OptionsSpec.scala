@@ -21,17 +21,18 @@ object OptionsSpec extends DefaultRunnableSpec {
 
       assertM(r)(equalTo(List() -> true))
     },
-    testM("validate boolean option with and without value") {
-      val o = Options.bool("help", true)
+    testM("validate boolean option with followup option") {
+      val o = Options.bool("help", true) :: Options.bool("v", true)
 
       for {
         v1 <- o.validate(Nil, ParserOptions.default)
         v2 <- o.validate("--help" :: Nil, ParserOptions.default)
-        v3 <- o.validate("--help" :: "on" :: Nil, ParserOptions.default)
-      } yield assert(v1)(equalTo(Nil          -> false)) &&
-        assert(v2)(equalTo(List.empty[String] -> true) ?? "v2") && assert(v3)(
-        equalTo(List.empty[String]            -> true) ?? "v3"
-      )
+        v3 <- o.validate("--help" :: "-v" :: Nil, ParserOptions.default)
+      } yield {
+        assert(v1)(equalTo(Nil                -> (false -> false))) &&
+        assert(v2)(equalTo(List.empty[String] -> (true  -> false)) ?? "v2") &&
+        assert(v3)(equalTo(List.empty[String] -> (true  -> true)) ?? "v3")
+      }
     },
     testM("validate text option 1") {
       val r = f.validate(List("--firstname", "John"), ParserOptions.default)

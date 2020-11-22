@@ -1,9 +1,18 @@
 package zio.cli
 
+import java.nio.file.{ Path => JPath, Paths => JPaths }
 import java.time._
 
+import zio.cli.files.FileSystem
+import zio.{ random, IO, UIO, ZIO }
+import zio.random.Random
 import zio.test.Assertion._
 import zio.test._
+
+import java.time.ZoneOffset
+import java.time.MonthDay
+import java.time.Year
+import java.time.YearMonth
 
 object PrimTypeSpec extends DefaultRunnableSpec {
 
@@ -15,20 +24,22 @@ object PrimTypeSpec extends DefaultRunnableSpec {
         }
       }
     },
-    suite("Decimal Suite") {
-      testM("validate returns proper BigDecimal representation") {
-        checkM(Gen.bigDecimal(BigDecimal("1.41421356237309504880168"), BigDecimal("50.4"))) { i =>
-          assertM(PrimType.Decimal.validate(i.toString()))(equalTo(i))
+    suite("Enumeration Suite")(
+      testM("validate return proper value if one of the cases") {
+        checkM(anyPairs) {
+          case ((selectedName, selectedValue), pairs) =>
+            assertM(PrimType.Enumeration(pairs: _*).validate(selectedName))(equalTo(selectedValue))
+        }
+      },
+      testM("validate return error if NOT one of the cases") {
+        checkM(anyPairs) {
+          case (v @ (selectedName, _), pairs) =>
+            assertM(
+              PrimType.Enumeration(pairs.filterNot(_ == v): _*).validate(selectedName).either
+            )(isLeft(startsWithString(s"Expected one of the following cases:")))
         }
       }
-    },
-    suite("Integer Suite") {
-      testM("validate returns proper BigInt representation") {
-        checkM(anyBigIntString) { i =>
-          assertM(PrimType.Integer.validate(i))(equalTo(BigInt(i)))
-        }
-      }
-    },
+    ),
     suite("Boolean Suite")(
       testM("validate true combinations returns proper Boolean representation") {
         checkM(anyTrueBooleanString) { i =>
@@ -39,82 +50,149 @@ object PrimTypeSpec extends DefaultRunnableSpec {
         checkM(anyFalseBooleanString) { i =>
           assertM(PrimType.Bool(None).validate(i))(equalTo(false))
         }
+      },
+      testM("validate rejects improper Boolean representation") {
+        assertM(PrimType.Bool(None).validate("bad").either)(
+          isLeft(equalTo("bad cannot be recognized as valid boolean."))
+        )
+      },
+      testM("validate uses default value if value is not provided") {
+        checkM(anyBoolean) { b =>
+          assertM(PrimType.Bool(Some(b)).validate(None, ParserOptions.default))((equalTo(b)))
+        }
       }
     ),
-    suite("Instant Suite") {
-      testM("validate returns proper Instant representation") {
-        checkM(Gen.anyInstant) { i =>
-          assertM(PrimType.Instant.validate(i.toString))(equalTo(i))
-        }
+    suite("Path Suite")(
+      testM("validate returns proper directory path") {
+        assertM(
+          PrimType
+            .Path(PathType.Directory, exists = Exists.Yes, mockFileSystem(pathIsDirectory = true))
+            .validate("path")
+        )(equalTo(JPaths.get("path")))
+      },
+      testM("validate returns proper directory path if both allowed") {
+        assertM(
+          PrimType.Path(PathType.Either, exists = Exists.Yes, mockFileSystem(pathIsDirectory = true)).validate("path")
+        )(equalTo(JPaths.get("path")))
+      },
+      testM("validate returns error if path targets file but directory was expected") {
+        assertM(
+          PrimType
+            .Path(PathType.Directory, exists = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
+            .validate("path")
+            .either
+        )(isLeft(equalTo("Expected path 'path' to be a directory.")))
+      },
+      testM("validate returns proper file path") {
+        assertM(
+          PrimType.Path(PathType.File, exists = Exists.Yes, mockFileSystem(pathIsRegularFile = true)).validate("path")
+        )(equalTo(JPaths.get("path")))
+      },
+      testM("validate returns proper file path if both allowed") {
+        assertM(
+          PrimType.Path(PathType.Either, exists = Exists.Yes, mockFileSystem(pathIsRegularFile = true)).validate("path")
+        )(equalTo(JPaths.get("path")))
+      },
+      testM("validate returns error if path targets directory but file was expected") {
+        assertM(
+          PrimType
+            .Path(PathType.File, exists = Exists.Yes, mockFileSystem(pathIsDirectory = true))
+            .validate("path")
+            .either
+        )(isLeft(equalTo("Expected path 'path' to be a regular file.")))
+      },
+      testM("validate returns error if file doesn't exits but must exists") {
+        assertM(
+          PrimType
+            .Path(PathType.Either, exists = Exists.Yes, mockFileSystem(pathExists = false))
+            .validate("path")
+            .either
+        )(isLeft(equalTo("Path 'path' must exist.")))
+      },
+      testM("validate returns error if file does exits but must not exists") {
+        assertM(
+          PrimType.Path(PathType.Either, exists = Exists.No, mockFileSystem()).validate("path").either
+        )(isLeft(equalTo("Path 'path' must not exist.")))
       }
-    },
-    suite("LocalDateTime Suite") {
-      testM("validate returns proper LocalDateTime representation") {
-        checkM(anyLocalDateTime) { i =>
-          assertM(PrimType.LocalDateTime.validate(i))(equalTo(LocalDateTime.parse(i)))
-        }
-      }
-    },
-    suite("LocalDate Suite") {
-      testM("validate returns proper LocalDate representation") {
-        checkM(anyLocalDate) { i =>
-          assertM(PrimType.LocalDate.validate(i))(equalTo(LocalDate.parse(i)))
-        }
-      }
-    },
-    suite("LocalTime Suite") {
-      testM("validate returns proper LocalTime representation") {
-        checkM(anyLocalTime) { i =>
-          assertM(PrimType.LocalTime.validate(i))(equalTo(LocalTime.parse(i)))
-        }
-      }
-    },
-    suite("MonthDay Suite") {
-      testM("validate returns proper MonthDay representation") {
-        checkM(anyMonthDay) { i =>
-          assertM(PrimType.MonthDay.validate(i))(equalTo(MonthDay.parse(i)))
-        }
-      }
-    },
-    suite("OffsetDateTime Suite") {
-      testM("validate returns proper OffsetDateTime representation") {
-        checkM(Gen.anyOffsetDateTime) { i =>
-          assertM(PrimType.OffsetDateTime.validate(i.toString))(equalTo(i))
-        }
-      }
-    },
-    suite("OffsetTime Suite") {
-      testM("validate returns proper OffsetTime representation") {
-        checkM(Gen.anyOffsetDateTime.map(_.toOffsetTime)) { i =>
-          assertM(PrimType.OffsetTime.validate(i.toString))(equalTo(i))
-        }
-      }
-    },
-    suite("Year Suite") {
-      testM("validate returns proper Year representation") {
-        checkM(anyYear) { i =>
-          assertM(PrimType.Year.validate(i.toString))(equalTo(i))
-        }
-      }
-    },
-    suite("YearMonth Suite") {
-      testM("validate returns proper YearMonth representation") {
-        checkM(anyYearMonth) { i =>
-          assertM(PrimType.YearMonth.validate(i.toString))(equalTo(i))
-        }
-      }
-    }
+    ),
+    simplePrimTypeSuite(
+      PrimType.Decimal,
+      Gen.bigDecimal(BigDecimal("1.41421356237309504880168"), BigDecimal("50.4")),
+      "BigDecimal"
+    ),
+    simplePrimTypeSuite(PrimType.Integer, anyBigInt, "Integer"),
+    simplePrimTypeSuite(PrimType.Instant, Gen.anyInstant, "Instant"),
+    simplePrimTypeSuite(PrimType.LocalDateTime, anyLocalDateTime, "LocalDateTime"),
+    simplePrimTypeSuite(PrimType.LocalDate, anyLocalDate, "LocalDate"),
+    simplePrimTypeSuite(PrimType.LocalTime, anyLocalTime, "LocalTime"),
+    simplePrimTypeSuite(PrimType.MonthDay, anyMonthDay, "MonthDay"),
+    simplePrimTypeSuite(PrimType.OffsetDateTime, Gen.anyOffsetDateTime, "OffsetDateTime"),
+    simplePrimTypeSuite(PrimType.OffsetTime, anyOffsetTime, "OffsetTime"),
+    simplePrimTypeSuite(PrimType.Year, anyYear, "Year"),
+    simplePrimTypeSuite(PrimType.YearMonth, anyYearMonth, "YearMonth"),
+    simplePrimTypeSuite(PrimType.ZoneOffset, anyZoneOffset, "ZoneOffset"),
+    simplePrimTypeSuite(PrimType.ZoneId, anyZoneId, "ZoneId"),
+    simplePrimTypeSuite(PrimType.ZonedDateTime, anyZonedDateTime, "ZonedDateTime"),
+    simplePrimTypeSuite(PrimType.Period, anyPeriod, "Period")
   )
 
-  val anyBigIntString                         = Gen.long(0, Long.MaxValue).map(BigInt(_)).map(_.toString)
-  val anyTrueBooleanString: Gen[Any, String]  = Gen.fromIterable(List("true", "TruE", "1", "y", "yes", "yEs", "on"))
-  val anyFalseBooleanString: Gen[Any, String] = Gen.fromIterable(List("false", "FAlSE", "0", "n", "no", "off", "OFF"))
+  def simplePrimTypeSuite[G, P[G] <: PrimType[G]](primType: P[G], gen: Gen[Random, G], primeTypeName: String) =
+    suite(s"$primeTypeName Suite")(
+      testM(s"validate returns proper $primeTypeName representation") {
+        checkM(gen) { i =>
+          assertM(primType.validate(i.toString))(equalTo(i))
+        }
+      },
+      testM(s"validate rejects improper $primeTypeName representation") {
+        assertM(primType.validate("bad").either)(isLeft(equalTo(s"bad is not a ${primType.typeName}.")))
+      }
+    )
 
-  val anyInstant       = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC))
-  val anyLocalDateTime = anyInstant.map(_.toLocalDateTime.toString)
-  val anyLocalDate     = anyInstant.map(_.toLocalDate.toString)
-  val anyLocalTime     = anyInstant.map(_.toLocalTime.toString)
-  val anyMonthDay      = anyInstant.map(d => MonthDay.of(d.getMonthValue, d.getDayOfMonth).toString)
+  def randomizeCharCases(s: String): ZIO[Random, Nothing, String] =
+    ZIO.foreach(s.toList)(c => random.nextBoolean.map(b => if (b) c.toUpper else c.toLower)).map(_.mkString)
+
+  def mockFileSystem(
+    correctPath: Boolean = true,
+    pathExists: Boolean = true,
+    pathIsDirectory: Boolean = false,
+    pathIsRegularFile: Boolean = false
+  ) = new FileSystem {
+    override def parsePath(path: String): IO[String, JPath] =
+      if (correctPath) ZIO.succeed(JPaths.get(path)) else ZIO.fail(s"'$path' is not a recognized path.")
+
+    override def exists(path: JPath): UIO[Boolean] = ZIO.succeed(pathExists)
+
+    override def isDirectory(path: JPath): UIO[Boolean] = ZIO.succeed(pathIsDirectory)
+
+    override def isRegularFile(path: JPath): UIO[Boolean] = ZIO.succeed(pathIsRegularFile)
+  }
+
+  val anyTrueBooleanString: Gen[Random, String] =
+    Gen.fromIterable(List("true", "1", "y", "yes", "on")).mapM(randomizeCharCases)
+  val anyFalseBooleanString: Gen[Random, String] =
+    Gen.fromIterable(List("false", "0", "n", "no", "off")).mapM(randomizeCharCases)
+
+  val anyBigInt: Gen[Random, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
+  val anyBoolean: Gen[Random, Boolean] =
+    Gen.fromIterable(List(true, false))
+  val anyInstant = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC))
+  val anyPeriod = for {
+    first                <- Gen.anyLocalDateTime
+    second               <- Gen.anyLocalDateTime
+    List(earlier, later) = List(first.toLocalDate, second.toLocalDate).sorted
+  } yield Period.between(earlier, later)
+  val anyPairs = for {
+    uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.anyLong)).map(_.distinctBy(_._1))
+    selected    <- Gen.fromIterable(uniquePairs)
+  } yield (selected, uniquePairs)
+  val anyOffsetTime    = Gen.anyOffsetDateTime.map(_.toOffsetTime)
+  val anyZoneOffset    = Gen.anyOffsetDateTime.map(_.getOffset)
+  val anyZonedDateTime = Gen.anyOffsetDateTime.map(_.toZonedDateTime)
+  val anyZoneId        = anyZonedDateTime.map(_.getZone)
+  val anyLocalDateTime = anyInstant.map(_.toLocalDateTime)
+  val anyLocalDate     = anyInstant.map(_.toLocalDate)
+  val anyLocalTime     = anyInstant.map(_.toLocalTime)
+  val anyMonthDay      = anyInstant.map(d => MonthDay.of(d.getMonthValue, d.getDayOfMonth))
   val anyYear          = Gen.int(Year.MIN_VALUE, Year.MAX_VALUE).map(Year.of)
   val anyYearMonth     = anyYear.map(d => YearMonth.of(d.getValue(), 2))
 
