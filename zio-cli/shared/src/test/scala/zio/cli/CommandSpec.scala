@@ -14,21 +14,24 @@ object CommandSpec extends DefaultRunnableSpec {
         testM("Should validate successfully") {
           assertM(Tail.command.parse(List("-n", "100", "foo.log"), ParserOptions.default))(
             equalTo((List.empty[String], (BigInt(100), "foo.log")))
-          )
+          ) *>
+            assertM(Ag.command.parse(List("--after", "2", "--before", "3", "fooBar"), ParserOptions.default))(
+              equalTo((List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
+            )
         },
         testM("Should provide auto correct suggestions for misspelled options") {
           assertM(Ag.command.parse(List("--afte", "2", "--before", "3", "fooBar"), ParserOptions.default).either)(
-            equalTo(Left(p(error(s"""the flag "--afte" is not recognized. Did you mean --after?"""))))
+            equalTo(Left(p(error("""the flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
             assertM(Ag.command.parse(List("--after", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
-              equalTo(Left(p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))))
+              equalTo(Left(p(error("""the flag "--efore" is not recognized. Did you mean --before?"""))))
             ) *>
             assertM(Ag.command.parse(List("--afte", "2", "--efore", "3", "fooBar"), ParserOptions.default).either)(
               equalTo(
                 Left(
                   Sequence(
-                    p(error(s"""the flag "--afte" is not recognized. Did you mean --after?""")),
-                    p(error(s"""the flag "--efore" is not recognized. Did you mean --before?"""))
+                    p(error("""the flag "--afte" is not recognized. Did you mean --after?""")),
+                    p(error("""the flag "--efore" is not recognized. Did you mean --before?"""))
                   )
                 )
               )

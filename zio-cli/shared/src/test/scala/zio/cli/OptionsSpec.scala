@@ -2,6 +2,8 @@ package zio.cli
 
 import zio.test.Assertion._
 import zio.test._
+import zio.cli.HelpDoc.p
+import zio.cli.HelpDoc.Span.error
 
 object OptionsSpec extends DefaultRunnableSpec {
 
@@ -93,6 +95,12 @@ object OptionsSpec extends DefaultRunnableSpec {
     testM("test requires not") {
       val r = l.requiresNot(f).validate(List("--firstname", "John"), ParserOptions.default)
       assertM(r.either)(isLeft)
+    },
+    testM("returns a HelpDoc if an option is not an exact match, but close") {
+      val r = f.validate(List("--firstme", "Alice"), ParserOptions.default)
+      assertM(r.either)(
+        equalTo(Left(p(error("""the flag "--firstme" is not recognized. Did you mean --firstname?"""))))
+      )
     }
   )
 }

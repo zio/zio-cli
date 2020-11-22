@@ -198,7 +198,7 @@ object Options {
             case Nil         => primType.validate(None, opts)
             case ::(head, _) => primType.validate(Some(head), opts)
           }).bimap(f => p(f), a => tail.drop(1) -> a)
-        case head :: tail if AutoCorrect.levensteinDistance(head, fullname, opts) < opts.autoCorrectLimit =>
+        case head :: tail if AutoCorrect.levensteinDistance(head, fullname, opts) <= opts.autoCorrectLimit =>
           IO.fail(p(error(s"""the flag "${head}" is not recognized. Did you mean ${fullname}?""")))
         case head :: tail =>
           validate(tail, opts).map {
