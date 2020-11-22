@@ -9,10 +9,28 @@ object OptionsSpec extends DefaultRunnableSpec {
   val l: Options[String]            = Options.text("lastname")
   val a: Options[BigInt]            = Options.integer("age")
   val aOpt: Options[Option[BigInt]] = Options.integer("age").optional("N/A")
+  val b: Options[Boolean]           = Options.bool("verbose", true)
 
   val options = f :: l :: a
 
   def spec = suite("Options Suite")(
+    testM("validate boolean option without value") {
+      val r = b.validate(List("--verbose"), ParserOptions.default)
+
+      assertM(r)(equalTo(List() -> true))
+    },
+    testM("validate boolean option with and without value") {
+      val o = Options.bool("help", true)
+
+      for {
+        v1 <- o.validate(Nil, ParserOptions.default)
+        v2 <- o.validate("--help" :: Nil, ParserOptions.default)
+        v3 <- o.validate("--help" :: "on" :: Nil, ParserOptions.default)
+      } yield assert(v1)(equalTo(Nil          -> false)) &&
+        assert(v2)(equalTo(List.empty[String] -> true) ?? "v2") && assert(v3)(
+        equalTo(List.empty[String]            -> true) ?? "v3"
+      )
+    },
     testM("validate text option 1") {
       val r = f.validate(List("--firstname", "John"), ParserOptions.default)
       assertM(r)(equalTo(List() -> "John"))

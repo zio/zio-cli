@@ -1,18 +1,12 @@
 package zio.cli
 
+import java.time._
+
 import zio.test.Assertion._
 import zio.test._
 
-import java.time.ZoneOffset
-import java.time.LocalDateTime
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.MonthDay
-import java.time.Year
-import java.time.YearMonth
-
 object PrimTypeSpec extends DefaultRunnableSpec {
-  
+
   def spec = suite("PrimTypeTests")(
     suite("Text Suite") {
       testM("validates everything") {
@@ -31,26 +25,26 @@ object PrimTypeSpec extends DefaultRunnableSpec {
     suite("Integer Suite") {
       testM("validate returns proper BigInt representation") {
         checkM(anyBigIntString) { i =>
-          assertM(PrimType.Integer.validate(i.toString()))(equalTo(BigInt(i)))
+          assertM(PrimType.Integer.validate(i))(equalTo(BigInt(i)))
         }
       }
     },
-    suite("Boolean Suite") {
-      testM("validate true cominations returns proper Boolean representation") {
+    suite("Boolean Suite")(
+      testM("validate true combinations returns proper Boolean representation") {
         checkM(anyTrueBooleanString) { i =>
-          assertM(PrimType.Boolean.validate(i))(equalTo(true))
+          assertM(PrimType.Bool(None).validate(i))(equalTo(true))
         }
-      };
+      },
       testM("validate false combinations returns proper Boolean representation") {
         checkM(anyFalseBooleanString) { i =>
-          assertM(PrimType.Boolean.validate(i))(equalTo(false))
+          assertM(PrimType.Bool(None).validate(i))(equalTo(false))
         }
       }
-    },
+    ),
     suite("Instant Suite") {
       testM("validate returns proper Instant representation") {
         checkM(Gen.anyInstant) { i =>
-          assertM(PrimType.Instant.validate(i.toString()))(equalTo(i))
+          assertM(PrimType.Instant.validate(i.toString))(equalTo(i))
         }
       }
     },

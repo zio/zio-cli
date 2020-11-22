@@ -1,9 +1,10 @@
 package zio.cli
 
+import zio.cli.Command.BuiltIn
 import zio.{ IO, ZIO }
-
-import zio.cli.HelpDoc.{ h1 }
+import zio.cli.HelpDoc.h1
 import zio.cli.HelpDoc.Span
+
 import scala.collection.immutable.Nil
 
 /**
@@ -24,7 +25,7 @@ sealed trait Command[+A] { self =>
 
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
 
-  def parse(args: List[String], opts: ParserOptions): IO[List[HelpDoc], (List[String], A)]
+  def parse(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], A)]
 
   final def subcommands[B](that: Command[B]): Command[(A, B)] = Command.Subcommands(self, that)
 
@@ -32,9 +33,17 @@ sealed trait Command[+A] { self =>
     subcommands(cs.foldLeft(c1 | c2)(_ | _))
 
   def synopsis: UsageSynopsis
+
+  lazy val builtInOptions: Options[BuiltIn] =
+    (Options.bool("help", ifPresent = true) :: ShellType.option.optional("N/A")).as(BuiltIn)
+
+  final def parseBuiltIn(args: List[String], opts: ParserOptions): IO[HelpDoc, (List[String], BuiltIn)] =
+    builtInOptions.validate(args, opts)
 }
 
 object Command {
+  final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
+
   final case class Single[OptionsType, ArgsType](
     name: String,
     description: HelpDoc,
@@ -46,7 +55,7 @@ object Command {
         val desc = description
 
         if (desc.isEmpty) HelpDoc.Empty
-        else h1("description") + self.helpDoc
+        else h1("description") + desc
       }
 
       val argumentsSection = {
@@ -57,10 +66,10 @@ object Command {
       }
 
       val optionsSection = {
-        val opts = self.options.helpDoc
+        val opts = (self.options :: self.builtInOptions).helpDoc
 
         if (opts == HelpDoc.Empty) HelpDoc.Empty
-        else h1("options") + self.options.helpDoc
+        else h1("options") + opts
       }
 
       descriptionsSection + argumentsSection + optionsSection
@@ -91,7 +100,7 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], B)] = command.parse(args, opts).map {
+    ): IO[HelpDoc, (List[String], B)] = command.parse(args, opts).map {
       case (leftover, a) => (leftover, f(a))
     }
 
@@ -103,7 +112,7 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
+    ): IO[HelpDoc, (List[String], A)] = left.parse(args, opts) orElse right.parse(args, opts)
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
@@ -113,7 +122,7 @@ object Command {
     final def parse(
       args: List[String],
       opts: ParserOptions
-    ): IO[List[HelpDoc], (List[String], (A, B))] = parent.parse(args, opts).flatMap {
+    ): IO[HelpDoc, (List[String], (A, B))] = parent.parse(args, opts).flatMap {
       case (leftover, a) => child.parse(leftover, opts).map(t => (t._1, (a, t._2)))
     }
 
