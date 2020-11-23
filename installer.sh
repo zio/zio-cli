@@ -87,7 +87,9 @@ ensureCli() {
 buildNativeImage() {
 	PATH="${PATH}:${graalvmDir}/bin"
 	export GRAALVM_HOME="${graalvmDir}"
-	native-image -jar "${versionedJar}" "${versionedBin}"
+	cd "${appDir}/bin"
+	native-image -jar "$(basename "${versionedJar}")" "$(basename "${versionedBin}")"
+	cd -
 	success native-image
 }
 
