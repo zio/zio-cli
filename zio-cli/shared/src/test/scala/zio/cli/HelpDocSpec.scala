@@ -6,7 +6,7 @@ import zio.test._
 object HelpDocSpec extends DefaultRunnableSpec {
 
   def spec = suite("HelpDocTests")(
-    suite("Constructors Suite") (
+    suite("Constructors Suite")(
       testM("HelpDoc#h1 produces a Header from a String with level 1") {
         check(Gen.anyString) { string =>
           assert(HelpDoc.h1(string))(equalTo(HelpDoc.Header(HelpDoc.Span.Text(string), 1)))
@@ -28,11 +28,11 @@ object HelpDocSpec extends DefaultRunnableSpec {
         }
       },
       test("HelpDoc#+ combines two HelpDocs into one") {
-          assert(testHeader + testParagraph)(equalTo(HelpDoc.Sequence(testHeader, testParagraph)))
+        assert(testHeader + testParagraph)(equalTo(HelpDoc.Sequence(testHeader, testParagraph)))
       }
     ),
     suite("Boolean Suite")(
-      suite("HelpDoc#isHeader: Only returns true for HelpDocs that are/start with a Header") (
+      suite("HelpDoc#isHeader: Only returns true for HelpDocs that are/start with a Header")(
         test("A Header returns true") {
           assert(testHeader.isHeader)(isTrue)
         },
@@ -40,7 +40,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(HelpDoc.Sequence(testHeader, testParagraph).isHeader)(isTrue)
         },
         test("An Enumeration beginning with a Header returns true") {
-          assert(HelpDoc.Enumeration(List(testHeader, testParagraph, testEmpty)).isHeader)(isTrue) 
+          assert(HelpDoc.Enumeration(List(testHeader, testParagraph, testEmpty)).isHeader)(isTrue)
         },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isHeader)(isFalse)
@@ -55,7 +55,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(HelpDoc.Enumeration(List(testParagraph, testHeader, testEmpty)).isHeader)(isFalse)
         }
       ),
-      suite("HelpDoc#isParagraph: Only returns true for HelpDocs that are/start with a Paragraph") (
+      suite("HelpDoc#isParagraph: Only returns true for HelpDocs that are/start with a Paragraph")(
         test("A Paragraph returns true") {
           assert(testParagraph.isParagraph)(isTrue)
         },
@@ -63,7 +63,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(HelpDoc.Sequence(testParagraph, testHeader).isParagraph)(isTrue)
         },
         test("An Enumeration beginning with a Paragraph returns true") {
-          assert(HelpDoc.Enumeration(List(testParagraph, testHeader, testEmpty)).isParagraph)(isTrue) 
+          assert(HelpDoc.Enumeration(List(testParagraph, testHeader, testEmpty)).isParagraph)(isTrue)
         },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isParagraph)(isFalse)
@@ -78,7 +78,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(HelpDoc.Enumeration(List(testEmpty, testHeader, testParagraph)).isParagraph)(isFalse)
         }
       ),
-      suite("HelpDoc#isDescriptionList: Only returns true for HelpDocs that are/start with a DescriptionList") (
+      suite("HelpDoc#isDescriptionList: Only returns true for HelpDocs that are/start with a DescriptionList")(
         testM("A DescriptionList returns true") {
           check(testDescriptionList) { s =>
             assert(s.isDescriptionList)(isTrue)
@@ -99,7 +99,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(testParagraph.isDescriptionList)(isFalse)
         }
       ),
-      suite("HelpDoc#isEnumeration: Only returns true for HelpDocs that are/start with an Enumeration") (
+      suite("HelpDoc#isEnumeration: Only returns true for HelpDocs that are/start with an Enumeration")(
         test("An Enumeration returns true") {
           assert(testEnumeration.isEnumeration)(isTrue)
         },
@@ -107,7 +107,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(HelpDoc.Enumeration(List(testEnumeration, testHeader)).isEnumeration)(isTrue)
         },
         test("A Sequence beginning with an Enumeration returns true") {
-          assert(HelpDoc.Sequence(testEnumeration, testHeader).isEnumeration)(isTrue) 
+          assert(HelpDoc.Sequence(testEnumeration, testHeader).isEnumeration)(isTrue)
         },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isEnumeration)(isFalse)
@@ -119,7 +119,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(testParagraph.isEnumeration)(isFalse)
         }
       ),
-      suite("HelpDoc#isSequence: Only returns true for HelpDocs that are/start with a Sequence") (
+      suite("HelpDoc#isSequence: Only returns true for HelpDocs that are/start with a Sequence")(
         test("A Sequence returns true") {
           assert(testSequence.isSequence)(isTrue)
         },
@@ -127,7 +127,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
           assert(HelpDoc.Sequence(testSequence, testHeader).isSequence)(isTrue)
         },
         test("An Enumeration beginning with a Sequence returns true") {
-          assert(HelpDoc.Enumeration(List(testSequence, testHeader, testEmpty)).isSequence)(isTrue) 
+          assert(HelpDoc.Enumeration(List(testSequence, testHeader, testEmpty)).isSequence)(isTrue)
         },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isSequence)(isFalse)
@@ -140,7 +140,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
         }
       )
     ),
-    suite("#is* tests") (
+    suite("#is* tests")(
       test("#isEmpty returns true for an empty HelpDoc") {
         assert(HelpDoc.Empty.isEmpty)(isTrue)
       },
@@ -152,32 +152,37 @@ object HelpDocSpec extends DefaultRunnableSpec {
       },
       test("Sequence(Paragraph, _) starts with a Paragraph") {
         assert(HelpDoc.Sequence(testParagraph, HelpDoc.Empty).isParagraph)(isTrue)
-      },
+      }
     )
   )
 
-  val testEmpty = HelpDoc.Empty
-  val hText = "HEADER"
+  val testEmpty  = HelpDoc.Empty
+  val hText      = "HEADER"
   val testHeader = HelpDoc.h1(s"${hText} level 1")
-  val pText = """
-    |Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque facilisis sem id lacinia venenatis. 
-    |Phasellus vestibulum magna eu sapien accumsan suscipit. Morbi vestibulum lobortis justo, ac pellentesque
-    |tortor iaculis ut. Ut aliquet, nisl a interdum gravida, neque nisl interdum est, quis feugiat
-    |ligula dui vitae dolor. Nulla pharetra ultrices justo quis tincidunt. Integer et dictum urna, eget lacinia turpis.
-    |Nam mauris nibh, egestas eu tempor vel, cursus in ex. Aliquam mollis leo vel mauris semper malesuada.
-    |Proin pellentesque hendrerit orci semper fermentum. Nullam eget lacinia lorem, quis venenatis nibh.
-    |Phasellus risus nulla, porta et sollicitudin a, venenatis dictum orci. Pellentesque vel sagittis neque.
-    |Cras elementum ligula quis vulputate posuere. Ut vulputate felis sed pellentesque suscipit. Sed quis rutrum leo.""".stripMargin 
-  val testParagraph = HelpDoc.p(pText)
-  val docs = (testHeader :: testParagraph :: testEmpty :: Nil)
+  val pText =
+    """
+      |Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque facilisis sem id lacinia venenatis. 
+      |Phasellus vestibulum magna eu sapien accumsan suscipit. Morbi vestibulum lobortis justo, ac pellentesque
+      |tortor iaculis ut. Ut aliquet, nisl a interdum gravida, neque nisl interdum est, quis feugiat
+      |ligula dui vitae dolor. Nulla pharetra ultrices justo quis tincidunt. Integer et dictum urna, eget lacinia turpis.
+      |Nam mauris nibh, egestas eu tempor vel, cursus in ex. Aliquam mollis leo vel mauris semper malesuada.
+      |Proin pellentesque hendrerit orci semper fermentum. Nullam eget lacinia lorem, quis venenatis nibh.
+      |Phasellus risus nulla, porta et sollicitudin a, venenatis dictum orci. Pellentesque vel sagittis neque.
+      |Cras elementum ligula quis vulputate posuere. Ut vulputate felis sed pellentesque suscipit. Sed quis rutrum leo.""".stripMargin
+  val testParagraph   = HelpDoc.p(pText)
+  val docs            = (testHeader :: testParagraph :: testEmpty :: Nil)
   val testEnumeration = HelpDoc.Enumeration(docs)
-  val testSequence = testParagraph + testEnumeration
-  val anyString = Gen.anyString
-  val anySpan = Gen.fromIterable(List(HelpDoc.Span.text(anyString.toString()),
-                                       HelpDoc.Span.error(anyString.toString()),
-                                       HelpDoc.Span.code(anyString.toString()),
-                                       HelpDoc.Span.weak(anyString.toString()),
-                                       HelpDoc.Span.strong(anyString.toString()),
-                                       HelpDoc.Span.uri(java.net.URI.create(anyString.toString()))))
+  val testSequence    = testParagraph + testEnumeration
+  val anyString       = Gen.anyString
+  val anySpan = Gen.fromIterable(
+    List(
+      HelpDoc.Span.text(anyString.toString()),
+      HelpDoc.Span.error(anyString.toString()),
+      HelpDoc.Span.code(anyString.toString()),
+      HelpDoc.Span.weak(anyString.toString()),
+      HelpDoc.Span.strong(anyString.toString()),
+      HelpDoc.Span.uri(java.net.URI.create(anyString.toString()))
+    )
+  )
   val testDescriptionList = anySpan.map(span => HelpDoc.descriptionList((span, testParagraph)))
 }

@@ -62,7 +62,7 @@ sealed trait HelpDoc { self =>
       case HelpDoc.Sequence(left, _) => left.isEnumeration
       case _                         => false
     }
-    
+
   def isSequence: Boolean =
     self match {
       case HelpDoc.Sequence(_, _)  => true
