@@ -17,7 +17,7 @@ final case class CLIApp[-R, +E, Model](
   command: Command[Model],
   execute: Model => ZIO[R, E, Any],
   footer: HelpDoc = HelpDoc.Empty,
-  config: CLIConfig = CLIConfig.default
+  config: CliConfig = CliConfig.default
 ) { self =>
   def handleBuiltIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
     if (args.isEmpty || builtIn.help) printDocs(helpDoc)
@@ -40,7 +40,7 @@ final case class CLIApp[-R, +E, Model](
       command.helpDoc +
       footer
 
-  def config(o: CLIConfig): CLIApp[R, E, Model] =
+  def config(o: CliConfig): CLIApp[R, E, Model] =
     copy(config = o)
 
   def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =

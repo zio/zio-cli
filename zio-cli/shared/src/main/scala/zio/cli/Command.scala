@@ -23,7 +23,7 @@ sealed trait Command[+A] { self =>
 
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
 
-  def parse(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)]
+  def parse(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)]
 
   final def subcommands[B](that: Command[B]): Command[(A, B)] = Command.Subcommands(self, that)
 
@@ -35,7 +35,7 @@ sealed trait Command[+A] { self =>
   lazy val builtInOptions: Options[BuiltIn] =
     (Options.bool("help", ifPresent = true) :: ShellType.option.optional("N/A")).as(BuiltIn)
 
-  final def parseBuiltIn(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], BuiltIn)] =
+  final def parseBuiltIn(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], BuiltIn)] =
     builtInOptions.validate(args, conf)
 }
 
@@ -75,7 +75,7 @@ object Command {
 
     final def parse(
       args: List[String],
-      conf: CLIConfig
+      conf: CliConfig
     ): IO[HelpDoc, (List[String], (OptionsType, ArgsType))] =
       for {
         tuple               <- self.options.validate(args, conf)
@@ -97,7 +97,7 @@ object Command {
 
     final def parse(
       args: List[String],
-      conf: CLIConfig
+      conf: CliConfig
     ): IO[HelpDoc, (List[String], B)] = command.parse(args, conf).map {
       case (leftover, a) => (leftover, f(a))
     }
@@ -109,7 +109,7 @@ object Command {
 
     final def parse(
       args: List[String],
-      conf: CLIConfig
+      conf: CliConfig
     ): IO[HelpDoc, (List[String], A)] = left.parse(args, conf) orElse right.parse(args, conf)
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
@@ -119,7 +119,7 @@ object Command {
 
     final def parse(
       args: List[String],
-      conf: CLIConfig
+      conf: CliConfig
     ): IO[HelpDoc, (List[String], (A, B))] = parent.parse(args, conf).flatMap {
       case (leftover, a) => child.parse(leftover, conf).map(t => (t._1, (a, t._2)))
     }

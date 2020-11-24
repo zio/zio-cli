@@ -95,7 +95,7 @@ sealed trait Options[+A] { self =>
 
   final def optional(desc: String): Options[Option[A]] = self.map(Some(_)).withDefault(None, desc)
 
-  def recognizes(value: String, conf: CLIConfig): Option[Int]
+  def recognizes(value: String, conf: CliConfig): Option[Int]
 
   final def requires[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
     Options.Requires(self, that, suchThat)
@@ -107,7 +107,7 @@ sealed trait Options[+A] { self =>
 
   def uid: Option[String]
 
-  def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)]
+  def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)]
 
   def withDefault[A1 >: A](value: A1, valueDescription: String): Options[A1] =
     Options.WithDefault(self, value, valueDescription)
@@ -124,7 +124,7 @@ sealed trait Options[+A] { self =>
     case Options.WithDefault(value, _, _)        => value.foldSingle(initial)(f)
   }
 
-  private[cli] def supports(arg: String, conf: CLIConfig) =
+  private[cli] def supports(arg: String, conf: CliConfig) =
     foldSingle(false) {
       case (bool, single) =>
         bool || Some(conf.normalizeCase(arg)) == single.uid ||
@@ -140,11 +140,11 @@ trait SingleModifier {
 
 object Options {
   case object Empty extends Options[Unit] {
-    def recognizes(value: String, conf: CLIConfig): Option[Int] = None
+    def recognizes(value: String, conf: CliConfig): Option[Int] = None
 
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], Unit)] =
+    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], Unit)] =
       IO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
@@ -155,11 +155,11 @@ object Options {
   }
 
   final case class WithDefault[A](options: Options[A], default: A, defaultDescription: String) extends Options[A] {
-    def recognizes(value: String, conf: CLIConfig): Option[Int] = options.recognizes(value, conf)
+    def recognizes(value: String, conf: CliConfig): Option[Int] = options.recognizes(value, conf)
 
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)] =
+    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       options.validate(args, conf) orElseSucceed (args -> default)
 
     override def modifySingle(f: SingleModifier): Options[A] =
@@ -185,13 +185,13 @@ object Options {
 
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
-    def recognizes(value: String, conf: CLIConfig): Option[Int] =
+    def recognizes(value: String, conf: CliConfig): Option[Int] =
       if (supports(value, conf)) Some(1) else None
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(fullname, primType.choices)
 
-    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)] =
+    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail if supports(head, conf) =>
           primType match {
@@ -235,12 +235,12 @@ object Options {
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
     override def modifySingle(f: SingleModifier): Options[(A, B)] = Cons(left.modifySingle(f), right.modifySingle(f))
 
-    def recognizes(value: String, conf: CLIConfig): Option[Int] =
+    def recognizes(value: String, conf: CliConfig): Option[Int] =
       left.recognizes(value, conf) orElse right.recognizes(value, conf)
 
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
-    override def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], (A, B))] =
+    override def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], (A, B))] =
       for {
         tuple <- left
                   .validate(args, conf)
@@ -269,11 +269,11 @@ object Options {
     override def modifySingle(f: SingleModifier): Options[A] =
       Requires(options.modifySingle(f), target.modifySingle(f), predicate)
 
-    def recognizes(value: String, conf: CLIConfig): Option[Int] = options.recognizes(value, conf)
+    def recognizes(value: String, conf: CliConfig): Option[Int] = options.recognizes(value, conf)
 
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)] =
+    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       target.validate(args, conf).foldM(f => IO.fail(f), _ => options.validate(args, conf))
 
     override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList {
@@ -292,11 +292,11 @@ object Options {
     override def modifySingle(f: SingleModifier): Options[A] =
       RequiresNot(options.modifySingle(f), target.modifySingle(f), predicate)
 
-    def recognizes(value: String, conf: CLIConfig): Option[Int] = options.recognizes(value, conf)
+    def recognizes(value: String, conf: CliConfig): Option[Int] = options.recognizes(value, conf)
 
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], A)] =
+    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       target
         .validate(args, conf)
         .foldM(
@@ -317,11 +317,11 @@ object Options {
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc, B]) extends Options[B] {
     override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
 
-    def recognizes(v: String, conf: CLIConfig): Option[Int] = value.recognizes(v, conf)
+    def recognizes(v: String, conf: CliConfig): Option[Int] = value.recognizes(v, conf)
 
     def synopsis: UsageSynopsis = value.synopsis
 
-    def validate(args: List[String], conf: CLIConfig): IO[HelpDoc, (List[String], B)] =
+    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], B)] =
       value.validate(args, conf).flatMap(r => f(r._2).fold(e => IO.fail(e), s => IO.succeed(r._1 -> s)))
 
     override def uid: Option[String] = value.uid

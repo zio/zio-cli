@@ -1,13 +1,13 @@
 package zio.cli
 
 /**
- * A `CLIConfig` describes how arguments from the command-line are to
+ * A `CliConfig` describes how arguments from the command-line are to
  * be parsed by ZIO CLI.
  *
  * @param caseSensitive     Whether or not to be case sensitive.
  * @param autoCorrectLimit  Threshold for when to show auto correct suggestions
  */
-final case class CLIConfig(
+final case class CliConfig(
   caseSensitive: Boolean,
   autoCorrectLimit: Int
 ) {
@@ -20,10 +20,10 @@ final case class CLIConfig(
   def isOption(value: String): Boolean = isLongOption(value) || isShortOption(value)
 }
 
-object CLIConfig {
+object CliConfig {
 
   /**
    * The default options are case sensitive parsing
    */
-  val default: CLIConfig = CLIConfig(false, 2)
+  val default: CliConfig = CliConfig(false, 2)
 }
