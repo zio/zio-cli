@@ -24,7 +24,7 @@ object WcApp extends App {
 
   val execute: (WcOptions, ::[Path]) => URIO[Console, Unit] = (opts, paths) => zio.console.putStrLn(s"${opts} ${paths}")
 
-  val wcApp = CLIApp(
+  val wcApp = CliApp(
     "ZIO Word Count",
     "0.1.2",
     text("counts words in the file"),

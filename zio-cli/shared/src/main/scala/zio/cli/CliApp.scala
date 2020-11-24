@@ -7,10 +7,10 @@ import zio.cli.HelpDoc.{ h1, p }
 import zio.cli.HelpDoc.Span.text
 
 /**
- * A `CLIApp[R, E]` is a complete description of a command-line application, which
+ * A `CliApp[R, E]` is a complete description of a command-line application, which
  * requires environment `R`, and may fail with a value of type `E`.
  */
-final case class CLIApp[-R, +E, Model](
+final case class CliApp[-R, +E, Model](
   name: String,
   version: String,
   summary: HelpDoc.Span,
@@ -29,7 +29,7 @@ final case class CLIApp[-R, +E, Model](
 
   def completions(shellType: ShellType): String = ???
 
-  def footer(f: HelpDoc): CLIApp[R, E, Model] =
+  def footer(f: HelpDoc): CliApp[R, E, Model] =
     copy(footer = self.footer + f)
 
   def helpDoc: HelpDoc =
@@ -40,7 +40,7 @@ final case class CLIApp[-R, +E, Model](
       command.helpDoc +
       footer
 
-  def config(o: CliConfig): CLIApp[R, E, Model] =
+  def config(o: CliConfig): CliApp[R, E, Model] =
     copy(config = o)
 
   def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
@@ -56,6 +56,6 @@ final case class CLIApp[-R, +E, Model](
   def printDocs(helpDoc: HelpDoc): URIO[Console, Unit] =
     putStrLn(helpDoc.toPlaintext(80))
 
-  def summary(s: HelpDoc.Span): CLIApp[R, E, Model] =
+  def summary(s: HelpDoc.Span): CliApp[R, E, Model] =
     copy(summary = self.summary + s)
 }
