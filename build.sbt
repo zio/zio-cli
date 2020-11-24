@@ -1,5 +1,6 @@
 import BuildHelper._
 import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
+import sbt.addSbtPlugin
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 inThisBuild(
@@ -93,3 +94,14 @@ lazy val docs = project
   )
   .dependsOn(root)
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+
+lazy val sbtZioCli = project
+  .in(file("sbt-zio-cli"))
+  .settings(
+    name := "sbt-zio-cli",
+    organization := "zio.cli.sbt",
+    scalaVersion := "2.12.10",
+    version := "0.0.0-SNAPSHOT",
+    addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.2.2")
+  )
+  .enablePlugins(SbtPlugin)
