@@ -14,38 +14,38 @@ object FileArgsSpec extends DefaultRunnableSpec {
       val arg = Args.file("files", Exists.Yes).repeat
 
       assertM(
-        arg.validate(argsFile.getAbsolutePath :: Nil, ParserOptions.default)
+        arg.validate(argsFile.getAbsolutePath :: Nil, CliConfig.default)
       )(equalTo(List.empty[String] -> List(argsFilePath)))
     },
     testM("Not Found file") {
       val arg = Args.file("files", Exists.Yes).repeat
       assertM(
-        arg.validate("notFound.file" :: Nil, ParserOptions.default).either
+        arg.validate("notFound.file" :: Nil, CliConfig.default).either
       )(isLeft(equalTo(Paragraph(Text("Path 'notFound.file' must exist.")))))
     },
     testM("Non Existing file") {
       val arg = Args.file(Exists.No).repeat
 
       assertM(
-        arg.validate("doesNotExist.file" :: Nil, ParserOptions.default).either
+        arg.validate("doesNotExist.file" :: Nil, CliConfig.default).either
       )(isRight)
     },
     testM("Path of non regular file") {
       val arg = Args.file.repeat
       assertM(
-        arg.validate("notRegular.file" :: Nil, ParserOptions.default).either
+        arg.validate("notRegular.file" :: Nil, CliConfig.default).either
       )(isLeft(equalTo(Paragraph(Text("Expected path 'notRegular.file' to be a regular file.")))))
     },
     testM("Combination of existing and non existing files") {
       val arg = Args.file.repeat
       assertM(
-        arg.validate(List(argsFile.getAbsolutePath, "nonExisting.file"), ParserOptions.default).either
+        arg.validate(List(argsFile.getAbsolutePath, "nonExisting.file"), CliConfig.default).either
       )(isLeft(equalTo(Paragraph(Text("Expected path 'nonExisting.file' to be a regular file.")))))
     },
     testM("Combination of existing files") {
       val arg = Args.file.repeat
       assertM(
-        arg.validate(List(argsFile.getAbsolutePath, argsFile.getAbsolutePath), ParserOptions.default)
+        arg.validate(List(argsFile.getAbsolutePath, argsFile.getAbsolutePath), CliConfig.default)
       )(equalTo(List.empty[String] -> List(argsFilePath, argsFilePath)))
     }
   )

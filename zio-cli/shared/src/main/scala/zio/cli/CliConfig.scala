@@ -1,13 +1,15 @@
 package zio.cli
 
 /**
- * A `ParserOptions` describes how arguments from the command-line are to
+ * A `CliConfig` describes how arguments from the command-line are to
  * be parsed by ZIO CLI.
  *
  * @param caseSensitive     Whether or not to be case sensitive.
+ * @param autoCorrectLimit  Threshold for when to show auto correct suggestions
  */
-final case class ParserOptions(
-  caseSensitive: Boolean
+final case class CliConfig(
+  caseSensitive: Boolean,
+  autoCorrectLimit: Int
 ) {
   def normalizeCase(text: String): String = if (caseSensitive) text else text.toLowerCase()
 
@@ -18,10 +20,10 @@ final case class ParserOptions(
   def isOption(value: String): Boolean = isLongOption(value) || isShortOption(value)
 }
 
-object ParserOptions {
+object CliConfig {
 
   /**
    * The default options are case sensitive parsing
    */
-  val default: ParserOptions = ParserOptions(false)
+  val default: CliConfig = CliConfig(false, 2)
 }
