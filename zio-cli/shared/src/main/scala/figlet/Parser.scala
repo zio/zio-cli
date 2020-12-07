@@ -14,14 +14,14 @@ sealed abstract class ParseResult[+R, +A] extends Product with Serializable {
 
   def toEither: Either[String, A] = this match {
     case Ok(_, a) => Right(a)
-    case Err(e) => Left(e())
+    case Err(e)   => Left(e())
   }
 }
 
 object ParseResult {
   final case class Ok[+R, +A](r: R, a: A) extends ParseResult[R, A]
 
-  final case class Err(e: () => String)   extends ParseResult[Nothing, Nothing] {
+  final case class Err(e: () => String) extends ParseResult[Nothing, Nothing] {
     override def toString: String = s"Err(${e()})"
   }
 
@@ -29,7 +29,7 @@ object ParseResult {
 }
 
 abstract class Parser[-R, +R1, +A] extends (R => ParseResult[R1, A]) {
-  final def parse(r: R): Either[String, A] = this(r).toEither
+  final def parse(r: R): Either[String, A]                              = this(r).toEither
   final def map[B](f: A => B): Parser[R, R1, B]                         = (r: R) => this(r).map(f)
   final def flatMap[R2, B](f: A => Parser[R1, R2, B]): Parser[R, R2, B] = (r: R) => this(r).flatMap(ok => f(ok.a)(ok.r))
   final def ~[R2, B](p: Parser[R1, R2, B]): Parser[R, R2, (A, B)]       = flatMap(a => p.map((a, _)))

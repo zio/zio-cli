@@ -1,5 +1,3 @@
 package figlet
 
-object FigFontRenderer {
-
-}
+object FigFontRenderer {}
