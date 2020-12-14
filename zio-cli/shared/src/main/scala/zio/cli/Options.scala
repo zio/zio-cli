@@ -127,7 +127,7 @@ sealed trait Options[+A] { self =>
   private[cli] def supports(arg: String, conf: CliConfig) =
     foldSingle(false) {
       case (bool, single) =>
-        bool || Some(conf.normalizeCase(arg)) == single.uid ||
+        bool || single.uid.contains(conf.normalizeCase(arg)) ||
           single.aliases
             .map("-" + conf.normalizeCase(_))
             .contains(arg)
@@ -194,14 +194,17 @@ object Options {
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail if supports(head, conf) =>
-          primType match {
-            case _: PrimType.Bool => primType.validate(None, conf).bimap(f => p(f), tail -> _)
-            case _ =>
-              (tail match {
-                case Nil         => primType.validate(None, conf)
-                case ::(head, _) => primType.validate(Some(head), conf)
-              }).bimap(f => p(f), a => tail.drop(1) -> a)
-          }
+          (tail match {
+            case Nil =>
+              primType.validate(None, conf).map(r => (r, tail))
+            case argOrParam :: _ => {
+              if (argOrParam.startsWith("-")) {
+                primType.validate(None, conf).map(r => (r, tail))
+              } else {
+                primType.validate(Some(argOrParam), conf).map(r => (r, tail.drop(1)))
+              }
+            }
+          }).bimap(f => p(f), { case (a, l) => l -> a })
         case head :: tail
             if name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(head, fullname, conf) <= conf.autoCorrectLimit =>
           IO.fail(p(error(s"""The flag "${head}" is not recognized. Did you mean ${fullname}?""")))

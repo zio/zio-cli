@@ -28,10 +28,16 @@ object OptionsSpec extends DefaultRunnableSpec {
         v1 <- o.validate(Nil, CliConfig.default)
         v2 <- o.validate("--help" :: Nil, CliConfig.default)
         v3 <- o.validate("--help" :: "-v" :: Nil, CliConfig.default)
+        v4 <- o.validate("--help" :: "false" :: Nil, CliConfig.default)
+        v5 <- o.validate("--help" :: "false" :: "-v" :: "false" :: Nil, CliConfig.default)
+        v6 <- o.validate("--help" :: "on" :: "-v" :: "off" :: Nil, CliConfig.default)
       } yield {
         assert(v1)(equalTo(Nil                -> (false -> false))) &&
         assert(v2)(equalTo(List.empty[String] -> (true  -> false)) ?? "v2") &&
         assert(v3)(equalTo(List.empty[String] -> (true  -> true)) ?? "v3")
+        assert(v4)(equalTo(List.empty[String] -> (false -> false)) ?? "v4")
+        assert(v5)(equalTo(List.empty[String] -> (false -> false)) ?? "v5")
+        assert(v6)(equalTo(List.empty[String] -> (true  -> false)) ?? "v6")
       }
     },
     testM("validate text option 1") {
