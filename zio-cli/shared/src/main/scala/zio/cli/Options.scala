@@ -19,19 +19,24 @@ import java.time.{
 
 import zio.IO
 import zio.cli.HelpDoc.Span
-import zio.cli.HelpDoc.{ blocks, p }
+import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span._
 
 import scala.collection.immutable.Nil
+import scala.reflect.ClassTag
 
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
 sealed trait Options[+A] { self =>
+
   import Options.Single
 
   final def ::[That, A1 >: A](that: Options[That]): Options[(That, A1)] =
     Options.Cons(that, self)
+
+  final def ||[That, A1 >: A](that: Options[That]): Options[Either[A1, That]] =
+    Options.OrElse(self, that)
 
   def ??(that: String): Options[A] =
     modifySingle(new SingleModifier {
@@ -67,6 +72,26 @@ sealed trait Options[+A] { self =>
   )(implicit ev: A <:< ((B, (C, (D, (E, (F, G))))))): Options[Z] =
     self.map(ev).map { case ((b, (c, (d, (e, (f, g)))))) => f0(b, c, d, e, f, g) }
 
+  final def fold[B, C, Z](
+    f1: B => Z,
+    f2: C => Z
+  )(implicit ev: A <:< Either[B, C], ctb: ClassTag[B], ctc: ClassTag[C]): Options[Z] =
+    self.map {
+      case Left(b: B)  => f1(b)
+      case Right(c: C) => f2(c)
+    }
+
+  final def fold[B, C, D, Z](
+    f1: B => Z,
+    f2: C => Z,
+    f3: D => Z
+  )(implicit ev: A <:< Either[Either[B, C], D], ctb: ClassTag[B], ctc: ClassTag[C], ctd: ClassTag[D]): Options[Z] =
+    self.map {
+      case Left(Left(b: B))  => f1(b)
+      case Left(Right(c: C)) => f2(c)
+      case Right(d: D)       => f3(d)
+    }
+
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
     Options.Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc, B]](Left(p(error(message))))(Right(_)))
 
@@ -97,12 +122,6 @@ sealed trait Options[+A] { self =>
 
   def recognizes(value: String, conf: CliConfig): Option[Int]
 
-  final def requires[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
-    Options.Requires(self, that, suchThat)
-
-  final def requiresNot[B](that: Options[B], suchThat: B => Boolean = (_: B) => true): Options[A] =
-    Options.RequiresNot(self, that, suchThat)
-
   def synopsis: UsageSynopsis
 
   def uid: Option[String]
@@ -115,13 +134,12 @@ sealed trait Options[+A] { self =>
   private[cli] def modifySingle(f: SingleModifier): Options[A]
 
   private[cli] def foldSingle[C](initial: C)(f: (C, Single[_]) => C): C = self match {
-    case _: Options.Empty.type                   => initial
-    case s @ Single(_, _, _, _)                  => f(initial, s)
-    case cons: Options.Cons[a, b]                => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
-    case Options.Requires(options, target, _)    => options.foldSingle(initial)(f)
-    case Options.RequiresNot(options, target, _) => options.foldSingle(initial)(f)
-    case Options.Map(value, _)                   => value.foldSingle(initial)(f)
-    case Options.WithDefault(value, _, _)        => value.foldSingle(initial)(f)
+    case _: Options.Empty.type            => initial
+    case s @ Single(_, _, _, _)           => f(initial, s)
+    case cons: Options.Cons[a, b]         => cons.right.foldSingle(cons.left.foldSingle(initial)(f))(f)
+    case orElse: Options.OrElse[a, b]     => orElse.right.foldSingle(orElse.left.foldSingle(initial)(f))(f)
+    case Options.Map(value, _)            => value.foldSingle(initial)(f)
+    case Options.WithDefault(value, _, _) => value.foldSingle(initial)(f)
   }
 
   private[cli] def supports(arg: String, conf: CliConfig) =
@@ -232,6 +250,46 @@ object Options {
     }
   }
 
+  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] {
+    override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
+      OrElse(left.modifySingle(f), right.modifySingle(f))
+
+    def recognizes(value: String, conf: CliConfig): Option[Int] =
+      left.recognizes(value, conf) orElse right.recognizes(value, conf)
+
+    def synopsis: UsageSynopsis = left.synopsis + right.synopsis
+
+    override def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], Either[A, B])] =
+      left
+        .validate(args, conf)
+        .foldM(
+          err1 =>
+            right
+              .validate(args, conf)
+              .foldM[Any, HelpDoc, (List[String], Either[A, B])](
+                err2 => IO.fail(err1 + err2),
+                success => IO.succeed((success._1, Right(success._2)))
+              ),
+          r =>
+            right
+              .validate(r._1, conf)
+              .foldM(
+                _ => IO.succeed((r._1, Left(r._2))),
+                _ =>
+                  IO.fail(
+                    p(error(s"Options collision detected. You can only specify either ${left} or ${right}."))
+                  )
+              )
+        )
+
+    override def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
+
+    override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
+      case Nil  => None
+      case list => Some(list.mkString(", "))
+    }
+  }
+
   final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
     override def modifySingle(f: SingleModifier): Options[(A, B)] = Cons(left.modifySingle(f), right.modifySingle(f))
 
@@ -263,55 +321,6 @@ object Options {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
-  }
-
-  final case class Requires[A, B](options: Options[A], target: Options[B], predicate: B => Boolean) extends Options[A] {
-    override def modifySingle(f: SingleModifier): Options[A] =
-      Requires(options.modifySingle(f), target.modifySingle(f), predicate)
-
-    def recognizes(value: String, conf: CliConfig): Option[Int] = options.recognizes(value, conf)
-
-    def synopsis: UsageSynopsis = options.synopsis
-
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
-      target.validate(args, conf).foldM(f => IO.fail(f), _ => options.validate(args, conf))
-
-    override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList {
-      case (span, block) =>
-        target.uid match {
-          case Some(value) => (span, blocks(block, p(s"This option must be used in combination with ${value}.")))
-          case None        => (span, block)
-        }
-    }
-
-    override def uid: Option[String] = options.uid
-  }
-
-  final case class RequiresNot[A, B](options: Options[A], target: Options[B], predicate: B => Boolean)
-      extends Options[A] {
-    override def modifySingle(f: SingleModifier): Options[A] =
-      RequiresNot(options.modifySingle(f), target.modifySingle(f), predicate)
-
-    def recognizes(value: String, conf: CliConfig): Option[Int] = options.recognizes(value, conf)
-
-    def synopsis: UsageSynopsis = options.synopsis
-
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
-      target
-        .validate(args, conf)
-        .foldM(
-          _ => options.validate(args, conf),
-          _ => IO.fail(p(error("Requires not conditions were not satisfied.")))
-        )
-
-    override def helpDoc: HelpDoc = options.helpDoc.mapDescriptionList { (span, block) =>
-      target.uid match {
-        case Some(value) => (span, blocks(block, p(s"This option may not be used in combination with ${value}.")))
-        case None        => (span, block)
-      }
-    }
-
-    override def uid: Option[String] = options.uid
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc, B]) extends Options[B] {
@@ -455,4 +464,5 @@ object Options {
    */
   def zoneOffset(name: String): Options[JZoneOffset] =
     Single(name, Vector.empty, PrimType.ZoneOffset)
+
 }

@@ -89,20 +89,65 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = aOpt.validate(List("--firstname", "John", "--age", "20", "--lastname", "Doe"), CliConfig.default)
       assertM(r)(equalTo(List("--firstname", "John", "--lastname", "Doe") -> Some(BigInt(20))))
     },
-    testM("test requires") {
-      val r = f.requires(l).validate(List("--firstname", "John"), CliConfig.default)
-      assertM(r.either)(isLeft)
-    },
-    testM("test requires not") {
-      val r = l.requiresNot(f).validate(List("--firstname", "John"), CliConfig.default)
-      assertM(r.either)(isLeft)
-    },
     testM("returns a HelpDoc if an option is not an exact match, but is close") {
       val r = f.validate(List("--firstme", "Alice"), CliConfig.default)
       assertM(r.either)(
         equalTo(Left(p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))))
       )
     },
+    suite("orElse")(
+      testM("validate orElse on 2 options") {
+        val o = Options.text("string") || Options.integer("integer")
+        for {
+          i <- o.validate(List("--integer", "2"), CliConfig.default)
+          s <- o.validate(List("--string", "two"), CliConfig.default)
+        } yield {
+          assert(i)(equalTo(List() -> Right(BigInt(2)))) &&
+          assert(s)(equalTo(List() -> Left("two")))
+        }
+      },
+      testM("validate orElse using fold on 2 options") {
+        val o = Options.text("string") || Options.integer("integer")
+        val output = o.fold(
+          (s: String) => s,
+          (n: BigInt) => n.toString
+        )
+        for {
+          i <- output.validate(List("--integer", "2"), CliConfig.default)
+          s <- output.validate(List("--string", "two"), CliConfig.default)
+        } yield {
+          assert(i)(equalTo(List() -> "2")) &&
+          assert(s)(equalTo(List() -> "two"))
+        }
+      },
+      testM("validate orElse using fold on 3 options") {
+        val o = Options.text("string") || Options.integer("integer") || Options.decimal("bigdecimal")
+        val output = o.fold(
+          (s: String) => s,
+          (n: BigInt) => n.toString,
+          (d: BigDecimal) => d.toString
+        )
+        for {
+          i <- output.validate(List("--integer", "2"), CliConfig.default)
+          s <- output.validate(List("--string", "two"), CliConfig.default)
+          d <- output.validate(List("--bigdecimal", "3.14"), CliConfig.default)
+        } yield {
+          assert(i)(equalTo(List() -> "2")) &&
+          assert(s)(equalTo(List() -> "two"))
+          assert(d)(equalTo(List() -> "3.14"))
+        }
+      },
+      testM("test orElse options collision") {
+        val o = Options.text("string") || Options.integer("integer")
+        val r = o.validate(List("--integer", "2", "--string", "two"), CliConfig.default)
+        assertM(r.either)(isLeft)
+      },
+      testM("test orElse with no options given") {
+        val o = Options.text("string") || Options.integer("integer")
+        val r = o.validate(Nil, CliConfig.default)
+        assertM(r.either)(isLeft)
+      }
+    ),
     testM("returns a HelpDoc if an option is not an exact match and it's a short option") {
       val r = a.validate(List("--ag", "20"), CliConfig.default)
       assertM(r.either)(
