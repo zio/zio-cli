@@ -1,0 +1,3 @@
+package figlet
+
+object FigFontRenderer {}
