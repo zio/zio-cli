@@ -23,7 +23,6 @@ import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span._
 
 import scala.collection.immutable.Nil
-import scala.reflect.ClassTag
 
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
@@ -75,21 +74,21 @@ sealed trait Options[+A] { self =>
   final def fold[B, C, Z](
     f1: B => Z,
     f2: C => Z
-  )(implicit ev: A <:< Either[B, C], ctb: ClassTag[B], ctc: ClassTag[C]): Options[Z] =
-    self.map {
-      case Left(b: B)  => f1(b)
-      case Right(c: C) => f2(c)
+  )(implicit ev: A <:< Either[B, C]): Options[Z] =
+    self.map(ev).map {
+      case Left(b)  => f1(b)
+      case Right(c) => f2(c)
     }
 
   final def fold[B, C, D, Z](
     f1: B => Z,
     f2: C => Z,
     f3: D => Z
-  )(implicit ev: A <:< Either[Either[B, C], D], ctb: ClassTag[B], ctc: ClassTag[C], ctd: ClassTag[D]): Options[Z] =
-    self.map {
-      case Left(Left(b: B))  => f1(b)
-      case Left(Right(c: C)) => f2(c)
-      case Right(d: D)       => f3(d)
+  )(implicit ev: A <:< Either[Either[B, C], D]): Options[Z] =
+    self.map(ev).map {
+      case Left(Left(b))  => f1(b)
+      case Left(Right(c)) => f2(c)
+      case Right(d)       => f3(d)
     }
 
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
