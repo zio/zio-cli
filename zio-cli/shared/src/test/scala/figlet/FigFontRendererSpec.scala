@@ -131,8 +131,14 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
     override def toString: String = ("" +: lines.map(l => s"|$l|") :+ "").mkString("\n")
   }
 
-  private def textBlock(s: String) =
-    TextBlock(Chunk.fromIterable(s.stripMargin.linesIterator.dropWhile(_.isBlank).map(_.stripSuffix("|")).toSeq))
+  private def textBlock(s: String) = TextBlock(
+    Chunk.fromIterable(
+      s.stripMargin.linesIterator
+        .dropWhile(l => l.forall(_.isWhitespace))
+        .map(_.stripSuffix("|"))
+        .toSeq
+    )
+  )
 
   def assertTextBlock(actual: Chunk[String], expected: String): TestResult =
     assert(TextBlock(actual))(equalTo(textBlock(expected)))
