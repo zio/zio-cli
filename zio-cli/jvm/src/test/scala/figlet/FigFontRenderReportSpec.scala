@@ -41,7 +41,7 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
 
   private def renderOrError(font: FigFont) =
     try {
-      val (abc, rest)    = font.chars.keys.partition(_.isLetter)
+      val (abc, rest)    = font.chars.keys.toSeq.sorted.partition(_.isLetter)
       val (lower, upper) = abc.partition(_.isLower)
       val sample         = Seq(lower, upper, rest).map(_.mkString).mkString("\n")
       Right(FigFont.render(font, sample))
