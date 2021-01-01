@@ -5,6 +5,9 @@ import zio.test._
 import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span.error
 
+import java.time.{ LocalDate, MonthDay, Year }
+import java.time.format.DateTimeFormatter
+
 object OptionsSpec extends DefaultRunnableSpec {
 
   val f: Options[String]            = Options.text("firstname").alias("f")
@@ -97,7 +100,7 @@ object OptionsSpec extends DefaultRunnableSpec {
     },
     suite("orElse")(
       testM("validate orElse on 2 options") {
-        val o = Options.text("string") || Options.integer("integer")
+        val o = Options.text("string").map(Left(_)) | Options.integer("integer").map(Right(_))
         for {
           i <- o.validate(List("--integer", "2"), CliConfig.default)
           s <- o.validate(List("--string", "two"), CliConfig.default)
@@ -107,7 +110,7 @@ object OptionsSpec extends DefaultRunnableSpec {
         }
       },
       testM("validate orElse using fold on 2 options") {
-        val o = Options.text("string") || Options.integer("integer")
+        val o = Options.text("string").map(Left(_)) | Options.integer("integer").map(Right(_))
         val output = o.fold(
           (s: String) => s,
           (n: BigInt) => n.toString
@@ -121,7 +124,9 @@ object OptionsSpec extends DefaultRunnableSpec {
         }
       },
       testM("validate orElse using fold on 3 options") {
-        val o = Options.text("string") || Options.integer("integer") || Options.decimal("bigdecimal")
+        val o = Options.text("string").map(s => Left(Left(s))) |
+          Options.integer("integer").map(n => Left(Right(n))) |
+          Options.decimal("bigdecimal").map(f => Right(f))
         val output = o.fold(
           (s: String) => s,
           (n: BigInt) => n.toString,
@@ -133,17 +138,98 @@ object OptionsSpec extends DefaultRunnableSpec {
           d <- output.validate(List("--bigdecimal", "3.14"), CliConfig.default)
         } yield {
           assert(i)(equalTo(List() -> "2")) &&
-          assert(s)(equalTo(List() -> "two"))
+          assert(s)(equalTo(List() -> "two")) &&
           assert(d)(equalTo(List() -> "3.14"))
         }
       },
+      testM("validate orElse using fold on 4 options") {
+        val o = Options.text("string").map(s => Left(Left(Left(s)))) |
+          Options.integer("integer").map(n => Left(Left(Right(n)))) |
+          Options.decimal("bigdecimal").map(f => Left(Right(f))) |
+          Options.localDate("localdate").map(d => Right(d))
+        val output = o.fold(
+          (s: String) => s,
+          (n: BigInt) => n.toString,
+          (d: BigDecimal) => d.toString,
+          (e: LocalDate) => e.format(DateTimeFormatter.ISO_DATE)
+        )
+        for {
+          i <- output.validate(List("--integer", "2"), CliConfig.default)
+          s <- output.validate(List("--string", "two"), CliConfig.default)
+          d <- output.validate(List("--bigdecimal", "3.14"), CliConfig.default)
+          e <- output.validate(List("--localdate", "2020-01-01"), CliConfig.default)
+        } yield {
+          assert(i)(equalTo(List() -> "2")) &&
+          assert(s)(equalTo(List() -> "two")) &&
+          assert(d)(equalTo(List() -> "3.14")) &&
+          assert(e)(equalTo(List() -> "2020-01-01"))
+        }
+      },
+      testM("validate orElse using fold on 5 options") {
+        val o = Options.text("string").map(s => Left(Left(Left(Left(s))))) |
+          Options.integer("integer").map(n => Left(Left(Left(Right(n))))) |
+          Options.decimal("bigdecimal").map(f => Left(Left(Right(f)))) |
+          Options.localDate("localdate").map(d => Left(Right(d))) |
+          Options.monthDay("monthday").map(m => Right(m))
+        val output = o.fold(
+          (s: String) => s,
+          (n: BigInt) => n.toString,
+          (d: BigDecimal) => d.toString,
+          (e: LocalDate) => e.format(DateTimeFormatter.ISO_DATE),
+          (f: MonthDay) => f.toString
+        )
+        for {
+          i <- output.validate(List("--integer", "2"), CliConfig.default)
+          s <- output.validate(List("--string", "two"), CliConfig.default)
+          d <- output.validate(List("--bigdecimal", "3.14"), CliConfig.default)
+          e <- output.validate(List("--localdate", "2020-01-01"), CliConfig.default)
+          f <- output.validate(List("--monthday", "--01-01"), CliConfig.default)
+        } yield {
+          assert(i)(equalTo(List() -> "2")) &&
+          assert(s)(equalTo(List() -> "two")) &&
+          assert(d)(equalTo(List() -> "3.14")) &&
+          assert(e)(equalTo(List() -> "2020-01-01")) &&
+          assert(f)(equalTo(List() -> "--01-01"))
+        }
+      },
+      testM("validate orElse using fold on 6 options") {
+        val o = Options.text("string").map(s => Left(Left(Left(Left(Left(s)))))) |
+          Options.integer("integer").map(n => Left(Left(Left(Left(Right(n)))))) |
+          Options.decimal("bigdecimal").map(f => Left(Left(Left(Right(f))))) |
+          Options.localDate("localdate").map(d => Left(Left(Right(d)))) |
+          Options.monthDay("monthday").map(m => Left(Right(m))) |
+          Options.year("year").map(y => Right(y))
+        val output = o.fold(
+          (s: String) => s,
+          (n: BigInt) => n.toString,
+          (d: BigDecimal) => d.toString,
+          (e: LocalDate) => e.format(DateTimeFormatter.ISO_DATE),
+          (f: MonthDay) => f.toString,
+          (g: Year) => g.toString
+        )
+        for {
+          i <- output.validate(List("--integer", "2"), CliConfig.default)
+          s <- output.validate(List("--string", "two"), CliConfig.default)
+          d <- output.validate(List("--bigdecimal", "3.14"), CliConfig.default)
+          e <- output.validate(List("--localdate", "2020-01-01"), CliConfig.default)
+          f <- output.validate(List("--monthday", "--01-01"), CliConfig.default)
+          g <- output.validate(List("--year", "2020"), CliConfig.default)
+        } yield {
+          assert(i)(equalTo(List() -> "2")) &&
+          assert(s)(equalTo(List() -> "two")) &&
+          assert(d)(equalTo(List() -> "3.14")) &&
+          assert(e)(equalTo(List() -> "2020-01-01")) &&
+          assert(f)(equalTo(List() -> "--01-01")) &&
+          assert(g)(equalTo(List() -> "2020"))
+        }
+      },
       testM("test orElse options collision") {
-        val o = Options.text("string") || Options.integer("integer")
+        val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(List("--integer", "2", "--string", "two"), CliConfig.default)
         assertM(r.either)(isLeft)
       },
       testM("test orElse with no options given") {
-        val o = Options.text("string") || Options.integer("integer")
+        val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(Nil, CliConfig.default)
         assertM(r.either)(isLeft)
       }
