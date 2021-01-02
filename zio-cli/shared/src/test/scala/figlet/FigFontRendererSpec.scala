@@ -32,6 +32,15 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
           |      *  *  *     |
           |      *   **      |
           |                  |"""
+      ) &&
+      assertTextBlock(
+        render(font.withHLayout(FullWidth).copy(rightToLeft = true), "-?TJ-"),
+        """
+          |    *****  **     |
+          |***   *     *  ***|
+          |      *  *  *     |
+          |      *   **      |
+          |                  |"""
       )
     },
     test("Fitting HLayout") {
@@ -43,11 +52,29 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
           |   **  *   |
           |   * **    |
           |           |"""
+      ) &&
+      assertTextBlock(
+        render(font.withHLayout(Fitting).copy(rightToLeft = true), "-?TJ-"),
+        """
+          | *******   |
+          |****   ****|
+          |   **  *   |
+          |   * **    |
+          |           |"""
       )
     },
     test("Equal Char Smushing HLayout") {
       assertTextBlock(
         render(font.withHLayout(Smushing(equalCharacter)), "-?TJ-"),
+        """
+          |******  |
+          |***  ***|
+          |  *  *  |
+          |  ***   |
+          |        |"""
+      ) &&
+      assertTextBlock(
+        render(font.withHLayout(Smushing(equalCharacter)).copy(rightToLeft = true), "-?TJ-"),
         """
           |******  |
           |***  ***|
@@ -123,6 +150,27 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
           | | |
           | | |
           | | |"""
+      )
+    },
+    test("Universal Smushing") {
+      val font = testFigFont("""
+          |12|
+          | B|
+          |AB|
+          |A |""").withHLayout(Smushing(universal))
+      assertTextBlock(
+        render(font, "12"),
+        """
+          |B|
+          |B|
+          |A|"""
+      ) &&
+      assertTextBlock(
+        render(font.copy(rightToLeft = true), "12"),
+        """
+          |B|
+          |A|
+          |A|"""
       )
     }
   )

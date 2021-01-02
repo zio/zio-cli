@@ -7,7 +7,6 @@ import SmushingRule._
 import FigCharLine._
 
 private[figlet] object FigFontRenderer {
-  // TODO add support for RTL
   def render(font: FigFont, text: String): Chunk[String] = {
     val (hb, h, rtl)              = (font.header.hardBlank, font.header.charHeight, font.rightToLeft)
     val Layouts(hLayout, vLayout) = font.layout
@@ -17,7 +16,10 @@ private[figlet] object FigFontRenderer {
     // TODO add renderOptions e.g. maxWidth to implement word-wrapping
     // TODO review whether to trim vertically (or only at the bottom) given we trim horizontally
     def renderLine(line: String): Chunk[Chunk[String]] = Chunk(
-      line.map(font.chars.getOrElse(_, missingFigChar)).fold(emptyFigChar)(hAppend).fullLines(trim = true)
+      line
+        .map(font.chars.getOrElse(_, missingFigChar))
+        .fold(emptyFigChar)(hAppend)
+        .fullLines(trim = true)
     )
 
     def hAppend(b1: FigChar, b2: FigChar): FigChar = {
@@ -29,8 +31,9 @@ private[figlet] object FigFontRenderer {
           case (Chars(l1, s1, r), Empty(l)) => Chars(l1, s1, r - f + l)
           case (Chars(l1, s1, r), Chars(l, s2, r2)) =>
             Chars(l1, hLayout match {
-              case Smushing(rules) if r - f + l < 0 => s1.dropRight(1) + smush(hb, rules, s1.last, s2.head) + s2.drop(1)
-              case _                                => s1 + " " * (r - f + l) + s2
+              case Smushing(rules) if r - f + l < 0 =>
+                s1.dropRight(1) + smush(hb, rtl, rules, s1.last, s2.head) + s2.drop(1)
+              case _ => s1 + " " * (r - f + l) + s2
             }, r2)
         }
       }
@@ -46,7 +49,7 @@ private[figlet] object FigFontRenderer {
             case (c, ' ') => c
             case (c1, c2) =>
               vLayout match {
-                case Smushing(rules) => smush(hb, rules, c1, c2)
+                case Smushing(rules) => smush(hb, rtl = false, rules, c1, c2)
                 case _               => ??? // measure allows to overlap only for Smushing
               }
           }
@@ -104,25 +107,25 @@ private[figlet] object FigFontRenderer {
   private def measure[A](hb: Char, layout: Layout[_], rtl: Boolean, height: Int, b1: A, b2: A)(implicit ev: Block[A]) =
     layout match {
       case FullWidth => 0
-      case Fitting   => (0 until height).map(r => ev.spaces(b1, r, !rtl) + ev.spaces(b2, r, rtl)).min
+      case Fitting   => (0 until height).map(r => ev.spaces(b1, r, rtl = true) + ev.spaces(b2, r, rtl = false)).min
       case Smushing(rules) =>
         (0 until height).foldLeft(ev.width(b1) + ev.width(b2)) { (fitting, r) =>
-          val s1 = ev.spaces(b1, r, !rtl)
-          val s2 = ev.spaces(b2, r, rtl)
+          val s1 = ev.spaces(b1, r, rtl = true)
+          val s2 = ev.spaces(b2, r, rtl = false)
           s1 + s2 match {
             case f if f >= fitting => fitting
             case f =>
-              (ev.charAt(b1, r, s1, !rtl), ev.charAt(b2, r, s2, rtl)) match {
+              (ev.charAt(b1, r, s1, rtl = true), ev.charAt(b2, r, s2, rtl = false)) match {
                 case (MISSING, _) | (_, MISSING) => f
                 case (c1, c2) =>
-                  smush(hb, rules, c1, c2) match {
+                  smush(hb, rtl, rules, c1, c2) match {
                     case MISSING => f
                     // vertical line supersmushing can smush all vertically adjacent |
                     case '|' if verticalLineSupersmushing.unapply(rules) && c1 == '|' && c2 == '|' =>
                       val rng = 1 until fitting - f
                       f + 1 +
-                        rng.takeWhile(i => ev.charAt(b1, r, s1 + i, !rtl) == '|').length +
-                        rng.takeWhile(i => ev.charAt(b2, r, s2 + i, rtl) == '|').length
+                        rng.takeWhile(i => ev.charAt(b1, r, s1 + i, rtl = true) == '|').length +
+                        rng.takeWhile(i => ev.charAt(b2, r, s2 + i, rtl = false) == '|').length
                     case _ => f + 1
                   }
               }
@@ -130,8 +133,8 @@ private[figlet] object FigFontRenderer {
         }
     }
 
-  private def smush(hb: Char, rules: SmushingRule[_], a: Char, b: Char): Char = rules match {
-    case universal()                                              => if (a != hb && b != hb) b else MISSING
+  private def smush(hb: Char, rtl: Boolean, rules: SmushingRule[_], a: Char, b: Char): Char = rules match {
+    case universal()                                              => if (a != hb && b != hb) if (rtl) a else b else MISSING
     case equalCharacter() if a == b && a != hb                    => b
     case hardblank() if a == hb && b == hb                        => hb
     case underscore() if a == '_' && "|/\\[]{}()<>".contains(b)   => b
