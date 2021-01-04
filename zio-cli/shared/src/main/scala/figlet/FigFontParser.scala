@@ -33,7 +33,7 @@ private[figlet] object FigFontParser {
     hardBlank      <- chars(1).map(_.head)
     charHeight     <- space ~> int
     baseline       <- space ~> int
-    maxLength      <- space ~> int
+    _              <- space ~> int // we have no use for maxLength
     oldLayoutMask  <- space ~> int
     commentLines   <- space ~> int
     rightToLeft    <- (space ~> int).?
@@ -43,7 +43,6 @@ private[figlet] object FigFontParser {
     hardBlank = hardBlank,
     charHeight = charHeight,
     baseline = baseline,
-    maxLength = maxLength,
     commentLines = commentLines,
     oldLayoutMask = oldLayoutMask,
     rightToLeft = rightToLeft,

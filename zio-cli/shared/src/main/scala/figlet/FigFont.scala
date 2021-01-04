@@ -13,23 +13,45 @@ final case class FigFont(
 
 object FigFont extends FigFontPlatformSpecific {
   def fromLines(lines: Iterable[String]): Either[String, FigFont] = FigFontParser.parse(Chunk.fromIterable(lines))
+  def render(font: FigFont, text: String): Chunk[String]          = FigFontRenderer.render(font, text)
 }
 
 final case class FigChar(lines: Chunk[FigCharLine], width: Int, height: Int) {
-  override def toString: String =
-    lines
-      .map(l => if (l.leftSpaces == width) " " * width else " " * l.leftSpaces + l.content + " " * l.rightSpaces)
-      .mkString("\n")
+  import FigCharLine._
+
+  override def toString: String = fullLines().mkString("\n")
+
+  def fullLines(hardblank: Char = ' ', trim: Boolean = false): Chunk[String] = {
+    val lt = if (trim) lines.map(_.spaces(false)).min else 0
+    val rt = if (trim) lines.map(_.spaces(true)).min else 0
+    lines.map {
+      case Empty(w)       => " " * (w - lt - rt)
+      case Chars(l, s, r) => " " * (l - lt) + s.replace(hardblank, ' ') + " " * (r - rt)
+    }
+  }
 }
 
-final case class FigCharLine(leftSpaces: Int, rightSpaces: Int, content: String)
+sealed trait FigCharLine {
+  import FigCharLine._
+
+  final def spaces(rtl: Boolean): Int = this match {
+    case Empty(w)       => w
+    case Chars(l, _, r) => if (rtl) r else l
+  }
+}
 
 object FigCharLine {
+  final case class Empty(width: Int)                           extends FigCharLine
+  final case class Chars(left: Int, chars: String, right: Int) extends FigCharLine
+
   def fromFullLine(width: Int, line: String): FigCharLine = {
-    val cut         = line.take(width)
-    val leftSpaces  = cut.takeWhile(_ == ' ').count(_ => true)
-    val rightSpaces = cut.reverse.takeWhile(_ == ' ').count(_ => true)
-    FigCharLine(leftSpaces, rightSpaces, cut.drop(leftSpaces).dropRight(rightSpaces))
+    val s = line.take(width)
+    s.indexWhere(_ != ' ') match {
+      case -1 => Empty(s.length)
+      case l =>
+        val r = s.length - 1 - s.lastIndexWhere(_ != ' ')
+        Chars(l, s.drop(l).dropRight(r), r)
+    }
   }
 }
 
@@ -38,41 +60,82 @@ final case class FigHeader(
   hardBlank: Char,
   charHeight: Int,
   baseline: Int,
-  maxLength: Int,
   commentLines: Int,
   oldLayoutMask: Int,
   rightToLeft: Option[Int],
   fullLayoutMask: Option[Int]
 )
 
-sealed abstract class Layout[+SR] extends Product with Serializable
+sealed trait LayoutDirection
+object LayoutDirection {
+  sealed trait Horizontal extends LayoutDirection
+  sealed trait Vertical   extends LayoutDirection
+  sealed trait Both       extends Horizontal with Vertical
+}
+
+final case class Layouts(horizontal: Layout[LayoutDirection.Horizontal], vertical: Layout[LayoutDirection.Vertical])
+
+sealed abstract class Layout[+A <: LayoutDirection] extends Product with Serializable
 object Layout {
-  case object FullWidth                         extends Layout[Nothing]
-  case object Fitting                           extends Layout[Nothing]
-  final case class Smushing[SR](rules: Seq[SR]) extends Layout[SR]
+  case object FullWidth                                                    extends Layout[Nothing]
+  case object Fitting                                                      extends Layout[Nothing]
+  final case class Smushing[+A <: LayoutDirection](rules: SmushingRule[A]) extends Layout[A]
 }
 
-sealed trait SmushingRule           extends Product with Serializable
-sealed trait HorizontalSmushingRule extends SmushingRule
-sealed trait VerticalSmushingRule   extends SmushingRule
-sealed trait BothSmushingRule       extends HorizontalSmushingRule with VerticalSmushingRule
+final case class SmushingRule[+A <: LayoutDirection](private val mask: Int) extends AnyVal {
+  def unapply(r: SmushingRule[_]): Boolean = r.mask == mask || (r.mask & mask) != 0
+  override def toString: String            = SmushingRule.names.collect { case (n, r) if r.unapply(this) => n }.mkString(" | ")
+}
+
 object SmushingRule {
-  case object Universal                 extends BothSmushingRule
-  case object EqualCharacter            extends BothSmushingRule
-  case object Underscore                extends BothSmushingRule
-  case object Hierarchy                 extends BothSmushingRule
-  case object OppositePair              extends HorizontalSmushingRule
-  case object BigX                      extends HorizontalSmushingRule
-  case object HardBlank                 extends HorizontalSmushingRule
-  case object HorizontalLine            extends VerticalSmushingRule
-  case object VerticalLineSuperSmushing extends VerticalSmushingRule
-}
+  import LayoutDirection._
 
-final case class Layouts(horizontal: Layout[HorizontalSmushingRule], vertical: Layout[VerticalSmushingRule])
+  final val universal                 = SmushingRule[Both](0)
+  final val equalCharacter            = SmushingRule[Both](1 + 256)
+  final val underscore                = SmushingRule[Both](2 + 512)
+  final val hierarchy                 = SmushingRule[Both](4 + 1024)
+  final val oppositePair              = SmushingRule[Horizontal](8)
+  final val bigX                      = SmushingRule[Horizontal](0)
+  final val hardblank                 = SmushingRule[Horizontal](32)
+  final val horizontalLine            = SmushingRule[Vertical](2048)
+  final val verticalLineSupersmushing = SmushingRule[Vertical](4096)
+
+  abstract class SmushingRuleOps[A <: LayoutDirection](private val r: SmushingRule[A]) {
+    final def |[B <: A](r2: SmushingRule[B]): SmushingRule[A] = SmushingRule[A](r.mask | r2.mask)
+  }
+
+  implicit final class SmushingRuleOpsH(r: SmushingRule[Horizontal]) extends SmushingRuleOps[Horizontal](r)
+  implicit final class SmushingRuleOpsV(r: SmushingRule[Vertical])   extends SmushingRuleOps[Vertical](r)
+  implicit final class SmushingRuleOpsB(private val r: SmushingRule[Both]) {
+    def |[A <: LayoutDirection](r2: SmushingRule[A]): SmushingRule[A] = SmushingRule[A](r.mask | r2.mask)
+  }
+
+  def fromMaskH(mask: Int): SmushingRule[Horizontal] =
+    Seq(equalCharacter, underscore, hierarchy, oppositePair, bigX, hardblank)
+      .filter(m => (m.mask & mask & (1 + 2 + 4 + 8 + 16 + 32)) != 0)
+      .fold(universal)(_ | _)
+
+  def fromMaskV(mask: Int): SmushingRule[Vertical] =
+    Seq(equalCharacter, underscore, hierarchy, horizontalLine, verticalLineSupersmushing)
+      .filter(m => (m.mask & mask & (256 + 512 + 1024 + 2048 + 4096)) != 0)
+      .fold(universal)(_ | _)
+
+  private val names = Seq(
+    ("Universal", universal),
+    ("Equal Character", equalCharacter),
+    ("Underscore", underscore),
+    ("Hierarchy", hierarchy),
+    ("Opposite Pair", oppositePair),
+    ("Big X", bigX),
+    ("Hardblank", hardblank),
+    ("Horizontal Line", horizontalLine),
+    ("Vertical Line Supersmushing", verticalLineSupersmushing)
+  )
+}
 
 object Layouts {
-  import SmushingRule._
   import Layout._
+  import SmushingRule._
 
   def fromHeaderMasks(oldLayoutMask: Int, fullLayoutMask: Option[Int]): Layouts = {
     val mask = fullLayoutMask.getOrElse(oldLayoutMask match {
@@ -80,41 +143,17 @@ object Layouts {
       case m if m > 0 => m + 128 // smushing
       case _          => 0       // full width
     })
-    Layouts(horizontalLayout(mask), verticalLayout(mask))
+    Layouts(
+      mask match {
+        case m if (m & 128) == 128 => Smushing(fromMaskH(m))
+        case m if (m & 64) == 64   => Fitting
+        case _                     => FullWidth
+      },
+      mask match {
+        case m if (m & 16384) == 16384 => Smushing(fromMaskV(m))
+        case m if (m & 8192) == 8192   => Fitting
+        case _                         => FullWidth
+      }
+    )
   }
-
-  private def horizontalLayout(mask: Int): Layout[HorizontalSmushingRule] = mask match {
-    case m if (m & 128) == 128 => Smushing(matchedRulesOrUniversal(horizontalRuleMasks, mask))
-    case m if (m & 64) == 64   => Fitting
-    case _                     => FullWidth
-  }
-
-  private def verticalLayout(mask: Int): Layout[VerticalSmushingRule] = mask match {
-    case m if (m & 16384) == 16384 => Smushing(matchedRulesOrUniversal(verticalRuleMasks, mask))
-    case m if (m & 8192) == 8192   => Fitting
-    case _                         => FullWidth
-  }
-
-  private def matchedRulesOrUniversal[SR >: Universal.type](rules: Seq[(Int, SR)], mask: Int) =
-    rules.collect { case (i, r) if (mask & i) == i => r } match {
-      case Seq() => Seq(Universal)
-      case rules => rules
-    }
-
-  private final val horizontalRuleMasks = Seq(
-    (1, EqualCharacter),
-    (2, Underscore),
-    (4, Hierarchy),
-    (8, OppositePair),
-    (16, BigX),
-    (32, HardBlank)
-  )
-
-  private final val verticalRuleMasks = Seq(
-    (256, EqualCharacter),
-    (512, Underscore),
-    (1024, Hierarchy),
-    (2048, HorizontalLine),
-    (4096, VerticalLineSuperSmushing)
-  )
 }
