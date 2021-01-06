@@ -1,9 +1,9 @@
-package figlet
+package zio.cli.figlet
 
-import figlet.FigFontRenderer.render
-import figlet.Layout._
-import figlet.LayoutDirection._
-import figlet.SmushingRule._
+import FigFontRenderer.render
+import Layout._
+import LayoutDirection._
+import SmushingRule._
 import zio.test.Assertion._
 import zio.test._
 import zio.Chunk

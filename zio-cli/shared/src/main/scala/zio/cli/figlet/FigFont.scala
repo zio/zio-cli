@@ -1,4 +1,4 @@
-package figlet
+package zio.cli.figlet
 
 import zio.Chunk
 
@@ -9,11 +9,16 @@ final case class FigFont(
   rightToLeft: Boolean,
   layout: Layouts,
   chars: Map[Char, FigChar]
-)
+) { self =>
+  final def renderLines(text: String): Chunk[String] = FigFontRenderer.render(self, text)
+
+  final def render(text: String): String = renderLines(text).mkString("\n")
+}
 
 object FigFont extends FigFontPlatformSpecific {
   def fromLines(lines: Iterable[String]): Either[String, FigFont] = FigFontParser.parse(Chunk.fromIterable(lines))
-  def render(font: FigFont, text: String): Chunk[String]          = FigFontRenderer.render(font, text)
+
+  lazy val Default = zio.cli.figlet.FigFontFiles.Default
 }
 
 final case class FigChar(lines: Chunk[FigCharLine], width: Int, height: Int) {

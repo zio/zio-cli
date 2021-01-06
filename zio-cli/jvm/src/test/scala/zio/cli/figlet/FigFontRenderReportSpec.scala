@@ -1,4 +1,4 @@
-package figlet
+package zio.cli.figlet
 
 import zio._
 import zio.blocking._

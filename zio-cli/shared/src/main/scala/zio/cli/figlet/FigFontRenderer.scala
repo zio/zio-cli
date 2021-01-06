@@ -1,4 +1,4 @@
-package figlet
+package zio.cli.figlet
 
 import zio.Chunk
 import scala.math.{ max, min }

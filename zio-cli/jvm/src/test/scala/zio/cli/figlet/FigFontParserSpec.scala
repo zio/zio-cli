@@ -1,7 +1,7 @@
-package figlet
+package zio.cli.figlet
 
-import figlet.Layout._
-import figlet.SmushingRule._
+import Layout._
+import SmushingRule._
 import zio.test._
 import zio.test.Assertion._
 

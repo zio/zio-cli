@@ -1,4 +1,4 @@
-package figlet
+package zio.cli.figlet
 
 import zio.test._
 import zio.test.Assertion._

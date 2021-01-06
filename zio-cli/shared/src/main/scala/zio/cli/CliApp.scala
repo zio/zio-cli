@@ -1,10 +1,11 @@
 package zio.cli
 
 import zio._
+import zio.cli.figlet.FigFont
 import zio.cli.Command.BuiltIn
 import zio.console._
 import zio.cli.HelpDoc.{ h1, p }
-import zio.cli.HelpDoc.Span.text
+import zio.cli.HelpDoc.Span.{ code, text }
 
 /**
  * A `CliApp[R, E]` is a complete description of a command-line application, which
@@ -17,7 +18,8 @@ final case class CliApp[-R, +E, Model](
   command: Command[Model],
   execute: Model => ZIO[R, E, Any],
   footer: HelpDoc = HelpDoc.Empty,
-  config: CliConfig = CliConfig.default
+  config: CliConfig = CliConfig.default,
+  figFont: FigFont = FigFont.Default
 ) { self =>
   def handleBuiltIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
     if (args.isEmpty || builtIn.help) printDocs(helpDoc)
@@ -33,8 +35,8 @@ final case class CliApp[-R, +E, Model](
     copy(footer = self.footer + f)
 
   def helpDoc: HelpDoc =
-    h1(text(name) + text(" ") + text(version)) +
-      p(text(name) + text(" -- ") + summary) +
+    p(code(figFont.render(command.names.headOption.getOrElse(name)))) +
+      p(text(name) + text(" ") + text(version) + text(" -- ") + summary) +
       h1("synopsis") +
       command.synopsis.helpDoc +
       command.helpDoc +

@@ -1,4 +1,4 @@
-package figlet
+package zio.cli.figlet
 
 sealed abstract class ParseResult[+R, +A] extends Product with Serializable {
   import ParseResult._

@@ -19,6 +19,8 @@ sealed trait Command[+A] { self =>
 
   final def map[B](f: A => B): Command[B] = Command.Map(self, f)
 
+  def names: Set[String]
+
   final def orElse[A1 >: A](that: Command[A1]): Command[A1] = self | that
 
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
@@ -73,6 +75,8 @@ object Command {
       descriptionsSection + argumentsSection + optionsSection
     }
 
+    def names: Set[String] = Set(name)
+
     final def parse(
       args: List[String],
       conf: CliConfig
@@ -95,6 +99,8 @@ object Command {
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] {
     def helpDoc = command.helpDoc
 
+    def names: Set[String] = command.names
+
     final def parse(
       args: List[String],
       conf: CliConfig
@@ -107,6 +113,8 @@ object Command {
   final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
     def helpDoc = left.helpDoc + right.helpDoc
 
+    def names: Set[String] = left.names ++ right.names
+
     final def parse(
       args: List[String],
       conf: CliConfig
@@ -116,6 +124,8 @@ object Command {
   }
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] {
     def helpDoc = parent.helpDoc + h1("subcommands") + child.helpDoc
+
+    def names: Set[String] = parent.names
 
     final def parse(
       args: List[String],

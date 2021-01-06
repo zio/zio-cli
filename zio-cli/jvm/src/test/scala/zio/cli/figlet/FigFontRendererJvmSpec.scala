@@ -1,7 +1,7 @@
-package figlet
+package zio.cli.figlet
 
-import figlet.FigFontRenderer.render
-import figlet.FigFontRendererSpec.assertTextBlock
+import FigFontRenderer.render
+import FigFontRendererSpec.assertTextBlock
 import zio.test._
 
 object FigFontRendererJvmSpec extends DefaultRunnableSpec {
