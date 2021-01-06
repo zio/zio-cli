@@ -44,7 +44,7 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
       val (abc, rest)    = font.chars.keys.toSeq.sorted.partition(_.isLetter)
       val (lower, upper) = abc.partition(_.isLower)
       val sample         = Seq(lower, upper, rest).map(_.mkString).mkString("\n")
-      Right(FigFont.render(font, sample))
+      Right(font.renderLines(sample))
     } catch {
       case t: Throwable => Left(t.toString)
     }
