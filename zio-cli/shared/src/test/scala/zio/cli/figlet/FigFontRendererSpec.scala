@@ -172,6 +172,24 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
           |A|
           |A|"""
       )
+    },
+    test("Hierarchy Smushing") {
+      val font = testFigFont("""
+          |Z     I    |
+          | _____ ___ |
+          ||__  /|_ _||
+          |  / /  | | |
+          | / /_  | | |
+          |/____||___||""").withHLayout(Smushing(equalCharacter | hierarchy))
+      assertTextBlock(
+        render(font, "ZI"),
+        """
+          | ________ |
+          ||__  /_ _||
+          |  / / | | |
+          | / /_ | | |
+          |/____|___||"""
+      )
     }
   )
 
