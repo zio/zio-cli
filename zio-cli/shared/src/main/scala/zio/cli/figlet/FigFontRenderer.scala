@@ -140,8 +140,8 @@ private[figlet] object FigFontRenderer {
     case underscore() if a == '_' && "|/\\[]{}()<>".contains(b)   => b
     case bigX() if eq(pos(a, "/\\>"), pos(b, "\\/<"))             => "|YX".charAt(pos(a, "/\\>"))
     case oppositePair() if eq(pos(a, "[]{}()"), pos(b, "][}{)(")) => '|'
-    case hierarchy() if notEq(pos(a, "||/\\[]{}()<>") / 2, pos(a, "||/\\[]{}()<>") / 2) =>
-      if (pos(a, "||/\\[]{}()<>") > pos(b, "||/\\[]{}()<>")) a else b
+    case hierarchy() if notEq(pos(a, "||/\\[]{}()<>") / 2, pos(b, "||/\\[]{}()<>") / 2) =>
+      if (pos(a, "||/\\[]{}()<>") > pos(b, "||/\\[]{}()<>")) a else b // TODO review if rtl effects this case
     case horizontalLine() if a == '-' && b == '_' || a == '_' && b == '-' => '='
     case verticalLineSupersmushing() if a == '|' && b == '|'              => '|'
     case _                                                                => MISSING
