@@ -34,7 +34,12 @@ sealed trait Options[+A] { self =>
   final def ::[That, A1 >: A](that: Options[That]): Options[(That, A1)] =
     Options.Cons(that, self)
 
-  final def ||[That, A1 >: A](that: Options[That]): Options[Either[A1, That]] =
+  final def |[A1 >: A](that: Options[A1]): Options[A1] = self.orElse(that)
+
+  final def orElse[A1 >: A](that: Options[A1]): Options[A1] =
+    self.orElseEither(that).map(_.merge)
+
+  final def orElseEither[B](that: Options[B]): Options[Either[A, B]] =
     Options.OrElse(self, that)
 
   def ??(that: String): Options[A] =
@@ -89,6 +94,51 @@ sealed trait Options[+A] { self =>
       case Left(Left(b))  => f1(b)
       case Left(Right(c)) => f2(c)
       case Right(d)       => f3(d)
+    }
+
+  final def fold[B, C, D, E, Z](
+    f1: B => Z,
+    f2: C => Z,
+    f3: D => Z,
+    f4: E => Z
+  )(implicit ev: A <:< Either[Either[Either[B, C], D], E]): Options[Z] =
+    self.map(ev).map {
+      case Left(Left(Left(b)))  => f1(b)
+      case Left(Left(Right(c))) => f2(c)
+      case Left(Right(d))       => f3(d)
+      case Right(e)             => f4(e)
+    }
+
+  final def fold[B, C, D, E, F, Z](
+    f1: B => Z,
+    f2: C => Z,
+    f3: D => Z,
+    f4: E => Z,
+    f5: F => Z
+  )(implicit ev: A <:< Either[Either[Either[Either[B, C], D], E], F]): Options[Z] =
+    self.map(ev).map {
+      case Left(Left(Left(Left(b))))  => f1(b)
+      case Left(Left(Left(Right(c)))) => f2(c)
+      case Left(Left(Right(d)))       => f3(d)
+      case Left(Right(e))             => f4(e)
+      case Right(f)                   => f5(f)
+    }
+
+  final def fold[B, C, D, E, F, G, Z](
+    f1: B => Z,
+    f2: C => Z,
+    f3: D => Z,
+    f4: E => Z,
+    f5: F => Z,
+    f6: G => Z
+  )(implicit ev: A <:< Either[Either[Either[Either[Either[B, C], D], E], F], G]): Options[Z] =
+    self.map(ev).map {
+      case Left(Left(Left(Left(Left(b)))))  => f1(b)
+      case Left(Left(Left(Left(Right(c))))) => f2(c)
+      case Left(Left(Left(Right(d))))       => f3(d)
+      case Left(Left(Right(e)))             => f4(e)
+      case Left(Right(f))                   => f5(f)
+      case Right(g)                         => f6(g)
     }
 
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
