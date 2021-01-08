@@ -16,7 +16,7 @@ object OptionsSpec extends DefaultRunnableSpec {
   val aOpt: Options[Option[BigInt]] = Options.integer("age").optional("N/A")
   val b: Options[Boolean]           = Options.bool("verbose", true)
 
-  val options = f :: l :: a
+  val options = f ++ l ++ a
 
   def spec = suite("Options Suite")(
     testM("validate boolean option without value") {
@@ -25,7 +25,7 @@ object OptionsSpec extends DefaultRunnableSpec {
       assertM(r)(equalTo(List() -> true))
     },
     testM("validate boolean option with followup option") {
-      val o = Options.bool("help", true) :: Options.bool("v", true)
+      val o = Options.bool("help", true) ++ Options.bool("v", true)
 
       for {
         v1 <- o.validate(Nil, CliConfig.default)
@@ -67,14 +67,14 @@ object OptionsSpec extends DefaultRunnableSpec {
     },
     testM("validate options for cons") {
       val r = options.validate(List("--firstname", "John", "--lastname", "Doe", "--age", "100"), CliConfig.default)
-      assertM(r)(equalTo(List() -> ("John" -> ("Doe" -> BigInt(100)))))
+      assertM(r)(equalTo(List() -> (("John" -> "Doe") -> BigInt(100))))
     },
     testM("validate options for cons with remainder") {
       val r = options.validate(
         List("--verbose", "true", "--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent", "false"),
         CliConfig.default
       )
-      assertM(r)(equalTo(List("--verbose", "true", "--silent", "false") -> ("John" -> ("Doe" -> BigInt(100)))))
+      assertM(r)(equalTo(List("--verbose", "true", "--silent", "false") -> (("John" -> "Doe") -> BigInt(100))))
     },
     testM("validate non supplied optional") {
       val r = aOpt.validate(List(), CliConfig.default)

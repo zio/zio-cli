@@ -25,7 +25,7 @@ object WcApp extends App {
     countChar: Option[Long]
   )
 
-  val options = (bytesFlag :: linesFlag :: wordsFlag :: charFlag).as(WcOptions)
+  val options = (bytesFlag ++ linesFlag ++ wordsFlag ++ charFlag).as(WcOptions)
 
   val args = Args.file("files", Exists.Yes).repeat1
 

@@ -61,7 +61,7 @@ object CommandSpec extends DefaultRunnableSpec {
     val wordsFlag: Options[Boolean] = Options.bool("w", true)
     val charFlag: Options[Boolean]  = Options.bool("m", false)
 
-    val options = bytesFlag :: linesFlag :: wordsFlag :: charFlag
+    val options = bytesFlag ++ linesFlag ++ wordsFlag ++ charFlag
 
     val args = Args.text("files") *
 
@@ -72,7 +72,7 @@ object CommandSpec extends DefaultRunnableSpec {
     val afterFlag: Options[BigInt]  = Options.integer("after").alias("A")
     val beforeFlag: Options[BigInt] = Options.integer("before").alias("B")
 
-    val options = afterFlag :: beforeFlag
+    val options = afterFlag ++ beforeFlag
 
     val args = Args.text
 
