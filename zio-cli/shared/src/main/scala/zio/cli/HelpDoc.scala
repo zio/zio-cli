@@ -37,7 +37,6 @@ sealed trait HelpDoc { self =>
     self match {
       case HelpDoc.Header(_, _)          => true
       case HelpDoc.Sequence(left, right) => left.isHeader
-      case HelpDoc.Enumeration(xs)       => xs.head.isHeader
       case _                             => false
     }
 
@@ -45,7 +44,6 @@ sealed trait HelpDoc { self =>
     self match {
       case HelpDoc.Paragraph(_)          => true
       case HelpDoc.Sequence(left, right) => left.isParagraph
-      case HelpDoc.Enumeration(xs)       => xs.head.isParagraph
       case _                             => false
     }
 

@@ -39,9 +39,6 @@ object HelpDocSpec extends DefaultRunnableSpec {
         test("A Sequence beginning with a Header returns true") {
           assert(HelpDoc.Sequence(testHeader, testParagraph).isHeader)(isTrue)
         },
-        test("An Enumeration beginning with a Header returns true") {
-          assert(HelpDoc.Enumeration(List(testHeader, testParagraph, testEmpty)).isHeader)(isTrue)
-        },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isHeader)(isFalse)
         },
