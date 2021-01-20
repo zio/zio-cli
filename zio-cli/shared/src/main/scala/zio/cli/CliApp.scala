@@ -6,6 +6,7 @@ import zio.cli.Command.BuiltIn
 import zio.console._
 import zio.cli.HelpDoc.{ h1, p }
 import zio.cli.HelpDoc.Span.{ code, text }
+import zio.cli.BuiltInOption._
 
 /**
  * A `CliApp[R, E]` is a complete description of a command-line application, which
@@ -21,18 +22,19 @@ final case class CliApp[-R, +E, Model](
   config: CliConfig = CliConfig.default,
   figFont: FigFont = FigFont.Default
 ) { self =>
-  def handleBuiltIn(args: List[String], builtIn: BuiltIn): ZIO[Console, Nothing, Unit] =
-    if (args.isEmpty || builtIn.help) printDocs(helpDoc)
-    else
-      builtIn.shellCompletions match {
-        case None        => IO.unit
-        case Some(value) => putStrLn(completions(value))
-      }
+  def config(newConfig: CliConfig): CliApp[R, E, Model] = copy(config = newConfig)
 
-  def completions(shellType: ShellType): String = ???
+  def executeBuiltIn(builtInOption: BuiltInOption): RIO[Console, Unit] =
+    builtInOption match {
+      case ShowHelp(helpDoc) =>
+        putStrLn(helpDoc.toPlaintext(80))
 
-  def footer(f: HelpDoc): CliApp[R, E, Model] =
-    copy(footer = self.footer + f)
+      case ShowCompletions(completions) =>
+        putStrLn(completions.map(_.mkString(" ")).mkString("\n"))
+    }
+
+  def footer(newFooter: HelpDoc): CliApp[R, E, Model] =
+    copy(footer = self.footer + newFooter)
 
   def helpDoc: HelpDoc =
     p(code(figFont.render(command.names.headOption.getOrElse(name)))) +
@@ -42,22 +44,26 @@ final case class CliApp[-R, +E, Model](
       command.helpDoc +
       footer
 
-  def config(o: CliConfig): CliApp[R, E, Model] =
-    copy(config = o)
-
-  def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
-    (for {
-      builtInValidationResult  <- command.parseBuiltIn(args, config)
-      (remainingArgs, builtIn) = builtInValidationResult
-      _                        <- handleBuiltIn(args, builtIn)
-      validationResult         <- command.parse(remainingArgs, config)
-    } yield validationResult)
-      .foldM(printDocs, success => execute(success._2))
-      .exitCode
-
   def printDocs(helpDoc: HelpDoc): URIO[Console, Unit] =
     putStrLn(helpDoc.toPlaintext(80))
 
+  def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
+    command
+      .parse(args, config)
+      .foldM(printDocs(_), {
+        case CommandDirective.UserDefined(_, value) => execute(value)
+
+        case CommandDirective.BuiltIn(x) => executeBuiltIn(x)
+      })
+      .exitCode
+
   def summary(s: HelpDoc.Span): CliApp[R, E, Model] =
     copy(summary = self.summary + s)
+}
+object CliApp {
+  lazy val builtInOptions: Options[BuiltIn] =
+    (Options.bool("help", ifPresent = true) :: ShellType.option.optional("N/A")).as(BuiltIn)
+
+  final def parseBuiltIn(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], BuiltIn)] =
+    builtInOptions.validate(args, conf)
 }

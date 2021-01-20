@@ -19,6 +19,9 @@ trait GitExample {
     sealed case class Add()    extends Subcommand
     sealed case class Remote() extends Subcommand
   }
+  // git add --help
+  // git --help
+  //
 
   val add = Command("add", modifiedFlag, Args.directory("directory", Exists.Yes))
 
