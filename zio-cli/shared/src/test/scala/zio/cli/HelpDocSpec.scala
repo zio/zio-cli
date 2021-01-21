@@ -59,8 +59,8 @@ object HelpDocSpec extends DefaultRunnableSpec {
         test("A Sequence beginning with a Paragraph returns true") {
           assert(HelpDoc.Sequence(testParagraph, testHeader).isParagraph)(isTrue)
         },
-        test("An Enumeration beginning with a Paragraph returns true") {
-          assert(HelpDoc.Enumeration(List(testParagraph, testHeader, testEmpty)).isParagraph)(isTrue)
+        test("An Enumeration beginning with a Paragraph returns false") {
+          assert(HelpDoc.Enumeration(List(testParagraph, testHeader, testEmpty)).isParagraph)(isFalse)
         },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isParagraph)(isFalse)
@@ -123,8 +123,8 @@ object HelpDocSpec extends DefaultRunnableSpec {
         test("A Sequence beginning with a Sequence returns true") {
           assert(HelpDoc.Sequence(testSequence, testHeader).isSequence)(isTrue)
         },
-        test("An Enumeration beginning with a Sequence returns true") {
-          assert(HelpDoc.Enumeration(List(testSequence, testHeader, testEmpty)).isSequence)(isTrue)
+        test("An Enumeration beginning with a Sequence returns false") {
+          assert(HelpDoc.Enumeration(List(testSequence, testHeader, testEmpty)).isSequence)(isFalse)
         },
         test("An empty HelpDoc returns false") {
           assert(testEmpty.isSequence)(isFalse)

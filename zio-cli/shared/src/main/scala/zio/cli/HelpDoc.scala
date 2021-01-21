@@ -63,9 +63,8 @@ sealed trait HelpDoc { self =>
 
   def isSequence: Boolean =
     self match {
-      case HelpDoc.Sequence(_, _)  => true
-      case HelpDoc.Enumeration(xs) => xs.head.isSequence
-      case _                       => false
+      case HelpDoc.Sequence(_, _) => true
+      case _                      => false
     }
 
   def mapDescriptionList(f: (HelpDoc.Span, HelpDoc) => (HelpDoc.Span, HelpDoc)): HelpDoc =
