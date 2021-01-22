@@ -65,6 +65,19 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = f.validate(List("--firstname"), CliConfig.default)
       assertM(r.either)(isLeft)
     },
+    testM("validate case sensitive CLI config") {
+      val caseSensitiveConfig = CliConfig(true, 2)
+      val f: Options[String]  = Options.text("Firstname").alias("F")
+      for {
+        r1 <- f.validate(List("--Firstname", "John"), caseSensitiveConfig)
+        r2 <- f.validate(List("-F", "John"), caseSensitiveConfig)
+        _  <- f.validate(List("--firstname", "John"), caseSensitiveConfig).flip
+        _  <- f.validate(List("--firstname", "John"), caseSensitiveConfig).flip
+      } yield {
+        assert(r1)(equalTo(List() -> "John")) &&
+        assert(r2)(equalTo(List() -> "John"))
+      }
+    },
     testM("validate options for cons") {
       val r = options.validate(List("--firstname", "John", "--lastname", "Doe", "--age", "100"), CliConfig.default)
       assertM(r)(equalTo(List() -> (("John" -> "Doe") -> BigInt(100))))
