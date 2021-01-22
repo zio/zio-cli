@@ -35,14 +35,27 @@ sealed trait Command[+A] { self =>
 }
 
 object Command {
-  final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
-
   final case class Single[OptionsType, ArgsType](
     name: String,
     description: HelpDoc,
     options: Options[OptionsType],
     args: Args[ArgsType]
   ) extends Command[(OptionsType, ArgsType)] { self =>
+
+    /**
+     * Built-in options supported by the command, such as "--help".
+     */
+    lazy val builtInOptions: Options[Option[BuiltInOption]] =
+      BuiltInOption.builtInOptions(helpDoc, completions(_))
+
+    def builtIn(
+      args: List[String],
+      conf: CliConfig
+    ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
+      builtInOptions.validate(args, conf).map(_._2).some.map(CommandDirective.BuiltIn(_))
+
+    def completions(shellType: ShellType): Set[List[String]] = ???
+
     def helpDoc: HelpDoc = {
       val descriptionsSection = {
         val desc = description
@@ -59,7 +72,7 @@ object Command {
       }
 
       val optionsSection = {
-        val opts = (self.options :: CliApp.builtInOptions).helpDoc
+        val opts = (self.options :: BuiltInOption.builtInOptions).helpDoc
 
         if (opts == HelpDoc.Empty) HelpDoc.Empty
         else h1("options") + opts
@@ -74,6 +87,17 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[HelpDoc, CommandDirective[(OptionsType, ArgsType)]] =
+      builtIn(args, conf).catchAll(_ => userDefined(args, conf)).catchSome {
+        case _ if args.isEmpty => ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(helpDoc)))
+      }
+
+    def synopsis: UsageSynopsis =
+      UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
+
+    def userDefined(
+      args: List[String],
+      conf: CliConfig
+    ): IO[HelpDoc, CommandDirective[(OptionsType, ArgsType)]] =
       for {
         tuple               <- self.options.validate(args, conf)
         (args, optionsType) = tuple
@@ -83,10 +107,6 @@ object Command {
               ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")))
             )
       } yield CommandDirective.userDefined(args, (optionsType, argsType))
-
-    def synopsis: UsageSynopsis =
-      UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
-
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] {

@@ -2,7 +2,6 @@ package zio.cli
 
 import zio._
 import zio.cli.figlet.FigFont
-import zio.cli.Command.BuiltIn
 import zio.console._
 import zio.cli.HelpDoc.{ h1, p }
 import zio.cli.HelpDoc.Span.{ code, text }
@@ -59,11 +58,4 @@ final case class CliApp[-R, +E, Model](
 
   def summary(s: HelpDoc.Span): CliApp[R, E, Model] =
     copy(summary = self.summary + s)
-}
-object CliApp {
-  lazy val builtInOptions: Options[BuiltIn] =
-    (Options.bool("help", ifPresent = true) :: ShellType.option.optional("N/A")).as(BuiltIn)
-
-  final def parseBuiltIn(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], BuiltIn)] =
-    builtInOptions.validate(args, conf)
 }
