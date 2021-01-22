@@ -13,10 +13,10 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("Command with options followed by args")(
         testM("Should validate successfully") {
           assertM(Tail.command.parse(List("-n", "100", "foo.log"), CliConfig.default))(
-            equalTo((List.empty[String], (BigInt(100), "foo.log")))
+            equalTo(CommandDirective.UserDefined(List.empty[String], (BigInt(100), "foo.log")))
           ) *>
             assertM(Ag.command.parse(List("--after", "2", "--before", "3", "fooBar"), CliConfig.default))(
-              equalTo((List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
+              equalTo(CommandDirective.UserDefined(List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
             )
         },
         testM("Should provide auto correct suggestions for misspelled options") {
