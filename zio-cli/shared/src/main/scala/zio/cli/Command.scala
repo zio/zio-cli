@@ -150,7 +150,7 @@ object Command {
           child.parse(leftover, conf).map(_.map(b => (a, b)))
       }
 
-    def synopsis: UsageSynopsis = parent.synopsis
+    def synopsis: UsageSynopsis = parent.synopsis + child.synopsis
   }
 
   /**

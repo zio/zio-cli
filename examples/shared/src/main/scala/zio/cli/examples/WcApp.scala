@@ -92,6 +92,5 @@ object WcApp extends App {
     execute.tupled
   )
 
-  @Override
-  def run(args: List[String]) = wcApp.run(args)
+  override def run(args: List[String]) = wcApp.run(args)
 }
