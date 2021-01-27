@@ -13,10 +13,10 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("Command with options followed by args")(
         testM("Should validate successfully") {
           assertM(Tail.command.parse(List("-n", "100", "foo.log"), CliConfig.default))(
-            equalTo((List.empty[String], (BigInt(100), "foo.log")))
+            equalTo(CommandDirective.UserDefined(List.empty[String], (BigInt(100), "foo.log")))
           ) *>
             assertM(Ag.command.parse(List("--after", "2", "--before", "3", "fooBar"), CliConfig.default))(
-              equalTo((List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
+              equalTo(CommandDirective.UserDefined(List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
             )
         },
         testM("Should provide auto correct suggestions for misspelled options") {
@@ -61,7 +61,7 @@ object CommandSpec extends DefaultRunnableSpec {
     val wordsFlag: Options[Boolean] = Options.bool("w", true)
     val charFlag: Options[Boolean]  = Options.bool("m", false)
 
-    val options = bytesFlag :: linesFlag :: wordsFlag :: charFlag
+    val options = bytesFlag ++ linesFlag ++ wordsFlag ++ charFlag
 
     val args = Args.text("files") *
 
@@ -72,7 +72,7 @@ object CommandSpec extends DefaultRunnableSpec {
     val afterFlag: Options[BigInt]  = Options.integer("after").alias("A")
     val beforeFlag: Options[BigInt] = Options.integer("before").alias("B")
 
-    val options = afterFlag :: beforeFlag
+    val options = afterFlag ++ beforeFlag
 
     val args = Args.text
 

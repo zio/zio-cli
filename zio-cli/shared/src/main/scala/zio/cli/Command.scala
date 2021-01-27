@@ -72,7 +72,7 @@ object Command {
       }
 
       val optionsSection = {
-        val opts = (self.options :: BuiltInOption.builtInOptions).helpDoc
+        val opts = (self.options ++ BuiltInOption.builtInOptions).helpDoc
 
         if (opts == HelpDoc.Empty) HelpDoc.Empty
         else h1("options") + opts
