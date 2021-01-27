@@ -87,9 +87,7 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[HelpDoc, CommandDirective[(OptionsType, ArgsType)]] =
-      builtIn(args, conf).catchAll(_ => userDefined(args, conf)).catchSome {
-        case _ if args.isEmpty => ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(helpDoc)))
-      }
+      builtIn(args, conf).catchAll(_ => userDefined(args, conf))
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
@@ -135,8 +133,9 @@ object Command {
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
-  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] {
-    def helpDoc = parent.helpDoc + h1("subcommands") + child.helpDoc
+  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
+    def helpDoc =
+      parent.helpDoc + HelpDoc.h1("Subcommands") + HelpDoc.enumeration(child.names.toList.sorted.map(HelpDoc.p): _*)
 
     def names: Set[String] = parent.names
 
@@ -144,11 +143,21 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[HelpDoc, CommandDirective[(A, B)]] =
-      parent.parse(args, conf).flatMap {
-        case x @ CommandDirective.BuiltIn(_) => ZIO.succeed(x)
-        case CommandDirective.UserDefined(leftover, a) =>
-          child.parse(leftover, conf).map(_.map(b => (a, b)))
-      }
+      parent
+        .parse(args, conf)
+        .flatMap {
+          case CommandDirective.BuiltIn(x) =>
+            x match {
+              case BuiltInOption.ShowHelp(_) =>
+                ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc)))
+              case x => ZIO.succeed(CommandDirective.builtIn(x))
+            }
+          case CommandDirective.UserDefined(leftover, a) =>
+            child.parse(leftover, conf).map(_.map(b => (a, b)))
+        }
+        .catchSome {
+          case _ if args.isEmpty => ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(self.helpDoc)))
+        }
 
     def synopsis: UsageSynopsis = parent.synopsis + child.synopsis
   }
