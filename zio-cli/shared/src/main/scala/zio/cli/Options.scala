@@ -24,6 +24,16 @@ import zio.cli.HelpDoc.Span._
 
 import scala.collection.immutable.Nil
 
+final case class ValidationError(validationErrorType: ValidationErrorType, error: HelpDoc) {
+  def isOptionMissing: Boolean = validationErrorType == ValidationErrorType.MissingValue
+}
+
+sealed trait ValidationErrorType
+object ValidationErrorType {
+  case object InvalidValue extends ValidationErrorType
+  case object MissingValue extends ValidationErrorType
+}
+
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
@@ -142,7 +152,14 @@ sealed trait Options[+A] { self =>
     }
 
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
-    Options.Map(self, (a: A) => f.lift(a).fold[Either[HelpDoc, B]](Left(p(error(message))))(Right(_)))
+    Options.Map(
+      self,
+      (a: A) =>
+        f.lift(a)
+          .fold[Either[ValidationError, B]](Left(ValidationError(ValidationErrorType.InvalidValue, p(error(message)))))(
+            Right(_)
+          )
+    )
 
   final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
 
@@ -161,11 +178,13 @@ sealed trait Options[+A] { self =>
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
-  final def mapOrFail[B](f: A => Either[HelpDoc, B]): Options[B] =
+  final def mapOrFail[B](f: A => Either[ValidationError, B]): Options[B] =
     Options.Map(self, (a: A) => f(a))
 
   final def mapTry[B](f: A => B): Options[B] =
-    self.mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => p(e.getMessage())))
+    self.mapOrFail((a: A) =>
+      scala.util.Try(f(a)).toEither.left.map(e => ValidationError(ValidationErrorType.InvalidValue, p(e.getMessage)))
+    )
 
   final def optional(desc: String): Options[Option[A]] = self.map(Some(_)).withDefault(None, desc)
 
@@ -173,7 +192,7 @@ sealed trait Options[+A] { self =>
 
   def uid: Option[String]
 
-  def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)]
+  def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
 
   def withDefault[A1 >: A](value: A1, valueDescription: String): Options[A1] =
     Options.WithDefault(self, value, valueDescription)
@@ -189,7 +208,7 @@ object Options {
   case object Empty extends Options[Unit] {
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], Unit)] =
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Unit)] =
       IO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
@@ -202,8 +221,18 @@ object Options {
   final case class WithDefault[A](options: Options[A], default: A, defaultDescription: String) extends Options[A] {
     def synopsis: UsageSynopsis = options.synopsis
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
-      options.validate(args, conf) orElseSucceed (args -> default)
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
+      options
+        .validate(args, conf)
+        .foldM(
+          invalid =>
+            if (invalid.isOptionMissing) {
+              IO.succeed(args -> default)
+            } else {
+              IO.fail(invalid)
+            },
+          success => IO.succeed(success)
+        )
 
     override def modifySingle(f: SingleModifier): Options[A] =
       WithDefault(options.modifySingle(f), default, defaultDescription)
@@ -237,27 +266,35 @@ object Options {
       else
         names.exists(_.equalsIgnoreCase(s))
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] = {
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] = {
       val names = fullname :: aliases.map(makeFullName).toList
       args match {
         case head :: tail if supports(head, names, conf) =>
           primType match {
-            case _: PrimType.Bool => primType.validate(None, conf).bimap(f => p(f), tail -> _)
+            case _: PrimType.Bool =>
+              primType
+                .validate(None, conf)
+                .bimap(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), tail -> _)
             case _ =>
               (tail match {
                 case Nil         => primType.validate(None, conf)
                 case ::(head, _) => primType.validate(Some(head), conf)
-              }).bimap(f => p(f), a => tail.drop(1) -> a)
+              }).bimap(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), a => tail.drop(1) -> a)
           }
         case head :: tail
             if name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(head, fullname, conf) <= conf.autoCorrectLimit =>
-          IO.fail(p(error(s"""The flag "${head}" is not recognized. Did you mean ${fullname}?""")))
+          IO.fail(
+            ValidationError(
+              ValidationErrorType.MissingValue,
+              p(error(s"""The flag "${head}" is not recognized. Did you mean ${fullname}?"""))
+            )
+          )
         case head :: tail =>
           validate(tail, conf).map {
             case (args, a) => (head :: args, a)
           }
         case Nil =>
-          IO.fail(p(error(s"Expected to find ${fullname} option.")))
+          IO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullname} option."))))
       }
     }
 
@@ -288,15 +325,24 @@ object Options {
 
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
-    override def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], Either[A, B])] =
+    override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Either[A, B])] =
       left
         .validate(args, conf)
         .foldM(
           err1 =>
             right
               .validate(args, conf)
-              .foldM[Any, HelpDoc, (List[String], Either[A, B])](
-                err2 => IO.fail(err1 + err2),
+              .foldM[Any, ValidationError, (List[String], Either[A, B])](
+                err2 =>
+                  IO.fail(
+                    // orElse option is only missing in case neither option was given
+                    (err1.validationErrorType, err2.validationErrorType) match {
+                      case (ValidationErrorType.MissingValue, ValidationErrorType.MissingValue) =>
+                        ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)
+                      case _ =>
+                        ValidationError(ValidationErrorType.InvalidValue, err1.error + err2.error)
+                    }
+                  ),
                 success => IO.succeed((success._1, Right(success._2)))
               ),
           r =>
@@ -306,7 +352,10 @@ object Options {
                 _ => IO.succeed((r._1, Left(r._2))),
                 _ =>
                   IO.fail(
-                    p(error(s"Options collision detected. You can only specify either ${left} or ${right}."))
+                    ValidationError(
+                      ValidationErrorType.InvalidValue,
+                      p(error(s"Options collision detected. You can only specify either ${left} or ${right}."))
+                    )
                   )
               )
         )
@@ -324,7 +373,7 @@ object Options {
 
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
-    override def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], (A, B))] =
+    override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
         tuple <- left
                   .validate(args, conf)
@@ -332,7 +381,7 @@ object Options {
                     right
                       .validate(args, conf)
                       .foldM(
-                        err2 => IO.fail(err1 + err2),
+                        err2 => IO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
                         _ => IO.fail(err1)
                       )
                   )
@@ -349,12 +398,12 @@ object Options {
     }
   }
 
-  final case class Map[A, B](value: Options[A], f: A => Either[HelpDoc, B]) extends Options[B] {
+  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] {
     override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
 
     def synopsis: UsageSynopsis = value.synopsis
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], B)] =
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
       value.validate(args, conf).flatMap(r => f(r._2).fold(e => IO.fail(e), s => IO.succeed(r._1 -> s)))
 
     override def uid: Option[String] = value.uid

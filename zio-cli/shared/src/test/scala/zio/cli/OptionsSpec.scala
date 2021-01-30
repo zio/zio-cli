@@ -3,7 +3,7 @@ package zio.cli
 import zio.test.Assertion._
 import zio.test._
 import zio.cli.HelpDoc.p
-import zio.cli.HelpDoc.Span.error
+import zio.cli.HelpDoc.Span.{ error, text }
 
 import java.time.{ LocalDate, MonthDay, Year }
 import java.time.format.DateTimeFormatter
@@ -65,6 +65,20 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = f.validate(List("--firstname"), CliConfig.default)
       assertM(r.either)(isLeft)
     },
+    testM("validate invalid option value") {
+      val intOption = Options.integer("t")
+      val v1        = intOption.validate(List("-t", "abc"), CliConfig.default)
+      assertM(v1.run)(
+        fails(equalTo(ValidationError(ValidationErrorType.InvalidValue, p(text("abc is not a integer.")))))
+      )
+    },
+    testM("validate missing option") {
+      val intOption = Options.integer("t")
+      val v1        = intOption.validate(List(), CliConfig.default)
+      assertM(v1.run)(
+        fails(equalTo(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find -t option.")))))
+      )
+    },
     testM("validate invalid option using withDefault") {
       val o = Options.integer("integer").withDefault(BigInt(0), "0 as default")
       val r = o.validate(List("--integer", "abc"), CliConfig.default)
@@ -113,7 +127,14 @@ object OptionsSpec extends DefaultRunnableSpec {
     testM("returns a HelpDoc if an option is not an exact match, but is close") {
       val r = f.validate(List("--firstme", "Alice"), CliConfig.default)
       assertM(r.either)(
-        equalTo(Left(p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))))
+        equalTo(
+          Left(
+            ValidationError(
+              ValidationErrorType.MissingValue,
+              p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))
+            )
+          )
+        )
       )
     },
     suite("orElse")(
@@ -260,7 +281,7 @@ object OptionsSpec extends DefaultRunnableSpec {
     testM("returns a HelpDoc if an option is not an exact match and it's a short option") {
       val r = a.validate(List("--ag", "20"), CliConfig.default)
       assertM(r.either)(
-        equalTo(Left(p(error("Expected to find --age option."))))
+        equalTo(Left(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --age option.")))))
       )
     }
   )
