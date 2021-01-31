@@ -65,6 +65,11 @@ object OptionsSpec extends DefaultRunnableSpec {
       val r = f.validate(List("--firstname"), CliConfig.default)
       assertM(r.either)(isLeft)
     },
+    testM("validate invalid option using withDefault") {
+      val o = Options.integer("integer").withDefault(BigInt(0), "0 as default")
+      val r = o.validate(List("--integer", "abc"), CliConfig.default)
+      assertM(r.either)(isLeft)
+    },
     testM("validate case sensitive CLI config") {
       val caseSensitiveConfig = CliConfig(true, 2)
       val f: Options[String]  = Options.text("Firstname").alias("F")
@@ -244,6 +249,11 @@ object OptionsSpec extends DefaultRunnableSpec {
       testM("test orElse with no options given") {
         val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(Nil, CliConfig.default)
+        assertM(r.either)(isLeft)
+      },
+      testM("validate invalid option in OrElse option when using withDefault") {
+        val o = (Options.integer("min") | Options.integer("max")).withDefault(BigInt(0), "0 as default")
+        val r = o.validate(List("--min", "abc"), CliConfig.default)
         assertM(r.either)(isLeft)
       }
     ),
