@@ -52,7 +52,7 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
-      builtInOptions.validate(args, conf).map(_._2).some.map(CommandDirective.BuiltIn(_))
+      builtInOptions.validate(args, conf).bimap(_.error, _._2).some.map(CommandDirective.BuiltIn(_))
 
     def completions(shellType: ShellType): Set[List[String]] = ???
 
@@ -97,7 +97,7 @@ object Command {
       conf: CliConfig
     ): IO[HelpDoc, CommandDirective[(OptionsType, ArgsType)]] =
       for {
-        tuple               <- self.options.validate(args, conf)
+        tuple               <- self.options.validate(args, conf).mapError(_.error)
         (args, optionsType) = tuple
         tuple               <- self.args.validate(args, conf)
         (args, argsType)    = tuple
