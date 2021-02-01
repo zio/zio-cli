@@ -24,16 +24,6 @@ import zio.cli.HelpDoc.Span._
 
 import scala.collection.immutable.Nil
 
-final case class ValidationError(validationErrorType: ValidationErrorType, error: HelpDoc) {
-  def isOptionMissing: Boolean = validationErrorType == ValidationErrorType.MissingValue
-}
-
-sealed trait ValidationErrorType
-object ValidationErrorType {
-  case object InvalidValue extends ValidationErrorType
-  case object MissingValue extends ValidationErrorType
-}
-
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
