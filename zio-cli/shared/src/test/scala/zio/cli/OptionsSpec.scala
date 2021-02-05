@@ -46,8 +46,8 @@ object OptionsSpec extends DefaultRunnableSpec {
         v3 <- bNegation.validate(List("-v"), CliConfig.default)
         v4 <- bNegation.validate(List("--silent"), CliConfig.default)
         v5 <- bNegation.validate(List("-s"), CliConfig.default)
-        _  <- bNegation.validate(List("--silent","--verbose"), CliConfig.default).flip // colliding options
-        _  <- bNegation.validate(List("-s","-v"), CliConfig.default).flip // colliding options
+        _  <- bNegation.validate(List("--silent", "--verbose"), CliConfig.default).flip // colliding options
+        _  <- bNegation.validate(List("-s", "-v"), CliConfig.default).flip // colliding options
       } yield {
         assert(v1)(equalTo(Nil -> false)) &&
         assert(v2)(equalTo(Nil -> true)) &&
@@ -106,7 +106,7 @@ object OptionsSpec extends DefaultRunnableSpec {
     testM("validate collision of boolean option with negation") {
       val bNegation: Options[Boolean] =
         Options.bool("v", true, "s") //.alias("v")
-      val v1 = bNegation.validate(List("-v","-s"), CliConfig.default)
+      val v1 = bNegation.validate(List("-v", "-s"), CliConfig.default)
       assertM(v1.either)(isLeft)
     },
     testM("validate case sensitive CLI config") {

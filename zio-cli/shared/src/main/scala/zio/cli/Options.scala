@@ -414,7 +414,7 @@ object Options {
    */
   def bool(name: String, ifPresent: Boolean, negationName: String, negationNames: String*): Options[Boolean] =
     makeBool(name, ifPresent, negationName :: negationNames.toList)
-  
+
   private def makeBool(name: String, ifPresent: Boolean, negationNames: List[String]): Options[Boolean] = {
 
     val option = Single(name, Vector.empty, PrimType.Bool(Some(ifPresent)))
