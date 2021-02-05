@@ -179,7 +179,7 @@ object PrimType {
             case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
             case _                                  => IO.fail(s"$s cannot be recognized as valid boolean.")
           }
-        case None => IO.succeed(defaultValue.get)
+        case None => IO.fromOption(defaultValue).orElseFail("Missing default for bool parameter.")
       }
 
     def helpDoc: HelpDoc.Span = text("A true or false value.")

@@ -405,11 +405,27 @@ object Options {
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    */
-  def bool(name: String, ifPresent: Boolean, negationName: Option[String] = None): Options[Boolean] = {
-    // TODO
-    val _ = negationName
-    Single(name, Vector.empty, PrimType.Bool(Some(ifPresent)))
-      .withDefault(!ifPresent, (!ifPresent).toString)
+  def bool(name: String, ifPresent: Boolean): Options[Boolean] = makeBool(name, ifPresent, Nil)
+
+  /**
+   * Creates a boolean flag with the specified name, which, if present, will
+   * produce the specified constant boolean value.
+   * Negation names may be specified to explicitly invert the boolean value of this option.
+   */
+  def bool(name: String, ifPresent: Boolean, negationName: String, negationNames: String*): Options[Boolean] =
+    makeBool(name, ifPresent, negationName :: negationNames.toList)
+
+  private def makeBool(name: String, ifPresent: Boolean, negationNames: List[String]): Options[Boolean] = {
+
+    val option = Single(name, Vector.empty, PrimType.Bool(Some(ifPresent)))
+
+    negationNames match {
+      case Nil =>
+        option.withDefault(!ifPresent, (!ifPresent).toString)
+      case head :: tail =>
+        val negationOption = Single(head, tail.toVector, PrimType.Bool(Some(!ifPresent)))
+        (option | negationOption).withDefault(!ifPresent, (!ifPresent).toString)
+    }
   }
 
   /**
