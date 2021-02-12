@@ -6,6 +6,9 @@ final case class ValidationError(validationErrorType: ValidationErrorType, error
 
 sealed trait ValidationErrorType
 object ValidationErrorType {
-  case object InvalidValue extends ValidationErrorType
-  case object MissingValue extends ValidationErrorType
+  case object InvalidValue      extends ValidationErrorType
+  case object MissingValue      extends ValidationErrorType
+  case object CommandMismatch   extends ValidationErrorType
+  case object MissingSubCommand extends ValidationErrorType
+  case object InvalidArgument   extends ValidationErrorType
 }
