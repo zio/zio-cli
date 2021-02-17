@@ -231,7 +231,7 @@ object Options {
       options.helpDoc.mapDescriptionList {
         case (span, block) =>
           span -> (block + HelpDoc.p(
-            s"This setting is optional. If unspecified, the default value of this option is ${defaultDescription}."
+            s"This setting is optional. If unspecified, the default value of this option is ${default}. ${defaultDescription}"
           ))
       }
 
