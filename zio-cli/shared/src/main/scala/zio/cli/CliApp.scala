@@ -46,13 +46,21 @@ final case class CliApp[-R, +E, Model](
   def printDocs(helpDoc: HelpDoc): URIO[Console, Unit] =
     putStrLn(helpDoc.toPlaintext(80))
 
+  // prepend a first argument in case the CliApp's command is expected to consume it
+  private def prefix(command: Command[_]): List[String] =
+    command match {
+      case Command.Single(name, _, _, _)  => List(name)
+      case Command.Map(command, _)        => prefix(command)
+      case Command.Fallback(_, _)         => Nil
+      case Command.Subcommands(parent, _) => prefix(parent)
+    }
+
   def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
     command
-      .parse(args, config)
-      .foldM(printDocs(_), {
+      .parse(prefix(command) ++ args, config)
+      .foldM(e => printDocs(e.error), {
         case CommandDirective.UserDefined(_, value) => execute(value)
-
-        case CommandDirective.BuiltIn(x) => executeBuiltIn(x)
+        case CommandDirective.BuiltIn(x)            => executeBuiltIn(x)
       })
       .exitCode
 

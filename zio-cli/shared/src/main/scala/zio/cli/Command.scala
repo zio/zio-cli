@@ -2,7 +2,6 @@ package zio.cli
 
 import zio.{ IO, ZIO }
 import zio.cli.HelpDoc.h1
-import zio.cli.HelpDoc.Span
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application
@@ -24,7 +23,7 @@ sealed trait Command[+A] { self =>
 
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
 
-  def parse(args: List[String], conf: CliConfig): IO[HelpDoc, CommandDirective[A]]
+  def parse(args: List[String], conf: CliConfig): IO[ValidationError, CommandDirective[A]]
 
   final def subcommands[B](that: Command[B]): Command[(A, B)] = Command.Subcommands(self, that)
 
@@ -35,6 +34,7 @@ sealed trait Command[+A] { self =>
 }
 
 object Command {
+
   final case class Single[OptionsType, ArgsType](
     name: String,
     description: HelpDoc,
@@ -86,8 +86,10 @@ object Command {
     final def parse(
       args: List[String],
       conf: CliConfig
-    ): IO[HelpDoc, CommandDirective[(OptionsType, ArgsType)]] =
-      builtIn(args, conf).catchAll(_ => userDefined(args, conf))
+    ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
+      builtIn(args, conf).catchAll { _ =>
+        userDefined(args, conf)
+      }
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
@@ -95,16 +97,32 @@ object Command {
     def userDefined(
       args: List[String],
       conf: CliConfig
-    ): IO[HelpDoc, CommandDirective[(OptionsType, ArgsType)]] =
+    ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
       for {
-        tuple               <- self.options.validate(args, conf).mapError(_.error)
+        args <- args match {
+                 case head :: tail =>
+                   if (conf.normalizeCase(head) == conf.normalizeCase(name)) IO.succeed(tail)
+                   else
+                     IO.fail(
+                       ValidationError(
+                         ValidationErrorType.CommandMismatch,
+                         HelpDoc.p(s"Unexpected command name: ${args.headOption}")
+                       )
+                     )
+                 case Nil =>
+                   IO.fail(
+                     ValidationError(ValidationErrorType.CommandMismatch, HelpDoc.p(s"Missing command name: ${name}"))
+                   )
+               }
+        tuple               <- self.options.validate(args, conf)
         (args, optionsType) = tuple
-        tuple               <- self.args.validate(args, conf)
-        (args, argsType)    = tuple
-        _ <- ZIO.when(args.nonEmpty)(
-              ZIO.fail(HelpDoc.p(Span.error(s"Unexpected arguments for command ${name}: ${args}")))
-            )
-      } yield CommandDirective.userDefined(args, (optionsType, argsType))
+        tuple <- self.args
+                  .validate(args, conf)
+                  .mapError(helpDoc => ValidationError(ValidationErrorType.InvalidArgument, helpDoc))
+        (args, argsType) = tuple
+      } yield {
+        CommandDirective.userDefined(args, (optionsType, argsType))
+      }
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] {
@@ -115,11 +133,12 @@ object Command {
     final def parse(
       args: List[String],
       conf: CliConfig
-    ): IO[HelpDoc, CommandDirective[B]] =
+    ): IO[ValidationError, CommandDirective[B]] =
       command.parse(args, conf).map(_.map(f))
 
     def synopsis: UsageSynopsis = command.synopsis
   }
+
   final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
     def helpDoc = left.helpDoc + right.helpDoc
 
@@ -128,11 +147,17 @@ object Command {
     final def parse(
       args: List[String],
       conf: CliConfig
-    ): IO[HelpDoc, CommandDirective[A]] =
-      left.parse(args, conf) orElse right.parse(args, conf)
+    ): IO[ValidationError, CommandDirective[A]] =
+      left
+        .parse(args, conf)
+        .catchAll {
+          case leftError if leftError.validationErrorType == ValidationErrorType.CommandMismatch =>
+            right.parse(args, conf)
+        }
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
+
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
     def helpDoc =
       parent.helpDoc + HelpDoc.h1("Subcommands") + HelpDoc.enumeration(child.names.toList.sorted.map(HelpDoc.p): _*)
@@ -142,7 +167,7 @@ object Command {
     final def parse(
       args: List[String],
       conf: CliConfig
-    ): IO[HelpDoc, CommandDirective[(A, B)]] =
+    ): IO[ValidationError, CommandDirective[(A, B)]] =
       parent
         .parse(args, conf)
         .flatMap {
@@ -152,8 +177,10 @@ object Command {
                 ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc)))
               case x => ZIO.succeed(CommandDirective.builtIn(x))
             }
-          case CommandDirective.UserDefined(leftover, a) =>
+          case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             child.parse(leftover, conf).map(_.map(b => (a, b)))
+          case _ =>
+            IO.fail(ValidationError(ValidationErrorType.MissingSubCommand, HelpDoc.p("Missing sub command.")))
         }
         .catchSome {
           case _ if args.isEmpty => ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(self.helpDoc)))
