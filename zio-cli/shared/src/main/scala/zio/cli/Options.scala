@@ -526,4 +526,62 @@ object Options {
   def zoneOffset(name: String): Options[JZoneOffset] =
     Single(name, Vector.empty, PrimType.ZoneOffset)
 
+  /**
+   * Creates a property flag with the specified name.
+   * Property arguments may be repeated several times (-D key1=value -D key2=value)
+   * or specifying all key/values in one argument (-D key1=value key2=value).
+   */
+  def map(name: String): Options[Predef.Map[String, String]] =
+    map(Options.Single(name, Vector.empty, PrimType.Text))
+
+  /**
+   * Creates a property flag with from an argument option as Options.single.
+   */
+  def map(argumentOption: Options.Single[String]): Options[Predef.Map[String, String]] = {
+    // argument name
+    val argumentName = argumentOption.name
+
+    new Options[Predef.Map[String, String]] { self =>
+      override def helpDoc: HelpDoc = argumentOption.helpDoc
+
+      override def synopsis: UsageSynopsis = argumentOption.synopsis
+
+      override def uid: Option[String] = argumentOption.uid
+
+      private def createMapEntry(input: String) = {
+        val Array(a, b) = input.split("=").take(2)
+        a -> b
+      }
+
+      private def createMapFromStringList(input: List[String]) =
+        input.filter(!_.startsWith("-")).map(createMapEntry).toMap
+
+      private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
+
+      private def fullName: String = makeFullName(argumentName)
+
+      private val argumentNames = fullName :: argumentOption.aliases.map(makeFullName).toList
+
+      private def supports(s: String, conf: CliConfig): Boolean =
+        if (conf.caseSensitive)
+          argumentNames.contains(s)
+        else
+          argumentNames.exists(_.equalsIgnoreCase(s))
+
+      private def processArguments(input: List[String], first: String, conf: CliConfig) = {
+        val r = input.span(s => !s.startsWith("-") || supports(s, conf))
+        (r._2, createMapFromStringList(r._1) + createMapEntry(first))
+      }
+
+      override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
+        for {
+          n <- argumentOption.validate(args, conf)
+        } yield processArguments(n._1, n._2, conf)
+      }
+
+      override private[cli] def modifySingle(f: SingleModifier) = {
+        Options.map(f(argumentOption))
+      }
+    }
+  }
 }
