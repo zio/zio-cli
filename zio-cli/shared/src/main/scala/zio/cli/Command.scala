@@ -163,8 +163,12 @@ object Command {
       c match {
         case Fallback(l, r) =>
           HelpDoc.enumeration(subcommandsDesc(l), subcommandsDesc(r))
+        case Single(name, desc, _, _) =>
+          HelpDoc.p(name) + desc
+        case Map(cmd, _) =>
+          subcommandsDesc(cmd)
         case c =>
-          HelpDoc.h2(c.names.head) + HelpDoc.enumeration(c.helpDoc)
+          HelpDoc.empty
       }
     }
 
