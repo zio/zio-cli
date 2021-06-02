@@ -159,12 +159,22 @@ object Command {
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
+    def getHelpDescription(h: HelpDoc): HelpDoc.Span =
+      h match {
+        case HelpDoc.Header(value, _) => value
+        case HelpDoc.Paragraph(value) => value
+        case _                        => HelpDoc.Span.space
+      }
+
     def subcommandsDesc[C](c: Command[C]): HelpDoc = {
       c match {
         case Fallback(l, r) =>
           HelpDoc.enumeration(subcommandsDesc(l), subcommandsDesc(r))
         case Single(name, desc, _, _) =>
-          HelpDoc.p(name) + desc
+          HelpDoc.p(HelpDoc.Span.spans(
+            HelpDoc.Span.text(name),
+            HelpDoc.Span.text(" \t "),
+            getHelpDescription(desc)))
         case Map(cmd, _) =>
           subcommandsDesc(cmd)
         case c =>
