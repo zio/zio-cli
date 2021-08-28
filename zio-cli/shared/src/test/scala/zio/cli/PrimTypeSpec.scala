@@ -175,9 +175,9 @@ object PrimTypeSpec extends DefaultRunnableSpec {
     Gen.fromIterable(List(true, false))
   val anyInstant = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC))
   val anyPeriod = for {
-    first               <- Gen.anyLocalDateTime.map(_.toLocalDate)
-    second              <- Gen.anyLocalDateTime.map(_.toLocalDate)
-  } yield if (first isBefore  second) Period.between(first, second) else Period.between(second, first)
+    first  <- Gen.anyLocalDateTime.map(_.toLocalDate)
+    second <- Gen.anyLocalDateTime.map(_.toLocalDate)
+  } yield if (first isBefore second) Period.between(first, second) else Period.between(second, first)
   val anyPairs = for {
     uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.anyLong)).map(_.distinctBy(_._1))
     selected    <- Gen.fromIterable(uniquePairs)

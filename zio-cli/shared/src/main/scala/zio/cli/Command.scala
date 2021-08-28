@@ -9,7 +9,7 @@ import zio.cli.HelpDoc.h1
  * support multiple commands.
  */
 sealed trait Command[+A] { self =>
-  final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
+  final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.OrElse(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
 
@@ -97,8 +97,8 @@ object Command {
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
       // List("git", "add", "-m", "file")
-    // List("add", "-m", "-colors")
-    // List("add", "-m") -> true
+      // List("add", "-m", "-colors")
+      // List("add", "-m") -> true
       for {
         args <- args match {
                   case head :: tail =>
@@ -131,7 +131,7 @@ object Command {
 
     def names: Set[String] = command.names
 
-    final def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[B]] =
@@ -140,12 +140,12 @@ object Command {
     def synopsis: UsageSynopsis = command.synopsis
   }
 
-  final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
+  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] {
     def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
     def names: Set[String] = left.names ++ right.names
 
-     def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[A]] =
@@ -160,7 +160,7 @@ object Command {
 
     def names: Set[String] = parent.names
 
-     def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] =

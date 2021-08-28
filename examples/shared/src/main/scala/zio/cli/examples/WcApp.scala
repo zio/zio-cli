@@ -84,13 +84,12 @@ object WcApp extends App {
     }
   }
 
-  val wcApp = CliApp(
+  val wcApp = CliApp.make(
     "ZIO Word Count",
     "0.1.2",
     text("counts words in the file"),
-    wc,
-    execute.tupled
-  )
+    wc
+  )(execute.tupled)
 
   override def run(args: List[String]) = wcApp.run(args)
 }

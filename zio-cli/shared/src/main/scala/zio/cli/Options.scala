@@ -32,7 +32,7 @@ sealed trait Options[+A] { self =>
   import Options.Single
 
   final def ++[A1 >: A, That](that: Options[That]): Options[(A1, That)] =
-    Options.Cons(self, that)
+    Options.Both(self, that)
 
   final def |[A1 >: A](that: Options[A1]): Options[A1] = self.orElse(that)
 
@@ -356,8 +356,8 @@ object Options {
     }
   }
 
-  final case class Cons[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
-    override def modifySingle(f: SingleModifier): Options[(A, B)] = Cons(left.modifySingle(f), right.modifySingle(f))
+  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
+    override def modifySingle(f: SingleModifier): Options[(A, B)] = Both(left.modifySingle(f), right.modifySingle(f))
 
     def synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
