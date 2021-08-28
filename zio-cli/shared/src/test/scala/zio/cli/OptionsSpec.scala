@@ -3,9 +3,9 @@ package zio.cli
 import zio.test.Assertion._
 import zio.test._
 import zio.cli.HelpDoc.p
-import zio.cli.HelpDoc.Span.{ error, text }
+import zio.cli.HelpDoc.Span.{error, text}
 
-import java.time.{ LocalDate, MonthDay, Year }
+import java.time.{LocalDate, MonthDay, Year}
 import java.time.format.DateTimeFormatter
 
 object OptionsSpec extends DefaultRunnableSpec {
@@ -14,7 +14,7 @@ object OptionsSpec extends DefaultRunnableSpec {
   val l: Options[String]            = Options.text("lastname")
   val a: Options[BigInt]            = Options.integer("age")
   val aOpt: Options[Option[BigInt]] = Options.integer("age").optional("N/A")
-  val b: Options[Boolean]           = Options.bool("verbose", true)
+  val b: Options[Boolean]           = Options.boolean("verbose", true)
 
   val options = f ++ l ++ a
 
@@ -25,21 +25,21 @@ object OptionsSpec extends DefaultRunnableSpec {
       assertM(r)(equalTo(List() -> true))
     },
     testM("validate boolean option with followup option") {
-      val o = Options.bool("help", true) ++ Options.bool("v", true)
+      val o = Options.boolean("help", true) ++ Options.boolean("v", true)
 
       for {
         v1 <- o.validate(Nil, CliConfig.default)
         v2 <- o.validate("--help" :: Nil, CliConfig.default)
         v3 <- o.validate("--help" :: "-v" :: Nil, CliConfig.default)
       } yield {
-        assert(v1)(equalTo(Nil                -> (false -> false))) &&
-        assert(v2)(equalTo(List.empty[String] -> (true  -> false)) ?? "v2") &&
-        assert(v3)(equalTo(List.empty[String] -> (true  -> true)) ?? "v3")
+        assert(v1)(equalTo(Nil -> (false -> false))) &&
+        assert(v2)(equalTo(List.empty[String] -> (true -> false)) ?? "v2") &&
+        assert(v3)(equalTo(List.empty[String] -> (true -> true)) ?? "v3")
       }
     },
     testM("validate boolean option with negation") {
       val bNegation: Options[Boolean] =
-        Options.bool("verbose", true, "silent", "s").alias("v")
+        Options.boolean("verbose", true, "silent", "s").alias("v")
       for {
         v1 <- bNegation.validate(Nil, CliConfig.default)
         v2 <- bNegation.validate(List("--verbose"), CliConfig.default)
@@ -105,7 +105,7 @@ object OptionsSpec extends DefaultRunnableSpec {
     },
     testM("validate collision of boolean option with negation") {
       val bNegation: Options[Boolean] =
-        Options.bool("v", true, "s") //.alias("v")
+        Options.boolean("v", true, "s") //.alias("v")
       val v1 = bNegation.validate(List("-v", "-s"), CliConfig.default)
       assertM(v1.either)(isLeft)
     },

@@ -8,7 +8,7 @@ object BuiltInOption {
   final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
 
   lazy val builtInOptions: Options[BuiltIn] =
-    (Options.bool("help", ifPresent = true) ++ ShellType.option.optional("N/A")).as(BuiltIn)
+    (Options.boolean("help", ifPresent = true) ++ ShellType.option.optional("N/A")).as(BuiltIn)
 
   def builtInOptions(helpDoc: => HelpDoc, completions: ShellType => Set[List[String]]): Options[Option[BuiltInOption]] =
     builtInOptions.map {

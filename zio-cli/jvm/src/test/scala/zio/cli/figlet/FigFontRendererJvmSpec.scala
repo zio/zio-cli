@@ -8,7 +8,7 @@ object FigFontRendererJvmSpec extends DefaultRunnableSpec {
   def spec = suite("FigFontRendererJvmSpec")(
     testM("ZIO-CLI!!! with standard.flf") {
       for {
-        font_         <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
+        font_        <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
         font: FigFont = font_ // TODO IJ cross-platform projects issue
         r             = render(font, "ZIO-\nCLI!!!")
       } yield {

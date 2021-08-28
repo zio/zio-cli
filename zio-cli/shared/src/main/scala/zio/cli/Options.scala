@@ -1,6 +1,6 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
+import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
   LocalDate => JLocalDate,
@@ -47,14 +47,9 @@ sealed trait Options[+A] { self =>
       override def apply[A](single: Single[A]): Single[A] = single.copy(description = single.description + p(that))
     })
 
-  def alias(name: String): Options[A] =
+  def alias(name: String, names: String*): Options[A] =
     modifySingle(new SingleModifier {
-      override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases :+ name)
-    })
-
-  def aliases(names: String*): Options[A] =
-    modifySingle(new SingleModifier {
-      override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases ++ names)
+      override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases ++ (name +: names))
     })
 
   //TODO : spend time to understand usage of implicit here
@@ -228,11 +223,10 @@ object Options {
       WithDefault(options.modifySingle(f), default, defaultDescription)
 
     override def helpDoc: HelpDoc =
-      options.helpDoc.mapDescriptionList {
-        case (span, block) =>
-          span -> (block + HelpDoc.p(
-            s"This setting is optional. If unspecified, the default value of this option is ${default}. ${defaultDescription}"
-          ))
+      options.helpDoc.mapDescriptionList { case (span, block) =>
+        span -> (block + HelpDoc.p(
+          s"This setting is optional. If unspecified, the default value of this option is ${default}. ${defaultDescription}"
+        ))
       }
 
     override def uid: Option[String] = options.uid
@@ -264,15 +258,19 @@ object Options {
             case _: PrimType.Bool =>
               primType
                 .validate(None, conf)
-                .bimap(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), tail -> _)
+                .mapBoth(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), tail -> _)
             case _ =>
               (tail match {
                 case Nil         => primType.validate(None, conf)
                 case ::(head, _) => primType.validate(Some(head), conf)
-              }).bimap(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), a => tail.drop(1) -> a)
+              }).mapBoth(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), a => tail.drop(1) -> a)
           }
         case head :: tail
-            if name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(head, fullname, conf) <= conf.autoCorrectLimit =>
+            if name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
+              head,
+              fullname,
+              conf
+            ) <= conf.autoCorrectLimit =>
           IO.fail(
             ValidationError(
               ValidationErrorType.MissingValue,
@@ -280,8 +278,8 @@ object Options {
             )
           )
         case head :: tail =>
-          validate(tail, conf).map {
-            case (args, a) => (head :: args, a)
+          validate(tail, conf).map { case (args, a) =>
+            (head :: args, a)
           }
         case Nil =>
           IO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullname} option."))))
@@ -300,8 +298,8 @@ object Options {
 
       HelpDoc.DescriptionList(
         List(
-          spans(allNames.map(weak(_)).zipWithIndex.map {
-            case (span, index) => if (index != allNames.length - 1) span + Span.text(", ") else span
+          spans(allNames.map(weak(_)).zipWithIndex.map { case (span, index) =>
+            if (index != allNames.length - 1) span + Span.text(", ") else span
           }) ->
             (p(primType.helpDoc) + description)
         )
@@ -366,17 +364,17 @@ object Options {
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
         tuple <- left
-                  .validate(args, conf)
-                  .catchAll(err1 =>
-                    right
-                      .validate(args, conf)
-                      .foldM(
-                        err2 => IO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
-                        _ => IO.fail(err1)
-                      )
-                  )
+                   .validate(args, conf)
+                   .catchAll(err1 =>
+                     right
+                       .validate(args, conf)
+                       .foldM(
+                         err2 => IO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
+                         _ => IO.fail(err1)
+                       )
+                   )
         (args, a) = tuple
-        tuple     <- right.validate(args, conf)
+        tuple    <- right.validate(args, conf)
         (args, b) = tuple
       } yield (args -> (a -> b))
 
@@ -405,17 +403,17 @@ object Options {
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    */
-  def bool(name: String, ifPresent: Boolean): Options[Boolean] = makeBool(name, ifPresent, Nil)
+  def boolean(name: String, ifPresent: Boolean = true): Options[Boolean] = makeBoolean(name, ifPresent, Nil)
 
   /**
    * Creates a boolean flag with the specified name, which, if present, will
    * produce the specified constant boolean value.
    * Negation names may be specified to explicitly invert the boolean value of this option.
    */
-  def bool(name: String, ifPresent: Boolean, negationName: String, negationNames: String*): Options[Boolean] =
-    makeBool(name, ifPresent, negationName :: negationNames.toList)
+  def boolean(name: String, ifPresent: Boolean, negationName: String, negationNames: String*): Options[Boolean] =
+    makeBoolean(name, ifPresent, negationName :: negationNames.toList)
 
-  private def makeBool(name: String, ifPresent: Boolean, negationNames: List[String]): Options[Boolean] = {
+  private def makeBoolean(name: String, ifPresent: Boolean, negationNames: List[String]): Options[Boolean] = {
 
     val option = Single(name, Vector.empty, PrimType.Bool(Some(ifPresent)))
 
@@ -442,7 +440,7 @@ object Options {
 
   /**
    * Creates a parameter expecting path to the directory.
-   * */
+   */
   def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
     Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists))
 

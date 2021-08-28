@@ -228,6 +228,8 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
         Layouts(FullWidth, FullWidth),
         parse(Map.empty, 0)
       )
+
+    case _ => throw new Error("Unbelievable!")
   }
 
   implicit final class FigFontOps(private val font: FigFont) {

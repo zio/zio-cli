@@ -1,10 +1,10 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath, Paths => JPaths }
+import java.nio.file.{Path => JPath, Paths => JPaths}
 import java.time._
 
 import zio.cli.files.FileSystem
-import zio.{ random, IO, UIO, ZIO }
+import zio.{random, IO, UIO, ZIO}
 import zio.random.Random
 import zio.test.Assertion._
 import zio.test._
@@ -26,17 +26,15 @@ object PrimTypeSpec extends DefaultRunnableSpec {
     },
     suite("Enumeration Suite")(
       testM("validate return proper value if one of the cases") {
-        checkM(anyPairs) {
-          case ((selectedName, selectedValue), pairs) =>
-            assertM(PrimType.Enumeration(pairs: _*).validate(selectedName))(equalTo(selectedValue))
+        checkM(anyPairs) { case ((selectedName, selectedValue), pairs) =>
+          assertM(PrimType.Enumeration(pairs: _*).validate(selectedName))(equalTo(selectedValue))
         }
       },
       testM("validate return error if NOT one of the cases") {
-        checkM(anyPairs) {
-          case (v @ (selectedName, _), pairs) =>
-            assertM(
-              PrimType.Enumeration(pairs.filterNot(_ == v): _*).validate(selectedName).either
-            )(isLeft(startsWithString(s"Expected one of the following cases:")))
+        checkM(anyPairs) { case (v @ (selectedName, _), pairs) =>
+          assertM(
+            PrimType.Enumeration(pairs.filterNot(_ == v): _*).validate(selectedName).either
+          )(isLeft(startsWithString(s"Expected one of the following cases:")))
         }
       }
     ),
@@ -177,10 +175,9 @@ object PrimTypeSpec extends DefaultRunnableSpec {
     Gen.fromIterable(List(true, false))
   val anyInstant = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC))
   val anyPeriod = for {
-    first                <- Gen.anyLocalDateTime
-    second               <- Gen.anyLocalDateTime
-    List(earlier, later) = List(first.toLocalDate, second.toLocalDate).sorted
-  } yield Period.between(earlier, later)
+    first               <- Gen.anyLocalDateTime.map(_.toLocalDate)
+    second              <- Gen.anyLocalDateTime.map(_.toLocalDate)
+  } yield if (first isBefore  second) Period.between(first, second) else Period.between(second, first)
   val anyPairs = for {
     uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.anyLong)).map(_.distinctBy(_._1))
     selected    <- Gen.fromIterable(uniquePairs)

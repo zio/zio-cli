@@ -9,7 +9,7 @@ object FigFontParserSpec extends DefaultRunnableSpec {
   def spec = suite("FigFontParserSpec")(
     testM("parse standard.flf") {
       for {
-        font_         <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
+        font_        <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
         font: FigFont = font_ // TODO IJ cross-platform projects issue
       } yield {
         assert(font.header)(equalTo(FigHeader("flf2a", '$', 6, 5, 11, 15, Some(0), Some(24463)))) &&

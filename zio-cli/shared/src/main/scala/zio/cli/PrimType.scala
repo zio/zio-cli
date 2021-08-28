@@ -1,6 +1,6 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
+import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
   LocalDate => JLocalDate,
@@ -79,14 +79,14 @@ object PrimType {
           p <- fileSystem.parsePath(value)
           _ <- fileSystem.exists(p) >>= refineExistence(value, exists)
           _ <- ZIO.when(exists != Exists.No) {
-                pathType match {
-                  case Either => IO.unit
-                  case File =>
-                    ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(fileSystem.isRegularFile(p))
-                  case Directory =>
-                    ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(fileSystem.isDirectory(p))
-                }
-              }
+                 pathType match {
+                   case Either => IO.unit
+                   case File =>
+                     ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(fileSystem.isRegularFile(p))
+                   case Directory =>
+                     ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(fileSystem.isDirectory(p))
+                 }
+               }
         } yield p
       }
 

@@ -1,6 +1,6 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
+import java.nio.file.{Path => JPath}
 
 import java.time.{
   Instant => JInstant,
@@ -88,7 +88,7 @@ object Args {
 
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       args match {
-        case head :: tail => primType.validate(Some(head), conf).bimap(text => HelpDoc.p(text), a => tail -> a)
+        case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
         case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}."))
       }
 
@@ -123,9 +123,9 @@ object Args {
 
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], (A, B))] =
       for {
-        tuple     <- head.validate(args, conf)
+        tuple    <- head.validate(args, conf)
         (args, a) = tuple
-        tuple     <- tail.validate(args, conf)
+        tuple    <- tail.validate(args, conf)
         (args, b) = tuple
       } yield (args, (a, b))
   }
@@ -135,21 +135,20 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.Repeated(value.synopsis)
 
-    def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList {
-      case (span, block) =>
-        val newSpan = span + Span.text(
-          if (max.isDefined) s" ${minSize} - ${maxSize}" else if (minSize == 0) "..." else s" ${minSize}+"
-        )
-        val newBlock =
-          block +
-            HelpDoc.p(
-              if (max.isDefined)
-                s"This argument must be repeated at least ${minSize} times and may be repeated up to ${maxSize} times."
-              else if (minSize == 0) "This argument may be repeated zero or more times."
-              else s"This argument must be repeated at least ${minSize} times."
-            )
+    def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList { case (span, block) =>
+      val newSpan = span + Span.text(
+        if (max.isDefined) s" ${minSize} - ${maxSize}" else if (minSize == 0) "..." else s" ${minSize}+"
+      )
+      val newBlock =
+        block +
+          HelpDoc.p(
+            if (max.isDefined)
+              s"This argument must be repeated at least ${minSize} times and may be repeated up to ${maxSize} times."
+            else if (minSize == 0) "This argument may be repeated zero or more times."
+            else s"This argument must be repeated at least ${minSize} times."
+          )
 
-        (newSpan, newBlock)
+      (newSpan, newBlock)
     }
 
     def maxSize: Int = max.getOrElse(Int.MaxValue / 2) * value.maxSize
@@ -186,16 +185,16 @@ object Args {
     def synopsis: UsageSynopsis = value.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], B)] =
-      value.validate(args, conf).flatMap {
-        case (r, a) =>
-          f(a) match {
-            case Left(value)  => IO.fail(value)
-            case Right(value) => IO.succeed((r, value))
-          }
+      value.validate(args, conf).flatMap { case (r, a) =>
+        f(a) match {
+          case Left(value)  => IO.fail(value)
+          case Right(value) => IO.succeed((r, value))
+        }
       }
   }
 
-  /** Creates a boolean argument with a custom argument name
+  /**
+   * Creates a boolean argument with a custom argument name
    *
    * @param name Argument name
    * @return Boolean argument
@@ -207,7 +206,8 @@ object Args {
    */
   val bool: Args[Boolean] = Single(None, PrimType.Bool(None))
 
-  /** Creates a enumeration argument with a custom argument name
+  /**
+   * Creates a enumeration argument with a custom argument name
    *
    * @param name Argument name
    * @param cases Enum cases
@@ -216,7 +216,8 @@ object Args {
   def enumeration[A](name: String)(cases: (String, A)*): Args[A] =
     Single(Some(name), PrimType.Enumeration(cases: _*))
 
-  /** Creates a enumeration argument with 'choice' as argument name
+  /**
+   * Creates a enumeration argument with 'choice' as argument name
    *
    * @param cases Enum cases
    * @return Enumeration argument
@@ -224,7 +225,8 @@ object Args {
   def enumeration[A](cases: (String, A)*): Args[A] =
     Single(None, PrimType.Enumeration(cases: _*))
 
-  /** Creates a file argument with a custom argument name
+  /**
+   * Creates a file argument with a custom argument name
    *
    * @param name Argument name
    * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
@@ -233,7 +235,8 @@ object Args {
   def file(name: String, exists: Exists = Exists.Either): Args[JPath] =
     Single(Some(name), PrimType.Path(PathType.File, exists))
 
-  /** Creates a file argument with 'file' as argument name
+  /**
+   * Creates a file argument with 'file' as argument name
    *
    * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
    * @return File argument
@@ -246,7 +249,8 @@ object Args {
    */
   val file: Args[JPath] = file(Exists.Either)
 
-  /** Creates a directory argument with a custom argument name
+  /**
+   * Creates a directory argument with a custom argument name
    *
    * @param name Argument name
    * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
@@ -255,7 +259,8 @@ object Args {
   def directory(name: String, exists: Exists = Exists.Either): Args[JPath] =
     Single(Some(name), PrimType.Path(PathType.Directory, exists))
 
-  /** Creates a directory argument with 'directory' as argument name
+  /**
+   * Creates a directory argument with 'directory' as argument name
    *
    * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
    * @return Directory argument
@@ -268,7 +273,8 @@ object Args {
    */
   val directory: Args[JPath] = directory(Exists.Either)
 
-  /** Creates a text argument with a custom argument name
+  /**
+   * Creates a text argument with a custom argument name
    *
    * @param name Argument name
    * @return Text argument
@@ -282,7 +288,8 @@ object Args {
   val text: Args[String] =
     Single(None, PrimType.Text)
 
-  /** Creates a decimal argument with a custom argument name
+  /**
+   * Creates a decimal argument with a custom argument name
    *
    * @param name Argument name
    * @return Decimal argument
@@ -302,7 +309,8 @@ object Args {
   val integer: Args[BigInt] =
     Single(None, PrimType.Integer)
 
-  /** Creates a instant argument with a custom argument name
+  /**
+   * Creates a instant argument with a custom argument name
    *
    * @param name Argument name
    * @return Instant argument
@@ -316,7 +324,8 @@ object Args {
   val instant: Args[JInstant] =
     Single(None, PrimType.Instant)
 
-  /** Creates a localDate argument with a custom argument name
+  /**
+   * Creates a localDate argument with a custom argument name
    *
    * @param name Argument name
    * @return LocalDate argument
@@ -324,7 +333,8 @@ object Args {
   def localDate(name: String): Args[JLocalDate] =
     Single(Some(name), PrimType.LocalDate)
 
-  /** Creates a localDateTime argument with a custom argument name
+  /**
+   * Creates a localDateTime argument with a custom argument name
    *
    * @param name Argument name
    * @return LocalDateTime argument
@@ -338,7 +348,8 @@ object Args {
   val localDateTime: Args[JLocalDateTime] =
     Single(None, PrimType.LocalDateTime)
 
-  /** Creates a localTime argument with a custom argument name
+  /**
+   * Creates a localTime argument with a custom argument name
    *
    * @param name Argument name
    * @return LocalTime argument
@@ -352,7 +363,8 @@ object Args {
   val localTime: Args[JLocalTime] =
     Single(None, PrimType.LocalTime)
 
-  /** Creates a monthDay argument with a custom argument name
+  /**
+   * Creates a monthDay argument with a custom argument name
    *
    * @param name Argument name
    * @return MonthDay argument
@@ -371,7 +383,8 @@ object Args {
    */
   val none: Args[Unit] = Empty
 
-  /** Creates a offsetDateTime argument with a custom argument name
+  /**
+   * Creates a offsetDateTime argument with a custom argument name
    *
    * @param name Argument name
    * @return OffsetDateTime argument
@@ -385,7 +398,8 @@ object Args {
   val offsetDateTime: Args[JOffsetDateTime] =
     Single(None, PrimType.OffsetDateTime)
 
-  /** Creates a offsetTime argument with a custom argument name
+  /**
+   * Creates a offsetTime argument with a custom argument name
    *
    * @param name Argument name
    * @return OffsetTime argument
@@ -399,7 +413,8 @@ object Args {
   val offsetTime: Args[JOffsetTime] =
     Single(None, PrimType.OffsetTime)
 
-  /** Creates a path argument with a custom argument name
+  /**
+   * Creates a path argument with a custom argument name
    *
    * @param name Argument name
    * @return Path argument
@@ -413,7 +428,8 @@ object Args {
   val path: Args[JPath] =
     Single(None, PrimType.Path(PathType.Either, Exists.Either))
 
-  /** Creates a period argument with a custom argument name
+  /**
+   * Creates a period argument with a custom argument name
    *
    * @param name Argument name
    * @return Period argument
@@ -427,7 +443,8 @@ object Args {
   val period: Args[JPeriod] =
     Single(None, PrimType.Period)
 
-  /** Creates a year argument with a custom argument name
+  /**
+   * Creates a year argument with a custom argument name
    *
    * @param name Argument name
    * @return Year argument
@@ -441,7 +458,8 @@ object Args {
   val year: Args[JYear] =
     Single(None, PrimType.Year)
 
-  /** Creates a yearMonth argument with a custom argument name
+  /**
+   * Creates a yearMonth argument with a custom argument name
    *
    * @param name Argument name
    * @return YearMonth argument
@@ -455,7 +473,8 @@ object Args {
   val yearMonth: Args[JYearMonth] =
     Single(None, PrimType.YearMonth)
 
-  /** Creates a zonedDateTime argument with a custom argument name
+  /**
+   * Creates a zonedDateTime argument with a custom argument name
    *
    * @param name Argument name
    * @return ZonedDateTime argument
@@ -469,7 +488,8 @@ object Args {
   val zonedDateTime: Args[JZonedDateTime] =
     Single(None, PrimType.ZonedDateTime)
 
-  /** Creates a zoneId argument with a custom argument name
+  /**
+   * Creates a zoneId argument with a custom argument name
    *
    * @param name Argument name
    * @return ZoneId argument
@@ -483,7 +503,8 @@ object Args {
   val zoneId: Args[JZoneId] =
     Single(None, PrimType.ZoneId)
 
-  /** Creates a zoneOffset argument with a custom argument name
+  /**
+   * Creates a zoneOffset argument with a custom argument name
    *
    * @param name Argument name
    * @return ZoneOffset argument

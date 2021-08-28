@@ -1,10 +1,10 @@
 package zio.cli.figlet
 
 import zio._
-import zio.blocking.{ effectBlockingIO, Blocking }
+import zio.blocking.{effectBlockingIO, Blocking}
 
 import java.io.IOException
-import scala.io.{ Codec, Source }
+import scala.io.{Codec, Source}
 
 trait FigFontPlatformSpecific { self: FigFont.type =>
   final def fromFile(name: String): ZIO[Blocking, Either[IOException, String], FigFont] =
@@ -21,11 +21,11 @@ trait FigFontPlatformSpecific { self: FigFont.type =>
   ): ZIO[R, Either[E, String], FigFont] =
     for {
       lines <- ZManaged
-                .fromAutoCloseable(source)
-                .use(s => effectBlockingIO(s.getLines().toSeq))
-                .mapError(Left(_))
+                 .fromAutoCloseable(source)
+                 .use(s => effectBlockingIO(s.getLines().toSeq))
+                 .mapError(Left(_))
       font <- ZIO
-               .fromEither(self.fromLines(lines))
-               .mapError(Right(_))
+                .fromEither(self.fromLines(lines))
+                .mapError(Right(_))
     } yield font
 }
