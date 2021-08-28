@@ -1,6 +1,6 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
+import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
   LocalDate => JLocalDate,
@@ -57,8 +57,8 @@ object PrimType {
       case (PathType.File, Exists.Yes)         => text("An existing file.")
       case (PathType.Directory, Exists.Yes)    => text("An existing directory.")
       case (PathType.Either, Exists.No)        => text("A file or directory that must not exist.")
-      case (PathType.File, Exists.No)          => text("A file that does not exist.")
-      case (PathType.Directory, Exists.No)     => text("A directory that does not exist.")
+      case (PathType.File, Exists.No)          => text("A file that must not exist.")
+      case (PathType.Directory, Exists.No)     => text("A directory that must not exist.")
       case (PathType.Either, Exists.Either)    => text("A file or directory.")
       case (PathType.File, Exists.Either)      => text("A file.")
       case (PathType.Directory, Exists.Either) => text("A directory.")
@@ -79,14 +79,14 @@ object PrimType {
           p <- fileSystem.parsePath(value)
           _ <- fileSystem.exists(p) >>= refineExistence(value, exists)
           _ <- ZIO.when(exists != Exists.No) {
-                pathType match {
-                  case Either => IO.unit
-                  case File =>
-                    ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(fileSystem.isRegularFile(p))
-                  case Directory =>
-                    ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(fileSystem.isDirectory(p))
-                }
-              }
+                 pathType match {
+                   case Either => IO.unit
+                   case File =>
+                     ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(fileSystem.isRegularFile(p))
+                   case Directory =>
+                     ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(fileSystem.isDirectory(p))
+                 }
+               }
         } yield p
       }
 

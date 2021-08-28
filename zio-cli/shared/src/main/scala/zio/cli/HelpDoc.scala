@@ -116,10 +116,9 @@ sealed trait HelpDoc { self =>
         w.append(s"</p>")
 
       case HelpDoc.DescriptionList(definitions) =>
-        definitions.foldRight(w) {
-          case ((span, helpDoc), _) =>
-            renderSpan(span)
-            render(helpDoc)
+        definitions.foldRight(w) { case ((span, helpDoc), _) =>
+          renderSpan(span)
+          render(helpDoc)
         }
 
       case HelpDoc.Enumeration(elements) =>
@@ -256,26 +255,24 @@ sealed trait HelpDoc { self =>
           renderNewline()
 
         case HelpDoc.DescriptionList(definitions) =>
-          definitions.zipWithIndex.foreach {
-            case ((span, helpDoc), index) =>
-              setStyle(Console.BOLD)
-              renderSpan(span)
-              resetStyle()
-              renderNewline()
-              writer.indent(4)
-              renderHelpDoc(helpDoc)
-              writer.unindent()
-              renderNewline()
+          definitions.zipWithIndex.foreach { case ((span, helpDoc), index) =>
+            setStyle(Console.BOLD)
+            renderSpan(span)
+            resetStyle()
+            renderNewline()
+            writer.indent(4)
+            renderHelpDoc(helpDoc)
+            writer.unindent()
+            renderNewline()
           }
 
         case HelpDoc.Enumeration(elements) =>
-          elements.zipWithIndex.foreach {
-            case (helpDoc, index) =>
-              writer.indent(2)
-              renderText("- ")
-              renderHelpDoc(helpDoc)
-              writer.unindent()
-              renderNewline()
+          elements.zipWithIndex.foreach { case (helpDoc, index) =>
+            writer.indent(2)
+            renderText("- ")
+            renderHelpDoc(helpDoc)
+            writer.unindent()
+            renderNewline()
           }
 
         case HelpDoc.Sequence(left, right) =>
@@ -394,8 +391,8 @@ object HelpDoc {
     def text(t: String): Span                  = Span.Text(t)
     def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
 
-    def spans(spans: Iterable[Span]): Span = spans.toList.foldLeft(text("")) {
-      case (span, s) => Span.Sequence(span, s)
+    def spans(spans: Iterable[Span]): Span = spans.toList.foldLeft(text("")) { case (span, s) =>
+      Span.Sequence(span, s)
     }
     def error(span: Span): Span = Span.Error(span)
     def error(t: String): Span  = Span.Error(text(t))
@@ -447,12 +444,11 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             currentColumn += s.length
           }
         case Some(pieces) =>
-          pieces.zipWithIndex.foreach {
-            case (piece, index) =>
-              append(piece)
+          pieces.zipWithIndex.foreach { case (piece, index) =>
+            append(piece)
 
-              stringBuilder.append("\n")
-              currentColumn = 0
+            stringBuilder.append("\n")
+            currentColumn = 0
           }
       }
 

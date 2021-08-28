@@ -1,7 +1,7 @@
 package zio.cli.files
 
-import zio.{ IO, UIO }
-import java.nio.file.{ Files => JFiles, Path => JPath, Paths => JPaths }
+import zio.{IO, UIO}
+import java.nio.file.{Files => JFiles, Path => JPath, Paths => JPaths}
 
 trait FileSystem {
 

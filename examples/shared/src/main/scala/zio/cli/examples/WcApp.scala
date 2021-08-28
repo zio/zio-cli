@@ -5,16 +5,16 @@ import java.nio.file.Path
 import zio.blocking.Blocking
 import zio.cli.HelpDoc.Span.text
 import zio.cli._
-import zio.console.{ putStrLn, Console }
-import zio.stream.{ ZSink, ZStream, ZTransducer }
-import zio.{ App, URIO, ZIO }
+import zio.console.{putStrLn, Console}
+import zio.stream.{ZSink, ZStream, ZTransducer}
+import zio.{App, URIO, ZIO}
 
 object WcApp extends App {
 
-  val bytesFlag: Options[Boolean] = Options.bool("c", true)
-  val linesFlag: Options[Boolean] = Options.bool("l", true)
-  val wordsFlag: Options[Boolean] = Options.bool("w", true)
-  val charFlag: Options[Boolean]  = Options.bool("m", false)
+  val bytesFlag: Options[Boolean] = Options.boolean("c")
+  val linesFlag: Options[Boolean] = Options.boolean("l")
+  val wordsFlag: Options[Boolean] = Options.boolean("w")
+  val charFlag: Options[Boolean]  = Options.boolean("m", false)
 
   case class WcOptions(bytes: Boolean, lines: Boolean, words: Boolean, char: Boolean)
   case class WcResult(
@@ -48,16 +48,16 @@ object WcApp extends App {
       }
 
       def format(res: WcResult) = {
-        def opt(option: Option[Long]): String = option.map(l => f"${l}%9d").getOrElse("")
+        def opt(option: Option[Long]): String = option.map(l => f"$l%9d").getOrElse("")
 
         s"${opt(res.countLines)} ${opt(res.countWords)} ${opt(res.countChar)} ${opt(res.countBytes)} ${res.fileName}"
       }
 
-      ZIO.foreach(res)(r => putStrLn(format(r))) *> ZIO.when(res.length > 1)(putStrLn(format(wcTotal(res)))).ignore
+      ZIO.foreach_(res)(r => putStrLn(format(r)).!) *> ZIO.when(res.length > 1)(putStrLn(format(wcTotal(res))).!).ignore
     }
 
     (opts, paths) => {
-      zio.console.putStrLn(s"executing wc with args: ${opts} ${paths}") *>
+      zio.console.putStrLn(s"executing wc with args: $opts $paths").! *>
         ZIO
           .foreachParN[Blocking, Throwable, Path, WcResult, List](4)(paths) { path =>
             def option(bool: Boolean, sink: ZSink[Any, Nothing, Byte, Byte, Long])
@@ -84,13 +84,12 @@ object WcApp extends App {
     }
   }
 
-  val wcApp = CliApp(
+  val wcApp = CliApp.make(
     "ZIO Word Count",
     "0.1.2",
     text("counts words in the file"),
-    wc,
-    execute.tupled
-  )
+    wc
+  )(execute.tupled)
 
   override def run(args: List[String]) = wcApp.run(args)
 }

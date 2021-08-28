@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.test._
 import zio.test.Assertion._
-import zio.cli.HelpDoc.{ p, Sequence }
+import zio.cli.HelpDoc.{p, Sequence}
 import zio.cli.HelpDoc.Span.error
 
 import scala.language.postfixOps
@@ -106,7 +106,7 @@ object CommandSpec extends DefaultRunnableSpec {
 
         val git =
           Command("git", Options.Empty, Args.none).subcommands(
-            Command("rebase", Options.bool("i", true), Args.text ++ Args.text)
+            Command("rebase", Options.boolean("i", true), Args.text ++ Args.text)
           )
 
         Vector(
@@ -132,7 +132,7 @@ object CommandSpec extends DefaultRunnableSpec {
         val command =
           Command("command", Options.Empty, Args.none).subcommands(
             Command("sub", Options.Empty, Args.none).subcommands(
-              Command("subsub", Options.bool("i", true), Args.text)
+              Command("subsub", Options.boolean("i", true), Args.text)
             )
           )
 
@@ -155,10 +155,10 @@ object CommandSpec extends DefaultRunnableSpec {
   }
 
   object WC {
-    val bytesFlag: Options[Boolean] = Options.bool("c", true)
-    val linesFlag: Options[Boolean] = Options.bool("l", true)
-    val wordsFlag: Options[Boolean] = Options.bool("w", true)
-    val charFlag: Options[Boolean]  = Options.bool("m", false)
+    val bytesFlag: Options[Boolean] = Options.boolean("c", true)
+    val linesFlag: Options[Boolean] = Options.boolean("l", true)
+    val wordsFlag: Options[Boolean] = Options.boolean("w", true)
+    val charFlag: Options[Boolean]  = Options.boolean("m", false)
 
     val options = bytesFlag ++ linesFlag ++ wordsFlag ++ charFlag
 

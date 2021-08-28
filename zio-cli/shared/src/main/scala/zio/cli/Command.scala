@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.{ IO, ZIO }
+import zio.{IO, ZIO}
 import zio.cli.HelpDoc.h1
 
 /**
@@ -9,7 +9,7 @@ import zio.cli.HelpDoc.h1
  * support multiple commands.
  */
 sealed trait Command[+A] { self =>
-  final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.Fallback(self, that)
+  final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.OrElse(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
 
@@ -52,7 +52,7 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
-      builtInOptions.validate(args, conf).bimap(_.error, _._2).some.map(CommandDirective.BuiltIn(_))
+      builtInOptions.validate(args, conf).mapBoth(_.error, _._2).some.map(CommandDirective.BuiltIn(_))
 
     def completions(shellType: ShellType): Set[List[String]] = ???
 
@@ -83,13 +83,11 @@ object Command {
 
     def names: Set[String] = Set(name)
 
-    final def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
-      builtIn(args, conf).catchAll { _ =>
-        userDefined(args, conf)
-      }
+      builtIn(args, conf) orElse userDefined(args, conf)
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
@@ -98,27 +96,30 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
+      // List("git", "add", "-m", "file")
+      // List("add", "-m", "-colors")
+      // List("add", "-m") -> true
       for {
         args <- args match {
-                 case head :: tail =>
-                   if (conf.normalizeCase(head) == conf.normalizeCase(name)) IO.succeed(tail)
-                   else
-                     IO.fail(
-                       ValidationError(
-                         ValidationErrorType.CommandMismatch,
-                         HelpDoc.p(s"Unexpected command name: ${args.headOption}")
-                       )
-                     )
-                 case Nil =>
-                   IO.fail(
-                     ValidationError(ValidationErrorType.CommandMismatch, HelpDoc.p(s"Missing command name: ${name}"))
-                   )
-               }
-        tuple               <- self.options.validate(args, conf)
+                  case head :: tail =>
+                    if (conf.normalizeCase(head) == conf.normalizeCase(name)) IO.succeed(tail)
+                    else
+                      IO.fail(
+                        ValidationError(
+                          ValidationErrorType.CommandMismatch,
+                          HelpDoc.p(s"Unexpected command name: ${args.headOption}")
+                        )
+                      )
+                  case Nil =>
+                    IO.fail(
+                      ValidationError(ValidationErrorType.CommandMismatch, HelpDoc.p(s"Missing command name: ${name}"))
+                    )
+                }
+        tuple              <- self.options.validate(args, conf)
         (args, optionsType) = tuple
         tuple <- self.args
-                  .validate(args, conf)
-                  .mapError(helpDoc => ValidationError(ValidationErrorType.InvalidArgument, helpDoc))
+                   .validate(args, conf)
+                   .mapError(helpDoc => ValidationError(ValidationErrorType.InvalidArgument, helpDoc))
         (args, argsType) = tuple
       } yield {
         CommandDirective.userDefined(args, (optionsType, argsType))
@@ -130,7 +131,7 @@ object Command {
 
     def names: Set[String] = command.names
 
-    final def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[B]] =
@@ -139,47 +140,46 @@ object Command {
     def synopsis: UsageSynopsis = command.synopsis
   }
 
-  final case class Fallback[A](left: Command[A], right: Command[A]) extends Command[A] {
-    def helpDoc = left.helpDoc + right.helpDoc
+  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] {
+    def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
     def names: Set[String] = left.names ++ right.names
 
-    final def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[A]] =
-      left
-        .parse(args, conf)
-        .catchAll {
-          case leftError if leftError.validationErrorType == ValidationErrorType.CommandMismatch =>
-            right.parse(args, conf)
-        }
+      left.parse(args, conf) orElse right.parse(args, conf)
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
-    def helpDoc =
+    def helpDoc: HelpDoc =
       parent.helpDoc + HelpDoc.h1("Subcommands") + HelpDoc.enumeration(child.names.toList.sorted.map(HelpDoc.p): _*)
 
     def names: Set[String] = parent.names
 
-    final def parse(
+    def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] =
       parent
         .parse(args, conf)
         .flatMap {
+          // TODO: Try removing this. `git remote --help` was the same as `git --help` when I tested.
           case CommandDirective.BuiltIn(x) =>
             x match {
               case BuiltInOption.ShowHelp(_) =>
                 ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc)))
               case x => ZIO.succeed(CommandDirective.builtIn(x))
             }
+
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             child.parse(leftover, conf).map(_.map(b => (a, b)))
+
           case _ =>
+            // TODO: This can use a nicer error message. Print the names of the subcommands.
             IO.fail(ValidationError(ValidationErrorType.MissingSubCommand, HelpDoc.p("Missing sub command.")))
         }
         .catchSome {
