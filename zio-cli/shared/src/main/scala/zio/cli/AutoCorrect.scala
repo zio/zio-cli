@@ -6,7 +6,7 @@ private[cli] object AutoCorrect {
       case (0, 0)            => 0
       case (0, secondLength) => secondLength
       case (firstLength, 0)  => firstLength
-      case (rowCount, columnCount) => {
+      case (rowCount, columnCount) =>
         val matrix       = Array.ofDim[Int](rowCount + 1, columnCount + 1)
         val normalFirst  = conf.normalizeCase(first)
         val normalSecond = conf.normalizeCase(second)
@@ -15,8 +15,8 @@ private[cli] object AutoCorrect {
         (0 to columnCount).foreach(x => matrix(0)(x) = x)
 
         for {
-          row <- (1 to rowCount)
-          col <- (1 to columnCount)
+          row <- 1 to rowCount
+          col <- 1 to columnCount
         } yield {
           val cost = if (normalFirst.charAt(row - 1) == normalSecond.charAt(col - 1)) 0 else 1
 
@@ -28,6 +28,5 @@ private[cli] object AutoCorrect {
         }
 
         matrix(rowCount)(columnCount)
-      }
     }
 }

@@ -1,6 +1,7 @@
 package zio.cli.files
 
-import zio.{IO, UIO}
+import zio.{IO, UIO, ZIO}
+
 import java.nio.file.{Files => JFiles, Path => JPath, Paths => JPaths}
 
 trait FileSystem {
@@ -17,14 +18,18 @@ trait FileSystem {
 
 object FileSystem {
 
-  def live: FileSystem = new FileSystem {
-    override def parsePath(path: String) = IO.effect(JPaths.get(path)) orElseFail (s"'$path' is not a recognized path.")
+  val live: FileSystem = new FileSystem {
+    override def parsePath(path: String): IO[String, JPath] =
+      ZIO(JPaths.get(path)) orElseFail s"'$path' is not a recognized path."
 
-    override def exists(path: JPath) = IO.effect(JFiles.exists(path)) orElse IO.succeed(false)
+    override def exists(path: JPath): UIO[Boolean] =
+      ZIO(JFiles.exists(path)) orElse IO.succeed(false)
 
-    override def isDirectory(path: JPath) = IO.effect(JFiles.isDirectory(path)) orElse IO.succeed(false)
+    override def isDirectory(path: JPath): UIO[Boolean] =
+      ZIO(JFiles.isDirectory(path)) orElse IO.succeed(false)
 
-    override def isRegularFile(path: JPath) = IO.effect(JFiles.isRegularFile(path)) orElse IO.succeed(false)
+    override def isRegularFile(path: JPath): UIO[Boolean] =
+      ZIO(JFiles.isRegularFile(path)) orElse IO.succeed(false)
   }
 
 }

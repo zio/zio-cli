@@ -45,14 +45,14 @@ object PrimType {
   /**
    * Type representing file system path.
    * @param pathType Type of expected path: Directory, File or Either if both are acceptable.
-   * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
+   * @param shouldExist Yes if path is expected to exists, No otherwise or Either is both are acceptable.
    * @param fileSystem Implementation of FileSystem trait.
    */
-  final case class Path(pathType: PathType, exists: Exists, fileSystem: FileSystem = FileSystem.live)
+  final case class Path(pathType: PathType, shouldExist: Exists, fileSystem: FileSystem = FileSystem.live)
       extends PrimType[JPath] {
     import PathType._
 
-    def helpDoc: HelpDoc.Span = (pathType, exists) match {
+    def helpDoc: HelpDoc.Span = (pathType, shouldExist) match {
       case (PathType.Either, Exists.Yes)       => text("An existing file or directory.")
       case (PathType.File, Exists.Yes)         => text("An existing file.")
       case (PathType.Directory, Exists.Yes)    => text("An existing directory.")
@@ -74,27 +74,28 @@ object PrimType {
     def choices: Option[String] = None
 
     def validate(value: Option[String], conf: CliConfig): IO[String, JPath] =
-      (ZIO.fromOption(value) orElseFail "Path options do not have a default value").flatMap { value =>
-        for {
-          p <- fileSystem.parsePath(value)
-          _ <- fileSystem.exists(p) >>= refineExistence(value, exists)
-          _ <- ZIO.when(exists != Exists.No) {
-                 pathType match {
-                   case Either => IO.unit
-                   case File =>
-                     ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(fileSystem.isRegularFile(p))
-                   case Directory =>
-                     ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(fileSystem.isDirectory(p))
-                 }
-               }
-        } yield p
+      for {
+        value  <- ZIO.fromOption(value).orElseFail("Path options do not have a default value")
+        path   <- fileSystem.parsePath(value)
+        exists <- fileSystem.exists(path)
+        _      <- validateExistence(value, shouldExist, exists)
+        _      <- validatePathType(value, path).when(shouldExist != Exists.No)
+      } yield path
+
+    private def validatePathType(value: String, path: JPath): IO[String, Unit] =
+      pathType match {
+        case Either => ZIO.unit
+        case File =>
+          ZIO.fail(s"Expected path '$value' to be a regular file.").unlessM(fileSystem.isRegularFile(path))
+        case Directory =>
+          ZIO.fail(s"Expected path '$value' to be a directory.").unlessM(fileSystem.isDirectory(path))
       }
 
-    private def refineExistence(value: String, expected: Exists)(actual: Boolean): ZIO[Any, String, Unit] =
+    private def validateExistence(path: String, expected: Exists, actual: Boolean): IO[String, Unit] =
       (expected, actual) match {
-        case (Exists.No, true)   => IO.fail(s"Path '$value' must not exist.")
-        case (Exists.Yes, false) => IO.fail(s"Path '$value' must exist.")
-        case _                   => IO.unit
+        case (Exists.No, true)   => ZIO.fail(s"Path '$path' must not exist.")
+        case (Exists.Yes, false) => ZIO.fail(s"Path '$path' must exist.")
+        case _                   => ZIO.unit
       }
   }
 
@@ -326,13 +327,12 @@ object PrimType {
     def validate(value: Option[String], conf: CliConfig): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
       def parse(input: String) = input match {
-        case AcceptedFormat(y, m) => IO.effect(JYearMonth.of(y.toInt, m.toInt))
-        case _                    => IO.fail(())
+        case AcceptedFormat(y, m) => ZIO(JYearMonth.of(y.toInt, m.toInt))
+        case _                    => ZIO.fail(())
       }
 
-      (IO.fromOption(value) orElseFail "year-month does not have a default value").flatMap(parse) orElse IO.fail(
-        s"${value.getOrElse("")} is not a ${typeName}."
-      )
+      (ZIO.fromOption(value) orElseFail "year-month does not have a default value").flatMap(parse) orElseFail
+        s"${value.getOrElse("")} is not a $typeName."
     }
 
     def helpDoc: HelpDoc.Span = text("A year-month in the ISO-8601 format, such as 2007-12.")
@@ -361,7 +361,8 @@ object PrimType {
 
     def choices: Option[String] = None
 
-    def validate(value: Option[String], conf: CliConfig): IO[String, JZoneId] = attempt(value, JZoneId.of, typeName)
+    def validate(value: Option[String], conf: CliConfig): IO[String, JZoneId] =
+      attempt(value, JZoneId.of, typeName)
 
     def helpDoc: HelpDoc.Span = text("A time-zone ID, such as Europe/Paris.")
   }
@@ -381,7 +382,7 @@ object PrimType {
   }
 
   private def attempt[A, E](value: Option[String], parse: String => A, typeName: String): IO[String, A] =
-    (ZIO.fromOption(value) orElseFail s"${typeName} options do not have a default value.").flatMap { value =>
-      IO(parse(value)) orElseFail (s"${value} is not a ${typeName}.")
+    (ZIO.fromOption(value) orElseFail s"$typeName options do not have a default value.").flatMap { value =>
+      ZIO(parse(value)) orElseFail s"$value is not a $typeName."
     }
 }

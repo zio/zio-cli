@@ -96,9 +96,6 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
-      // List("git", "add", "-m", "file")
-      // List("add", "-m", "-colors")
-      // List("add", "-m") -> true
       for {
         args <- args match {
                   case head :: tail =>

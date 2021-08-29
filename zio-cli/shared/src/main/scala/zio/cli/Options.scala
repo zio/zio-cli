@@ -16,8 +16,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-
-import zio.IO
+import zio.{IO, UIO}
 import zio.cli.HelpDoc.Span
 import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span._
@@ -179,8 +178,11 @@ sealed trait Options[+A] { self =>
 
   def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
 
+  def withDefault[A1 >: A](value: A1): Options[A1] =
+    Options.WithDefault(self, value, None)
+
   def withDefault[A1 >: A](value: A1, valueDescription: String): Options[A1] =
-    Options.WithDefault(self, value, valueDescription)
+    Options.WithDefault(self, value, Some(valueDescription))
 
   private[cli] def modifySingle(f: SingleModifier): Options[A]
 }
@@ -203,21 +205,16 @@ object Options {
     override def uid: Option[String] = None
   }
 
-  final case class WithDefault[A](options: Options[A], default: A, defaultDescription: String) extends Options[A] {
+  final case class WithDefault[A](options: Options[A], default: A, defaultDescription: Option[String])
+      extends Options[A] {
     def synopsis: UsageSynopsis = options.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       options
         .validate(args, conf)
-        .foldM(
-          invalid =>
-            if (invalid.isOptionMissing) {
-              IO.succeed(args -> default)
-            } else {
-              IO.fail(invalid)
-            },
-          success => IO.succeed(success)
-        )
+        .catchSome {
+          case error if error.isOptionMissing => UIO(args -> default)
+        }
 
     override def modifySingle(f: SingleModifier): Options[A] =
       WithDefault(options.modifySingle(f), default, defaultDescription)
@@ -225,7 +222,8 @@ object Options {
     override def helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
         span -> (block + HelpDoc.p(
-          s"This setting is optional. If unspecified, the default value of this option is ${default}. ${defaultDescription}"
+          s"This setting is optional. If unspecified, the default value of this option is $default. ${defaultDescription
+            .getOrElse("")}"
         ))
       }
 
@@ -242,7 +240,7 @@ object Options {
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Named(fullname, primType.choices)
+      UsageSynopsis.Named(fullName, primType.choices)
 
     private def supports(s: String, names: List[String], conf: CliConfig): Boolean =
       if (conf.caseSensitive)
@@ -251,30 +249,29 @@ object Options {
         names.exists(_.equalsIgnoreCase(s))
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] = {
-      val names = fullname :: aliases.map(makeFullName).toList
+      val names = fullName :: aliases.map(makeFullName).toList
       args match {
         case head :: tail if supports(head, names, conf) =>
           primType match {
             case _: PrimType.Bool =>
               primType
                 .validate(None, conf)
-                .mapBoth(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), tail -> _)
+                .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), tail -> _)
             case _ =>
-              (tail match {
-                case Nil         => primType.validate(None, conf)
-                case ::(head, _) => primType.validate(Some(head), conf)
-              }).mapBoth(f => ValidationError(ValidationErrorType.InvalidValue, p(f)), a => tail.drop(1) -> a)
+              primType
+                .validate(tail.headOption, conf)
+                .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), tail.drop(1) -> _)
           }
-        case head :: tail
+        case head :: _
             if name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
               head,
-              fullname,
+              fullName,
               conf
             ) <= conf.autoCorrectLimit =>
           IO.fail(
             ValidationError(
               ValidationErrorType.MissingValue,
-              p(error(s"""The flag "${head}" is not recognized. Did you mean ${fullname}?"""))
+              p(error(s"""The flag "$head" is not recognized. Did you mean $fullName?"""))
             )
           )
         case head :: tail =>
@@ -282,15 +279,15 @@ object Options {
             (head :: args, a)
           }
         case Nil =>
-          IO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullname} option."))))
+          IO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find $fullName option."))))
       }
     }
 
-    def uid = Some(fullname)
+    def uid: Option[String] = Some(fullName)
 
     private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
 
-    private def fullname: String = makeFullName(name)
+    private def fullName: String = makeFullName(name)
 
     override def helpDoc: HelpDoc = {
 
@@ -342,7 +339,7 @@ object Options {
                   IO.fail(
                     ValidationError(
                       ValidationErrorType.InvalidValue,
-                      p(error(s"Options collision detected. You can only specify either ${left} or ${right}."))
+                      p(error(s"Options collision detected. You can only specify either $left or $right."))
                     )
                   )
               )
@@ -376,7 +373,7 @@ object Options {
         (args, a) = tuple
         tuple    <- right.validate(args, conf)
         (args, b) = tuple
-      } yield (args -> (a -> b))
+      } yield args -> (a -> b)
 
     override def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 

@@ -26,8 +26,8 @@ import zio.cli.HelpDoc.Span
  */
 sealed trait Args[+A] { self =>
 
-  final def ++[That, A1 >: A](that: Args[That]): Args.Cons[A1, That] =
-    Args.Cons(self, that)
+  final def ++[That, A1 >: A](that: Args[That]): Args.Both[A1, That] =
+    Args.Both(self, that)
 
   final def * : Args[List[A]] = Args.Variadic(self, None, None)
 
@@ -89,7 +89,7 @@ object Args {
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
-        case Nil          => IO.fail(HelpDoc.p(s"Missing argument <${pseudoName}> with values ${primType.choices}."))
+        case Nil          => IO.fail(HelpDoc.p(s"Missing argument <$pseudoName> with values ${primType.choices}."))
       }
 
     private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
@@ -110,8 +110,8 @@ object Args {
       IO.succeed((args, ()))
   }
 
-  final case class Cons[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
-    def ??(that: String): Args[(A, B)] = Cons(head ?? that, tail ?? that)
+  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
+    def ??(that: String): Args[(A, B)] = Both(head ?? that, tail ?? that)
 
     def helpDoc: HelpDoc = head.helpDoc + tail.helpDoc
 
@@ -137,15 +137,15 @@ object Args {
 
     def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList { case (span, block) =>
       val newSpan = span + Span.text(
-        if (max.isDefined) s" ${minSize} - ${maxSize}" else if (minSize == 0) "..." else s" ${minSize}+"
+        if (max.isDefined) s" $minSize - $maxSize" else if (minSize == 0) "..." else s" $minSize+"
       )
       val newBlock =
         block +
           HelpDoc.p(
             if (max.isDefined)
-              s"This argument must be repeated at least ${minSize} times and may be repeated up to ${maxSize} times."
+              s"This argument must be repeated at least $minSize times and may be repeated up to $maxSize times."
             else if (minSize == 0) "This argument may be repeated zero or more times."
-            else s"This argument must be repeated at least ${minSize} times."
+            else s"This argument must be repeated at least $minSize times."
           )
 
       (newSpan, newBlock)
