@@ -70,7 +70,9 @@ object PrimTypeSpec extends DefaultRunnableSpec {
       },
       testM("validate returns proper directory path if both allowed") {
         assertM(
-          PrimType.Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true)).validate("path")
+          PrimType
+            .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
+            .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       testM("validate returns error if path targets file but directory was expected") {
@@ -83,12 +85,16 @@ object PrimTypeSpec extends DefaultRunnableSpec {
       },
       testM("validate returns proper file path") {
         assertM(
-          PrimType.Path(PathType.File, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true)).validate("path")
+          PrimType
+            .Path(PathType.File, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
+            .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       testM("validate returns proper file path if both allowed") {
         assertM(
-          PrimType.Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true)).validate("path")
+          PrimType
+            .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
+            .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       testM("validate returns error if path targets directory but file was expected") {
