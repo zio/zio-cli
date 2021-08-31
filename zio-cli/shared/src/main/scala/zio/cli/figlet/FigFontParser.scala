@@ -51,7 +51,7 @@ private[figlet] object FigFontParser {
 
   def figChar(charHeight: Int): TextParser[FigChar] =
     for {
-      lines        <- lines(charHeight)
+      lines       <- lines(charHeight)
       endMarker    = lines(0).last
       width        = lines(0).indexOf(endMarker.toInt)
       figCharLines = lines.map(FigCharLine.fromFullLine(width, _))
@@ -72,7 +72,7 @@ private[figlet] object FigFontParser {
   final val figFont = for {
     header        <- parseLine(figHeader)
     _             <- lines(header.commentLines)
-    fc            = figChar(header.charHeight)
+    fc             = figChar(header.charHeight)
     requiredChars <- fc.rep(requiredChars.size).map(requiredChars.zip(_))
     taggedChars   <- (charTag ~ fc).*
   } yield FigFont(

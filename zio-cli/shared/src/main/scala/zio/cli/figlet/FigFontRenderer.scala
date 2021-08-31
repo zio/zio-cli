@@ -1,7 +1,7 @@
 package zio.cli.figlet
 
 import zio.Chunk
-import scala.math.{ max, min }
+import scala.math.{max, min}
 import Layout._
 import SmushingRule._
 import FigCharLine._
@@ -30,11 +30,15 @@ private[figlet] object FigFontRenderer {
           case (Empty(r), Chars(l, s2, r2)) => Chars(r - f + l, s2, r2)
           case (Chars(l1, s1, r), Empty(l)) => Chars(l1, s1, r - f + l)
           case (Chars(l1, s1, r), Chars(l, s2, r2)) =>
-            Chars(l1, hLayout match {
-              case Smushing(rules) if r - f + l < 0 =>
-                s1.dropRight(1) + smush(hb, rtl, rules, s1.last, s2.head) + s2.drop(1)
-              case _ => s1 + " " * (r - f + l) + s2
-            }, r2)
+            Chars(
+              l1,
+              hLayout match {
+                case Smushing(rules) if r - f + l < 0 =>
+                  s1.dropRight(1) + smush(hb, rtl, rules, s1.last, s2.head) + s2.drop(1)
+                case _ => s1 + " " * (r - f + l) + s2
+              },
+              r2
+            )
         }
       }
       FigChar(lines, b1.width + b2.width - f, h)

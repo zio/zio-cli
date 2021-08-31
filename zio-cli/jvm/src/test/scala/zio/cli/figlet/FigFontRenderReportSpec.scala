@@ -18,22 +18,25 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
     testM("figlet.org Fonts Render Report") {
       for {
         fontDbHtml <- ZManaged
-                       .fromAutoCloseable(effectBlockingIO(Source.fromURL(fontDbUrl)))
-                       .use(s => effectBlockingIO(s.getLines().mkString))
+                        .fromAutoCloseable(effectBlockingIO(Source.fromURL(fontDbUrl)))
+                        .use(s => effectBlockingIO(s.getLines().mkString))
         names = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
         items <- ZIO.foreachPar(names) { name =>
-                  val url = s"$fontUrl$name"
-                  FigFont
-                    .fromURL(url)
-                    .fold({
-                      case Left(e)  => Left(e.toString)
-                      case Right(s) => Left(s)
-                    }, f => renderOrError(f))
-                    .map(r => (url, r))
-                }
+                   val url = s"$fontUrl$name"
+                   FigFont
+                     .fromURL(url)
+                     .fold(
+                       {
+                         case Left(e)  => Left(e.toString)
+                         case Right(s) => Left(s)
+                       },
+                       f => renderOrError(f)
+                     )
+                     .map(r => (url, r))
+                 }
         title = s"$fontUrl Render Report"
-        path  <- renderReport(title, items)
-        _     <- putStrLn(s"$title: $path")
+        path <- renderReport(title, items)
+        _    <- putStrLn(s"$title: $path")
       } yield assert(items.collect { case (url, Left(s)) => (url, s) })(isEmpty)
     } @@ TestAspect.ignore
 //    }

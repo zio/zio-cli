@@ -40,7 +40,7 @@ abstract class Parser[-R, +R1, +A] extends (R => ParseResult[R1, A]) {
 object Parser {
   import ParseResult._
   import scala.annotation.tailrec
-  import zio.{ Chunk, ChunkBuilder }
+  import zio.{Chunk, ChunkBuilder}
 
   def apply[R, R1, A](f: R => ParseResult[R1, A]): Parser[R, R1, A] = (r: R) => f(r)
 

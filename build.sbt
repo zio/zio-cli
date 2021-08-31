@@ -28,7 +28,7 @@ inThisBuild(
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion = "1.0.3"
+val zioVersion = "1.0.11"
 
 lazy val root = project
   .in(file("."))
@@ -105,7 +105,7 @@ lazy val sbtZioCli = project
   .settings(
     name := "sbt-zio-cli",
     organization := "zio.cli.sbt",
-    scalaVersion := "2.12.10",
+    scalaVersion := "2.12.14",
     version := "0.0.0-SNAPSHOT",
     addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.2.2")
   )
