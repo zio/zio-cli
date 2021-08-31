@@ -162,25 +162,20 @@ object Command {
         case _                        => HelpDoc.Span.space
       }
 
-    def subcommandsDesc[C](c: Command[C]): HelpDoc = {
+    def subcommandsDesc[C](c: Command[C]): HelpDoc =
       c match {
         case OrElse(left, right) =>
           HelpDoc.enumeration(subcommandsDesc(left), subcommandsDesc(right))
-        case s@Single(name, desc, _, _) =>          
-          HelpDoc.p(HelpDoc.Span.spans(
-            HelpDoc.Span.text(name),
-            HelpDoc.Span.text(" \t "),
-            getHelpDescription(desc)))
+        case Single(name, desc, _, _) =>
+          HelpDoc.p(HelpDoc.Span.spans(HelpDoc.Span.text(name), HelpDoc.Span.text(" \t "), getHelpDescription(desc)))
         case Map(cmd, _) =>
           subcommandsDesc(cmd)
         case c =>
           HelpDoc.empty
       }
-    }
 
-    def helpDoc = {
+    def helpDoc =
       parent.helpDoc + HelpDoc.h1("Subcommands") + subcommandsDesc(child)
-    }
 
     def names: Set[String] = parent.names
 
