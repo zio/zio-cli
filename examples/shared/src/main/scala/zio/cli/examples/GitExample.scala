@@ -2,7 +2,7 @@ package zio.cli.examples
 
 import java.nio.file.{Path => JPath}
 
-import zio.cli.{Args, CliApp, Command, Exists, Options}
+import zio.cli.{Args, CliApp, Command, Exists, HelpDoc, Options}
 import zio.cli.HelpDoc.Span.text
 
 import zio._
@@ -19,15 +19,17 @@ object GitExample extends App {
 
   val modifiedFlag: Options[Boolean] = Options.boolean("m")
 
+  val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
   val add =
-    Command("add", modifiedFlag, Args.directory("directory", Exists.Yes)).map { case (modified, directory) =>
+    Command("add", modifiedFlag, Args.directory("directory", Exists.Yes), addHelp).map { case (modified, directory) =>
       Subcommand.Add(modified, directory)
     }
 
   val verboseFlag: Options[Boolean] = Options.boolean("verbose").alias("v")
   val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
 
-  val remote = Command("remote", verboseFlag, Args.none).map { case (verbose, _) =>
+  val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
+  val remote = Command("remote", verboseFlag, Args.none, remoteHelp).map { case (verbose, _) =>
     Subcommand.Remote(verbose)
   }
 
