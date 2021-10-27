@@ -25,5 +25,5 @@ object CliConfig {
   /**
    * The default options are case sensitive parsing
    */
-  val default: CliConfig = CliConfig(false, 2)
+  val default: CliConfig = CliConfig(caseSensitive = false, autoCorrectLimit = 2)
 }
