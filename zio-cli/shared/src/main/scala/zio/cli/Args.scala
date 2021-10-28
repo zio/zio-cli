@@ -1,7 +1,6 @@
 package zio.cli
 
 import java.nio.file.{Path => JPath}
-
 import java.time.{
   Instant => JInstant,
   LocalDate => JLocalDate,
@@ -17,8 +16,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-
-import zio.IO
+import zio.{IO, Zippable}
 import zio.cli.HelpDoc.Span
 
 /**
@@ -26,8 +24,8 @@ import zio.cli.HelpDoc.Span
  */
 sealed trait Args[+A] { self =>
 
-  final def ++[That, A1 >: A](that: Args[That]): Args.Both[A1, That] =
-    Args.Both(self, that)
+  final def ++[B](that: Args[B])(implicit zippable: Zippable[A, B]): Args[zippable.Out] =
+    Args.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
 
   final def * : Args[List[A]] = Args.Variadic(self, None, None)
 
