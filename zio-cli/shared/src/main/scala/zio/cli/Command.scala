@@ -88,7 +88,16 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
-      builtIn(args, conf) orElse userDefined(args, conf)
+      parseBuiltInArgs(args, conf) orElse userDefined(args, conf)
+
+    def parseBuiltInArgs(
+      args: List[String],
+      conf: CliConfig
+    ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
+      if (args.headOption.map(conf.normalizeCase(_) == conf.normalizeCase(name)).getOrElse(false))
+        builtIn(args, conf)
+      else
+        IO.fail(None)
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
@@ -188,7 +197,24 @@ object Command {
           case CommandDirective.BuiltIn(x) =>
             x match {
               case BuiltInOption.ShowHelp(_) =>
-                ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc)))
+                for {
+                  help <- (child.parse(args.tail, conf) orElse ZIO.succeed(
+                            CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc))
+                          ))
+                  help <- help match {
+                            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(h)) => IO.succeed(h)
+                            case _ =>
+                              IO.fail(
+                                ValidationError(
+                                  ValidationErrorType.InvalidArgument,
+                                  HelpDoc.empty
+                                )
+                              )
+                          }
+                } yield {
+                  CommandDirective.builtIn(BuiltInOption.ShowHelp(help))
+                }
+
               case x => ZIO.succeed(CommandDirective.builtIn(x))
             }
 
