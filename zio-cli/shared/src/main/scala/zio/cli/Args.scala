@@ -87,7 +87,14 @@ object Args {
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
       args match {
         case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
-        case Nil          => IO.fail(HelpDoc.p(s"Missing argument <$pseudoName> with values ${primType.choices}."))
+        case Nil =>
+          val msg = (pseudoName, primType.choices) match {
+            case (Some(pseudoName), Some(choices)) => s"Missing argument <$pseudoName> with values $choices."
+            case (Some(pseudoName), _)             => s"Missing argument <$pseudoName>."
+            case (None, Some(choices))             => s"Missing argument ${primType.typeName} with values $choices."
+            case (None, None)                      => s"Missing argument ${primType.typeName}."
+          }
+          IO.fail(HelpDoc.p(msg))
       }
 
     private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"

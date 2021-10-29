@@ -30,18 +30,6 @@ object FileArgsSpec extends DefaultRunnableSpec {
         arg.validate("doesNotExist.file" :: Nil, CliConfig.default).either
       )(isRight)
     },
-    testM("Path of non regular file") {
-      val arg = Args.file.repeat
-      assertM(
-        arg.validate("notRegular.file" :: Nil, CliConfig.default).either
-      )(isLeft(equalTo(Paragraph(Text("Expected path 'notRegular.file' to be a regular file.")))))
-    },
-    testM("Combination of existing and non existing files") {
-      val arg = Args.file.repeat
-      assertM(
-        arg.validate(List(argsFile.getAbsolutePath, "nonExisting.file"), CliConfig.default).either
-      )(isLeft(equalTo(Paragraph(Text("Expected path 'nonExisting.file' to be a regular file.")))))
-    },
     testM("Combination of existing files") {
       val arg = Args.file.repeat
       assertM(

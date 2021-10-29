@@ -79,7 +79,7 @@ object PrimType {
         path   <- fileSystem.parsePath(value)
         exists <- fileSystem.exists(path)
         _      <- validateExistence(value, shouldExist, exists)
-        _      <- validatePathType(value, path).when(shouldExist != Exists.No)
+        _      <- validatePathType(value, path).when(shouldExist != Exists.No && exists)
       } yield path
 
     private def validatePathType(value: String, path: JPath): IO[String, Unit] =
