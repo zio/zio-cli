@@ -16,7 +16,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import zio.{IO, UIO}
+import zio.{IO, UIO, Zippable}
 import zio.cli.HelpDoc.Span
 import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span._
@@ -30,8 +30,8 @@ sealed trait Options[+A] { self =>
 
   import Options.Single
 
-  final def ++[A1 >: A, That](that: Options[That]): Options[(A1, That)] =
-    Options.Both(self, that)
+  final def ++[A1 >: A, B](that: Options[B])(implicit zippable: Zippable[A, B]): Options[zippable.Out] =
+    Options.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
 
   final def |[A1 >: A](that: Options[A1]): Options[A1] = self.orElse(that)
 
@@ -54,21 +54,21 @@ sealed trait Options[+A] { self =>
   //TODO : spend time to understand usage of implicit here
 
   final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< (B, C)): Options[Z] =
-    self.map(ev).map { case ((b, c)) => f(b, c) }
+    self.map(ev).map { case (b, c) => f(b, c) }
 
-  final def as[B, C, D, Z](f: (B, C, D) => Z)(implicit ev: A <:< ((B, C), D)): Options[Z] =
-    self.map(ev).map { case ((b, c), d) => f(b, c, d) }
+  final def as[B, C, D, Z](f: (B, C, D) => Z)(implicit ev: A <:< (B, C, D)): Options[Z] =
+    self.map(ev).map { case (b, c, d) => f(b, c, d) }
 
-  final def as[B, C, D, E, Z](f: (B, C, D, E) => Z)(implicit ev: A <:< (((B, C), D), E)): Options[Z] =
-    self.map(ev).map { case (((b, c), d), e) => f(b, c, d, e) }
+  final def as[B, C, D, E, Z](f: (B, C, D, E) => Z)(implicit ev: A <:< (B, C, D, E)): Options[Z] =
+    self.map(ev).map { case (b, c, d, e) => f(b, c, d, e) }
 
-  final def as[B, C, D, E, F, Z](f0: (B, C, D, E, F) => Z)(implicit ev: A <:< ((((B, C), D), E), F)): Options[Z] =
-    self.map(ev).map { case ((((b, c), d), e), f) => f0(b, c, d, e, f) }
+  final def as[B, C, D, E, F, Z](f0: (B, C, D, E, F) => Z)(implicit ev: A <:< (B, C, D, E, F)): Options[Z] =
+    self.map(ev).map { case (b, c, d, e, f) => f0(b, c, d, e, f) }
 
   final def as[B, C, D, E, F, G, Z](
     f0: (B, C, D, E, F, G) => Z
-  )(implicit ev: A <:< (((((B, C), D), E), F), G)): Options[Z] =
-    self.map(ev).map { case (((((b, c), d), e), f), g) => f0(b, c, d, e, f, g) }
+  )(implicit ev: A <:< (B, C, D, E, F, G)): Options[Z] =
+    self.map(ev).map { case (b, c, d, e, f, g) => f0(b, c, d, e, f, g) }
 
   final def fold[B, C, Z](
     f1: B => Z,
@@ -144,19 +144,6 @@ sealed trait Options[+A] { self =>
             Right(_)
           )
     )
-
-  final def flatten2[B, C](implicit ev: A <:< ((B, C))): Options[(B, C)] = as[B, C, (B, C)]((_, _))
-
-  final def flatten3[B, C, D](implicit ev: A <:< ((B, C), D)): Options[(B, C, D)] = as[B, C, D, (B, C, D)]((_, _, _))
-
-  final def flatten4[B, C, D, E](implicit ev: A <:< (((B, C), D), E)): Options[(B, C, D, E)] =
-    as[B, C, D, E, (B, C, D, E)]((_, _, _, _))
-
-  final def flatten5[B, C, D, E, F](implicit ev: A <:< ((((B, C), D), E), F)): Options[(B, C, D, E, F)] =
-    as[B, C, D, E, F, (B, C, D, E, F)]((_, _, _, _, _))
-
-  final def flatten6[B, C, D, E, F, G](implicit ev: A <:< (((((B, C), D), E), F), G)): Options[(B, C, D, E, F, G)] =
-    as[B, C, D, E, F, G, (B, C, D, E, F, G)]((_, _, _, _, _, _))
 
   def helpDoc: HelpDoc
 
