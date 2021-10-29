@@ -1,9 +1,10 @@
 package zio.cli
 
-import zio.test._
-import zio.test.Assertion._
-import zio.cli.HelpDoc.{p, Sequence}
+import zio.cli.BuiltInOption.ShowHelp
 import zio.cli.HelpDoc.Span.error
+import zio.cli.HelpDoc.{Sequence, p}
+import zio.test.Assertion._
+import zio.test._
 
 import scala.language.postfixOps
 
@@ -121,9 +122,14 @@ object CommandSpec extends DefaultRunnableSpec {
             )
           },
           testM("test without sub command") {
-            assertM(git.parse(List("git"), CliConfig.default).flip.map(_.validationErrorType))(
-              equalTo(ValidationErrorType.MissingSubCommand)
-            )
+            git.parse(List("git"), CliConfig.default).map { result =>
+              assertTrue {
+                result match {
+                  case CommandDirective.BuiltIn(ShowHelp(_)) => true
+                  case _                                     => false
+                }
+              }
+            }
           }
         )
       }: _*),

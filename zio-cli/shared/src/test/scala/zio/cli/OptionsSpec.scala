@@ -10,11 +10,12 @@ import java.time.format.DateTimeFormatter
 
 object OptionsSpec extends DefaultRunnableSpec {
 
-  val f: Options[String]            = Options.text("firstname").alias("f")
-  val l: Options[String]            = Options.text("lastname")
-  val a: Options[BigInt]            = Options.integer("age")
-  val aOpt: Options[Option[BigInt]] = Options.integer("age").optional("N/A")
-  val b: Options[Boolean]           = Options.boolean("verbose", true)
+  val f: Options[String]              = Options.text("firstname").alias("f")
+  val l: Options[String]              = Options.text("lastname")
+  val a: Options[BigInt]              = Options.integer("age")
+  val aOpt: Options[Option[BigInt]]   = Options.integer("age").optional("N/A")
+  val b: Options[Boolean]             = Options.boolean("verbose", true)
+  val m: Options[Map[String, String]] = Options.map(name = "defs").alias("d")
 
   val options: Options[(String, String, BigInt)] = f ++ l ++ a
 
@@ -310,6 +311,29 @@ object OptionsSpec extends DefaultRunnableSpec {
       assertM(r.either)(
         equalTo(Left(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --age option.")))))
       )
-    }
+    },
+    suite("property arguments")(
+      testM("validate missing option") {
+        val r = m.validate(List(), CliConfig.default)
+        assertM(r.run)(
+          fails(equalTo(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --defs option.")))))
+        )
+      },
+      testM("validate repeated values") {
+        val r = m.validate(List("-d", "key1=v1", "-d", "key2=v2", "--verbose"), CliConfig.default)
+
+        assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+      },
+      testM("validate different key/values with alias") {
+        val r = m.validate(List("-d", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
+
+        assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+      },
+      testM("validate different key/values") {
+        val r = m.validate(List("--defs", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
+
+        assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+      }
+    )
   )
 }
