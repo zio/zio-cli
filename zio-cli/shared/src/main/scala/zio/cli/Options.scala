@@ -548,13 +548,13 @@ object Options {
 
       override def uid: Option[String] = argumentOption.uid
 
-      private def createMapEntry(input: String) = {
-        val Array(a, b) = input.split("=").take(2)
-        a -> b
+      private def createMapEntry(input: String): (String, String) = {
+        val arr = input.split("=").take(2)
+        arr.head -> arr(1)
       }
 
-      private def createMapFromStringList(input: List[String]) =
-        input.filter(!_.startsWith("-")).map(createMapEntry).toMap
+      private def createMapFromStringList(input: List[String]): Predef.Map[String, String] =
+        input.filterNot(_.startsWith("-")).map(createMapEntry).toMap
 
       private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
 
@@ -573,15 +573,16 @@ object Options {
         (r._2, createMapFromStringList(r._1) + createMapEntry(first))
       }
 
-      override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
+      override def validate(
+        args: List[String],
+        conf: CliConfig
+      ): IO[ValidationError, (List[String], Predef.Map[String, String])] =
         for {
           n <- argumentOption.validate(args, conf)
         } yield processArguments(n._1, n._2, conf)
-      }
 
-      override private[cli] def modifySingle(f: SingleModifier) = {
+      override private[cli] def modifySingle(f: SingleModifier) =
         Options.map(f(argumentOption))
-      }
     }
   }
 }
