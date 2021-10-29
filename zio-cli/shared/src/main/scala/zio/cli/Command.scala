@@ -2,6 +2,7 @@ package zio.cli
 
 import zio.{IO, ZIO}
 import zio.cli.HelpDoc.h1
+import zio.cli.ValidationErrorType.CommandMismatch
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application
@@ -146,7 +147,7 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[A]] =
-      left.parse(args, conf) orElse right.parse(args, conf)
+      left.parse(args, conf).catchSome { case ValidationError(CommandMismatch, _) => right.parse(args, conf) }
 
     def synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }

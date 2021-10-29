@@ -21,7 +21,7 @@ object GitExample extends App {
 
   val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
   val add =
-    Command("add", modifiedFlag, Args.directory("directory", Exists.Yes), addHelp).map { case (modified, directory) =>
+    Command("add", modifiedFlag, Args.directory("directory"), addHelp).map { case (modified, directory) =>
       Subcommand.Add(modified, directory)
     }
 
@@ -34,7 +34,7 @@ object GitExample extends App {
   }
 
   val git: Command[Subcommand] =
-    Command("git", Options.none, Args.none).subcommands(add | remote).map(_._2)
+    Command("git", Options.none, Args.none).subcommands(add).map(_._2)
 
   val gitApp = CliApp.make(
     name = "Git Version Control",
