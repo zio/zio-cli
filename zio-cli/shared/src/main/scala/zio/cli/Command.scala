@@ -73,7 +73,7 @@ object Command {
       }
 
       val optionsSection = {
-        val opts = (self.options ++ BuiltInOption.builtInOptions).helpDoc
+        val opts = (self.options).helpDoc
 
         if (opts == HelpDoc.Empty) HelpDoc.Empty
         else h1("options") + opts
@@ -222,8 +222,7 @@ object Command {
             child.parse(leftover, conf).map(_.map(b => (a, b)))
 
           case _ =>
-            // TODO: This can use a nicer error message. Print the names of the subcommands.
-            IO.fail(ValidationError(ValidationErrorType.MissingSubCommand, HelpDoc.p("Missing sub command.")))
+            ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(helpDoc)))
         }
         .catchSome {
           case _ if args.isEmpty => ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(self.helpDoc)))

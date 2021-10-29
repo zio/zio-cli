@@ -333,8 +333,17 @@ object HelpDoc {
   final case class Header(value: Span, level: Int)                     extends HelpDoc
   final case class Paragraph(value: Span)                              extends HelpDoc
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
-  final case class Enumeration(elements: List[HelpDoc])                extends HelpDoc
-  final case class Sequence(left: HelpDoc, right: HelpDoc)             extends HelpDoc
+  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc {
+    def flatten: Enumeration =
+      Enumeration(
+        elements.flatMap {
+          case Enumeration(elements) => elements
+          case other                 => List(other)
+        }
+      )
+  }
+
+  final case class Sequence(left: HelpDoc, right: HelpDoc) extends HelpDoc
 
   def blocks(bs: Iterable[HelpDoc]): HelpDoc =
     if (bs.isEmpty) HelpDoc.Empty else blocks(bs.head, bs.tail.toSeq: _*)
@@ -346,7 +355,8 @@ object HelpDoc {
 
   val empty: HelpDoc = Empty
 
-  def enumeration(elements: HelpDoc*): HelpDoc = HelpDoc.Enumeration(elements.toList)
+  def enumeration(elements: HelpDoc*): HelpDoc =
+    HelpDoc.Enumeration(elements.toList).flatten
 
   def h1(t: String): HelpDoc  = h1(Span.text(t))
   def h1(span: Span): HelpDoc = HelpDoc.Header(span, 1)
