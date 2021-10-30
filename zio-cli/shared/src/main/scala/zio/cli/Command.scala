@@ -14,6 +14,27 @@ sealed trait Command[+A] { self =>
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
 
+  def withHelp(help: String): Command[A] =
+    withHelp(HelpDoc.p(help))
+
+  def withHelp(help: HelpDoc): Command[A] =
+    self match {
+      case single: Command.Single[_, _] =>
+        single.copy(help = help).asInstanceOf[Command[A]]
+
+      case Command.Map(command, f) =>
+        Command.Map(command.withHelp(help), f)
+
+      case Command.OrElse(left, right) =>
+        Command.OrElse(
+          left.withHelp(help),
+          right.withHelp(help)
+        ) // if the left and right also have help, it gets overwritten by this, maybe not the best idea
+
+      case subcommands: Command.Subcommands[_, _] =>
+        subcommands.copy(parent = subcommands.parent.withHelp(help)).asInstanceOf[Command[A]]
+    }
+
   def helpDoc: HelpDoc
 
   final def map[B](f: A => B): Command[B] = Command.Map(self, f)
@@ -38,7 +59,7 @@ object Command {
 
   final case class Single[OptionsType, ArgsType](
     name: String,
-    description: HelpDoc,
+    help: HelpDoc,
     options: Options[OptionsType],
     args: Args[ArgsType]
   ) extends Command[(OptionsType, ArgsType)] { self =>
@@ -58,8 +79,8 @@ object Command {
     def completions(shellType: ShellType): Set[List[String]] = ???
 
     def helpDoc: HelpDoc = {
-      val descriptionsSection = {
-        val desc = description
+      val helpHeader = {
+        val desc = help
 
         if (desc.isEmpty) HelpDoc.Empty
         else h1("description") + desc
@@ -79,7 +100,7 @@ object Command {
         else h1("options") + opts
       }
 
-      descriptionsSection + argumentsSection + optionsSection
+      helpHeader + argumentsSection + optionsSection
     }
 
     def names: Set[String] = Set(name)
@@ -237,7 +258,23 @@ object Command {
   def apply[OptionsType, ArgsType](
     name: String,
     options: Options[OptionsType],
-    args: Args[ArgsType],
-    helpDoc: HelpDoc = HelpDoc.Empty
-  ): Command[(OptionsType, ArgsType)] = Single(name, helpDoc, options, args)
+    args: Args[ArgsType]
+  ): Command[(OptionsType, ArgsType)] =
+    Single(name, HelpDoc.empty, options, args)
+
+  def apply[OptionsType](
+    name: String,
+    options: Options[OptionsType]
+  ): Command[(OptionsType, Unit)] =
+    Single(name, HelpDoc.empty, options, Args.none)
+
+  def apply[ArgsType](
+    name: String,
+    args: Args[ArgsType]
+  ): Command[(Unit, ArgsType)] =
+    Single(name, HelpDoc.empty, Options.none, args)
+
+  def apply(
+    name: String
+  ): Command[(Unit, Unit)] = Single(name, HelpDoc.empty, Options.none, Args.none)
 }

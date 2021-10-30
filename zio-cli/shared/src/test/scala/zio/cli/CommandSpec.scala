@@ -148,6 +148,61 @@ object CommandSpec extends DefaultRunnableSpec {
           )
         )
       }
+    ),
+    suite("Helpdoc On Command Suite")(
+      suite("test adding helpdoc to commands")(
+        testM("add text helpdoc to Single") {
+          val command = Command("tldr").withHelp("this is some help")
+          assertM(command.parse(List("tldr"), CliConfig.default))(
+            equalTo(CommandDirective.UserDefined(Nil, ((), ())))
+          )
+        },
+        test("helpdoc is on command") {
+          val command = Command("tldr").withHelp("this is some help")
+          val header  = HelpDoc.h1("description")
+          assert(command.helpDoc)(
+            equalTo(HelpDoc.Sequence(header, HelpDoc.p("this is some help")))
+          )
+        }
+      ),
+      suite("test adding helpdoc to sub commands") {
+        val command =
+          Command("command").subcommands(
+            Command("sub").withHelp("this is some help")
+          )
+        val header = HelpDoc.h1("subcommands")
+        test("helpdoc is on subcommand") {
+          assert(command.helpDoc)(
+            not(equalTo(HelpDoc.Sequence(header, HelpDoc.p("this is some help"))))
+          )
+        }
+      },
+      suite("test adding helpdoc to OrElse command") {
+        val command = Command
+          .OrElse(
+            Command("command1").withHelp("this is some help with command1"),
+            Command("command2")
+          )
+
+        test("helpdoc on orElse command")(
+          assert(command.left.helpDoc)(
+            equalTo(HelpDoc.Sequence(HelpDoc.h1("description"), HelpDoc.p("this is some help with command1")))
+          )
+        )
+      },
+      suite("test adding helpdoc to Map command") {
+        val command = Command
+          .Map[(String, String), Int](
+            Command("command", Options.text("word"), Args.text).withHelp("this is some help with command"),
+            _._2.length
+          )
+
+        test("helpdoc on Map command")(
+          assert(command.helpDoc.toPlaintext())(
+            containsString("this is some help with command")
+          )
+        )
+      }
     )
   )
 

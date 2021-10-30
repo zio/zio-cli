@@ -21,7 +21,7 @@ object GitExample extends App {
 
   val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
   val add =
-    Command("add", modifiedFlag, Args.directory("directory"), addHelp).map { case (modified, directory) =>
+    Command("add", modifiedFlag, Args.directory("directory")).withHelp(addHelp).map { case (modified, directory) =>
       Subcommand.Add(modified, directory)
     }
 
@@ -29,7 +29,7 @@ object GitExample extends App {
   val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
 
   val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = Command("remote", verboseFlag, Args.none, remoteHelp).map { case (verbose, _) =>
+  val remote = Command("remote", verboseFlag, Args.none).withHelp(remoteHelp).map { case (verbose, _) =>
     Subcommand.Remote(verbose)
   }
 
