@@ -84,6 +84,14 @@ object Command {
 
     def names: Set[String] = Set(name)
 
+    def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}|$)")
+
+    def unCluster(args: List[String]): List[String] = args.flatMap { arg =>
+      if (isClusteredOption(arg))
+        arg.substring(1).map(c => s"-$c")
+      else arg :: Nil
+    }
+
     def parse(
       args: List[String],
       conf: CliConfig
@@ -122,7 +130,7 @@ object Command {
                       ValidationError(ValidationErrorType.CommandMismatch, HelpDoc.p(s"Missing command name: ${name}"))
                     )
                 }
-        tuple              <- self.options.validate(args, conf)
+        tuple              <- self.options.validate(unCluster(args), conf)
         (args, optionsType) = tuple
         tuple <- self.args
                    .validate(args, conf)
