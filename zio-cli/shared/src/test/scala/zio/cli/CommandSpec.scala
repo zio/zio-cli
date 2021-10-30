@@ -5,6 +5,7 @@ import zio.cli.HelpDoc.Span.error
 import zio.cli.HelpDoc.{Sequence, p}
 import zio.test.Assertion._
 import zio.test._
+import zio.cli.builder._
 
 import scala.language.postfixOps
 
@@ -69,7 +70,7 @@ object CommandSpec extends DefaultRunnableSpec {
     suite("test commands joined by | operator")(
       testM("") {
         val orElseCommand =
-          Command("remote", Options.Empty, Args.none) | Command("log", Options.Empty, Args.none)
+          CommandBuilder().name("remote").build | CommandBuilder().name("log").build
 
         assertM(orElseCommand.parse(List("log"), CliConfig.default))(
           equalTo(CommandDirective.UserDefined(Nil, ((), ())))
@@ -80,10 +81,13 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("having two sub commands without options or arguments")({
 
         val git =
-          Command("git", Options.Empty, Args.none).subcommands(
-            Command("remote", Options.Empty, Args.none),
-            Command("log", Options.Empty, Args.none)
-          )
+          CommandBuilder()
+            .name("git")
+            .build
+            .subcommands(
+              CommandBuilder().name("remote").build,
+              CommandBuilder().name("log").build
+            )
 
         Vector(
           testM("match first sub command without any surplus arguments") {
@@ -106,9 +110,16 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("sub command usage with options and arguments")({
 
         val git =
-          Command("git", Options.Empty, Args.none).subcommands(
-            Command("rebase", Options.boolean("i", true), Args.text ++ Args.text)
-          )
+          CommandBuilder()
+            .name("git")
+            .build
+            .subcommands(
+              CommandBuilder()
+                .name("rebase")
+                .options(Options.boolean("i", true))
+                .args(Args.text ++ Args.text)
+                .build
+            )
 
         Vector(
           testM("test sub command with options and arguments") {
@@ -136,11 +147,21 @@ object CommandSpec extends DefaultRunnableSpec {
       suite("test sub sub commands") {
 
         val command =
-          Command("command", Options.Empty, Args.none).subcommands(
-            Command("sub", Options.Empty, Args.none).subcommands(
-              Command("subsub", Options.boolean("i", true), Args.text)
+          CommandBuilder()
+            .name("command")
+            .build
+            .subcommands(
+              CommandBuilder()
+                .name("sub")
+                .build
+                .subcommands(
+                  CommandBuilder()
+                    .name("subsub")
+                    .options(Options.boolean("i", true))
+                    .args(Args.text)
+                    .build
+                )
             )
-          )
 
         testM("sub sub command with option and argument")(
           assertM(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default))(
