@@ -66,7 +66,8 @@ object WcApp extends App {
 
             val byteCount = option(opts.bytes, ZSink.count)
             val lineCount = option(opts.lines, ZTransducer.utfDecode >>> ZTransducer.splitLines >>> ZSink.count)
-            val wordCount = option(opts.words, ZTransducer.utfDecode >>> ZTransducer.splitOn(" ") >>> ZSink.count)
+            val wordCount =
+              option(opts.words, ZTransducer.utfDecode.mapChunks(_.flatMap(_.split("\\s+"))) >>> ZSink.count)
             val charCount =
               option(opts.char, ZTransducer.utfDecode >>> ZSink.foldLeft[String, Long](0L)((s, e) => s + e.length))
 
