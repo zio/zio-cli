@@ -72,7 +72,7 @@ object CommandSpec extends DefaultRunnableSpec {
           Command("remote", Options.Empty, Args.none) | Command("log", Options.Empty, Args.none)
 
         assertM(orElseCommand.parse(List("log"), CliConfig.default))(
-          equalTo(CommandDirective.UserDefined(Nil, ((), ())))
+          equalTo(CommandDirective.UserDefined(Nil, ()))
         )
       }
     ),
@@ -104,17 +104,17 @@ object CommandSpec extends DefaultRunnableSpec {
         Vector(
           testM("match first sub command without any surplus arguments") {
             assertM(git.parse(List("git", "remote"), CliConfig.default))(
-              equalTo(CommandDirective.UserDefined(Nil, (((), ()), ((), ()))))
+              equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           },
           testM("match first sub command with a surplus options") {
             assertM(git.parse(List("git", "remote", "-v"), CliConfig.default))(
-              equalTo(CommandDirective.UserDefined(List("-v"), (((), ()), ((), ()))))
+              equalTo(CommandDirective.UserDefined(List("-v"), ()))
             )
           },
           testM("match second sub command without any surplus arguments") {
             assertM(git.parse(List("git", "log"), CliConfig.default))(
-              equalTo(CommandDirective.UserDefined(Nil, (((), ()), ((), ()))))
+              equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           }
         )
@@ -129,7 +129,7 @@ object CommandSpec extends DefaultRunnableSpec {
         Vector(
           testM("test sub command with options and arguments") {
             assertM(git.parse(List("git", "rebase", "-i", "upstream", "branch"), CliConfig.default))(
-              equalTo(CommandDirective.UserDefined(Nil, (((), ()), (true, ("upstream", "branch")))))
+              equalTo(CommandDirective.UserDefined(Nil, (true, ("upstream", "branch"))))
             )
           },
           testM("test unknown sub command") {
@@ -160,7 +160,7 @@ object CommandSpec extends DefaultRunnableSpec {
 
         testM("sub sub command with option and argument")(
           assertM(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default))(
-            equalTo(CommandDirective.UserDefined(Nil, (((), ()), (((), ()), (true, "text")))))
+            equalTo(CommandDirective.UserDefined(Nil, (true, "text")))
           )
         )
       }
@@ -170,7 +170,7 @@ object CommandSpec extends DefaultRunnableSpec {
         testM("add text helpdoc to Single") {
           val command = Command("tldr").withHelp("this is some help")
           assertM(command.parse(List("tldr"), CliConfig.default))(
-            equalTo(CommandDirective.UserDefined(Nil, ((), ())))
+            equalTo(CommandDirective.UserDefined(Nil, ()))
           )
         },
         test("helpdoc is on command") {
