@@ -76,6 +76,22 @@ object CommandSpec extends DefaultRunnableSpec {
         )
       }
     ),
+    suite("test commands with clustered options")(
+      testM("Clustered boolean options are equal to un-clustered options") {
+        val clustered =
+          WC.command
+            .parse(List("wc", "-clw", "filename"), CliConfig.default)
+
+        val unClustered =
+          WC.command
+            .parse(List("wc", "-c", "-l", "-w", "filename"), CliConfig.default)
+
+        val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, true), List("filename")))
+
+        assertM(clustered)(equalTo(commandDirective))
+        assertM(unClustered)(equalTo(commandDirective))
+      }
+    ),
     suite("SubCommand Suite")(
       suite("having two sub commands without options or arguments")({
 
