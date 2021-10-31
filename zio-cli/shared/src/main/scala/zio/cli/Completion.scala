@@ -5,10 +5,10 @@ object Completion {
     // TODO: The dummy completions below are just a proof of concept. They
     // should be replaced with legitimate completions.
     val dummyCompletions = (
-      words.zipWithIndex.map{case (word, i) => s"$word-$i"} ++
-      List(s"cursor-index-$index") ++
-      List(s"shell-is-$shellType") ++
-      "Mini-Me You Complete Me".split(" ").toList
+      words.zipWithIndex.map { case (word, i) => s"$word-$i" } ++
+        List(s"cursor-index-$index") ++
+        List(s"shell-is-$shellType") ++
+        "Mini-Me You Complete Me".split(" ").toList
     )
     dummyCompletions
   }

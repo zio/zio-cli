@@ -4,9 +4,9 @@ import java.nio.file.{Path => JPath}
 
 sealed trait BuiltInOption extends Product with Serializable
 object BuiltInOption {
-  final case class ShowHelp(helpDoc: HelpDoc) extends BuiltInOption
+  final case class ShowHelp(helpDoc: HelpDoc)                                          extends BuiltInOption
   final case class ShowCompletionScript(pathToExecutable: JPath, shellType: ShellType) extends BuiltInOption
-  final case class ShowCompletions(index: Int, shellType: ShellType) extends BuiltInOption
+  final case class ShowCompletions(index: Int, shellType: ShellType)                   extends BuiltInOption
 
   final case class BuiltIn(
     help: Boolean,
@@ -17,9 +17,9 @@ object BuiltInOption {
 
   lazy val builtInOptions = (
     Options.boolean("help") ++
-    Options.file("shell-completion-script").optional("N/A") ++
-    ShellType.option.optional("N/A") ++
-    Options.integer("shell-completion-index").map(_.toInt).optional("N/A")
+      Options.file("shell-completion-script").optional("N/A") ++
+      ShellType.option.optional("N/A") ++
+      Options.integer("shell-completion-index").map(_.toInt).optional("N/A")
   ).as(BuiltIn)
 
   def builtInOptions(helpDoc: => HelpDoc): Options[Option[BuiltInOption]] =

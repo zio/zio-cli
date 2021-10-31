@@ -67,9 +67,9 @@ object CliApp {
         case ShowCompletionScript(path, shellType) =>
           putStrLn(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))
         case ShowCompletions(index, shellType) =>
-          envs.flatMap{ envMap =>
-            val compWords = envMap.collect{
-              case (s"COMP_WORD_$idx", word) => (idx.toInt, word)
+          envs.flatMap { envMap =>
+            val compWords = envMap.collect { case (s"COMP_WORD_$idx", word) =>
+              (idx.toInt, word)
             }.toList.sortBy(_._1).map(_._2)
 
             val completions = Completion.complete(shellType, compWords, index)

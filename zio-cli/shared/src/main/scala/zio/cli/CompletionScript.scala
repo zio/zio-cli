@@ -5,10 +5,10 @@ import java.nio.file.{Path => JPath}
 
 object CompletionScript {
   def apply(pathToExecutable: JPath, programNames: Set[String], shellType: ShellType): String = shellType match {
-    case Bash => bash(pathToExecutable, programNames)
+    case Bash   => bash(pathToExecutable, programNames)
     case ZShell => ???
   }
-  private[this] def bash(pathToExecutable: JPath, programNames: Set[String]): String = 
+  private[this] def bash(pathToExecutable: JPath, programNames: Set[String]): String =
     s"""|#/usr/bin/env bash
         |_${programNames.head}()
         |{
@@ -28,7 +28,7 @@ object CompletionScript {
         |  unset $$(compgen -v | grep "^COMP_WORD_")
         |}
         |
-        |""".stripMargin + programNames.map(programName =>
-          s"complete -F _${programNames.head} $programName"
-        ).mkString(System.lineSeparator)
+        |""".stripMargin + programNames
+      .map(programName => s"complete -F _${programNames.head} $programName")
+      .mkString(System.lineSeparator)
 }
