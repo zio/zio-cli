@@ -47,10 +47,13 @@ sealed trait Command[+A] { self =>
 
   def parse(args: List[String], conf: CliConfig): IO[ValidationError, CommandDirective[A]]
 
-  final def subcommands[B](that: Command[B]): Command[(A, B)] = Command.Subcommands(self, that)
+  final def subcommands[B](that: Command[B])(implicit ev: Reducable[A, B]): Command[ev.Out] =
+    Command.Subcommands(self, that).map(ev.fromTuple2(_))
 
-  final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*): Command[(A, B)] =
-    subcommands(cs.foldLeft(c1 | c2)(_ | _))
+  final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*)(implicit
+    ev: Reducable[A, B]
+  ): Command[ev.Out] =
+    subcommands(cs.foldLeft(c1 | c2)(_ | _))(ev)
 
   def synopsis: UsageSynopsis
 }
@@ -123,7 +126,7 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
-      if (args.headOption.map(conf.normalizeCase(_) == conf.normalizeCase(name)).getOrElse(false))
+      if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(name)))
         builtIn(args, conf)
       else
         IO.fail(None)
@@ -267,22 +270,23 @@ object Command {
     name: String,
     options: Options[OptionsType],
     args: Args[ArgsType]
-  ): Command[(OptionsType, ArgsType)] =
-    Single(name, HelpDoc.empty, options, args)
+  )(implicit ev: Reducable[OptionsType, ArgsType]): Command[ev.Out] =
+    Single(name, HelpDoc.empty, options, args).map(ev.fromTuple2(_))
 
   def apply[OptionsType](
     name: String,
     options: Options[OptionsType]
-  ): Command[(OptionsType, Unit)] =
-    Single(name, HelpDoc.empty, options, Args.none)
+  )(implicit ev: Reducable[OptionsType, Unit]): Command[ev.Out] =
+    Single(name, HelpDoc.empty, options, Args.none).map(ev.fromTuple2(_))
 
   def apply[ArgsType](
     name: String,
     args: Args[ArgsType]
-  ): Command[(Unit, ArgsType)] =
-    Single(name, HelpDoc.empty, Options.none, args)
+  )(implicit ev: Reducable[Unit, ArgsType]): Command[ev.Out] =
+    Single(name, HelpDoc.empty, Options.none, args).map(ev.fromTuple2(_))
 
   def apply(
     name: String
-  ): Command[(Unit, Unit)] = Single(name, HelpDoc.empty, Options.none, Args.none)
+  )(implicit ev: Reducable[Unit, Unit]): Command[ev.Out] =
+    Single(name, HelpDoc.empty, Options.none, Args.none).map(ev.fromTuple2(_))
 }

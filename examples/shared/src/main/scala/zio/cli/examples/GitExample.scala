@@ -29,12 +29,12 @@ object GitExample extends App {
   val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
 
   val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = Command("remote", verboseFlag, Args.none).withHelp(remoteHelp).map { case (verbose, _) =>
+  val remote = Command("remote", verboseFlag, Args.none).withHelp(remoteHelp).map { verbose =>
     Subcommand.Remote(verbose)
   }
 
   val git: Command[Subcommand] =
-    Command("git", Options.none, Args.none).subcommands(add).map(_._2)
+    Command("git", Options.none, Args.none).subcommands(add)
 
   val gitApp = CliApp.make(
     name = "Git Version Control",
