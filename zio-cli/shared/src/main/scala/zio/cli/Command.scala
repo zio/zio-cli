@@ -71,15 +71,13 @@ object Command {
      * Built-in options supported by the command, such as "--help".
      */
     lazy val builtInOptions: Options[Option[BuiltInOption]] =
-      BuiltInOption.builtInOptions(helpDoc, completions(_))
+      BuiltInOption.builtInOptions(helpDoc)
 
     def builtIn(
       args: List[String],
       conf: CliConfig
     ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
       builtInOptions.validate(args, conf).mapBoth(_.error, _._2).some.map(CommandDirective.BuiltIn(_))
-
-    def completions(shellType: ShellType): Set[List[String]] = ???
 
     def helpDoc: HelpDoc = {
       val helpHeader = {

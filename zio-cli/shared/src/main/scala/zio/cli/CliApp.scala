@@ -6,6 +6,7 @@ import zio.console._
 import zio.cli.HelpDoc.{h1, p}
 import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.BuiltInOption._
+import zio.system._
 
 import scala.annotation.tailrec
 
@@ -14,7 +15,7 @@ import scala.annotation.tailrec
  * requires environment `R`, and may fail with a value of type `E`.
  */
 sealed trait CliApp[-R, +E, Model] {
-  def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode]
+  def run(args: List[String]): ZIO[R with Console with System, Nothing, ExitCode]
 
   def config(newConfig: CliConfig): CliApp[R, E, Model]
 
@@ -50,7 +51,7 @@ object CliApp {
   ) extends CliApp[R, E, Model] { self =>
     def config(newConfig: CliConfig): CliApp[R, E, Model] = copy(config = newConfig)
 
-    def executeBuiltIn(builtInOption: BuiltInOption): RIO[Console, Unit] =
+    def executeBuiltIn(builtInOption: BuiltInOption): RIO[Console with System, Unit] =
       builtInOption match {
         case ShowHelp(helpDoc) =>
           val fancyName =
@@ -63,8 +64,17 @@ object CliApp {
 
           putStrLn((header + fancyName + synopsis + helpDoc + footer).toPlaintext(80))
 
-        case ShowCompletions(completions) =>
-          putStrLn(completions.map(_.mkString(" ")).mkString("\n"))
+        case ShowCompletionScript(path, shellType) =>
+          putStrLn(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))
+        case ShowCompletions(index, shellType) =>
+          envs.flatMap { envMap =>
+            val compWords = envMap.collect { case (s"COMP_WORD_$idx", word) =>
+              (idx.toInt, word)
+            }.toList.sortBy(_._1).map(_._2)
+
+            val completions = Completion.complete(shellType, compWords, index)
+            ZIO.foreach_(completions)(word => putStrLn(word))
+          }
       }
 
     def footer(newFooter: HelpDoc): CliApp[R, E, Model] =
@@ -83,7 +93,7 @@ object CliApp {
         case Command.Subcommands(parent, _) => prefix(parent)
       }
 
-    def run(args: List[String]): ZIO[R with Console, Nothing, ExitCode] =
+    def run(args: List[String]): ZIO[R with Console with System, Nothing, ExitCode] =
       command
         .parse(prefix(command) ++ args, config)
         .foldM(

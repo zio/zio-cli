@@ -1,19 +1,32 @@
 package zio.cli
 
-sealed trait BuiltInOption
+import java.nio.file.{Path => JPath}
+
+sealed trait BuiltInOption extends Product with Serializable
 object BuiltInOption {
-  final case class ShowHelp(helpDoc: HelpDoc)                      extends BuiltInOption
-  final case class ShowCompletions(completions: Set[List[String]]) extends BuiltInOption
+  final case class ShowHelp(helpDoc: HelpDoc)                                          extends BuiltInOption
+  final case class ShowCompletionScript(pathToExecutable: JPath, shellType: ShellType) extends BuiltInOption
+  final case class ShowCompletions(index: Int, shellType: ShellType)                   extends BuiltInOption
 
-  final case class BuiltIn(help: Boolean, shellCompletions: Option[ShellType])
+  final case class BuiltIn(
+    help: Boolean,
+    shellCompletionScriptPath: Option[JPath],
+    shellType: Option[ShellType],
+    shellCompletionIndex: Option[Int]
+  )
 
-  lazy val builtInOptions: Options[BuiltIn] =
-    (Options.boolean("help") ++ ShellType.option.optional("N/A")).as(BuiltIn)
+  lazy val builtInOptions = (
+    Options.boolean("help") ++
+      Options.file("shell-completion-script").optional("N/A") ++
+      ShellType.option.optional("N/A") ++
+      Options.integer("shell-completion-index").map(_.toInt).optional("N/A")
+  ).as(BuiltIn)
 
-  def builtInOptions(helpDoc: => HelpDoc, completions: ShellType => Set[List[String]]): Options[Option[BuiltInOption]] =
+  def builtInOptions(helpDoc: => HelpDoc): Options[Option[BuiltInOption]] =
     builtInOptions.map {
-      case BuiltIn(true, _)            => Some(ShowHelp(helpDoc))
-      case BuiltIn(_, Some(shellType)) => Some(ShowCompletions(completions(shellType)))
-      case _                           => None
+      case BuiltIn(true, _, _, _)                      => Some(ShowHelp(helpDoc))
+      case BuiltIn(_, Some(path), Some(shellType), _)  => Some(ShowCompletionScript(path, shellType))
+      case BuiltIn(_, _, Some(shellType), Some(index)) => Some(ShowCompletions(index, shellType))
+      case _                                           => None
     }
 }
