@@ -207,7 +207,7 @@ object Command {
           HelpDoc.p(HelpDoc.Span.spans(HelpDoc.Span.text(name), HelpDoc.Span.text(" \t "), getHelpDescription(desc)))
         case Map(cmd, _) =>
           subcommandsDesc(cmd)
-        case c =>
+        case _ =>
           HelpDoc.empty
       }
 

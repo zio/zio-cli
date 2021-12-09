@@ -199,7 +199,8 @@ object FigFontRendererSpec extends DefaultRunnableSpec {
 
   private def textBlock(s: String) = TextBlock(
     Chunk.fromIterable(
-      s.stripMargin.linesIterator
+      s.stripMargin
+        .split("\n")
         .dropWhile(l => l.forall(_.isWhitespace))
         .map(_.stripSuffix("|"))
         .toSeq

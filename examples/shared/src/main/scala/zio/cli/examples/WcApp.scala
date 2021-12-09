@@ -25,11 +25,11 @@ object WcApp extends App {
     countChar: Option[Long]
   )
 
-  val options = (bytesFlag ++ linesFlag ++ wordsFlag ++ charFlag).as(WcOptions)
+  val options = (bytesFlag ++ linesFlag ++ wordsFlag ++ charFlag).as(WcOptions.apply _)
 
   val args = Args.file("files", Exists.Yes).repeat1
 
-  val wc = Command("wc", options, args)
+  val wc: Command[(WcOptions, ::[Path])] = Command("wc", options, args)
 
   val execute: (WcOptions, ::[Path]) => URIO[Console, Unit] = {
     def printResult(res: List[WcResult]): ZIO[Console, Nothing, Unit] = {

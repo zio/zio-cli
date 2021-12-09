@@ -63,7 +63,8 @@ private[figlet] object FigFontRenderer {
       b1.dropRight(f) ++ merge ++ b2.drop(f)
     }
 
-    text.linesIterator
+    text
+      .split("\n")
       .flatMap(renderLine)
       .reduce(vAppend)
       .map(_.replace(hb, ' '))
