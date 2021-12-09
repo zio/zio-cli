@@ -1299,5 +1299,5 @@ __/_/_@
 /____/    @@
 """
 
-  val Default: FigFont = FigFont.fromLines(Text.linesIterator.toSeq).toOption.get
+  val Default: FigFont = FigFont.fromLines(Text.split("\n").toSeq).toOption.get
 }

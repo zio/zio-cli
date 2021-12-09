@@ -1,6 +1,7 @@
 package zio.cli.figlet
-
 import zio.Chunk
+
+import scala.util.Try
 
 private[figlet] object FigFontParser {
   def parse(lines: Chunk[String]): Either[String, FigFont] = figFont.parse(TextSpan(lines))
@@ -19,7 +20,7 @@ private[figlet] object FigFontParser {
   }
 
   final val int = token.refine[Int](s =>
-    s.toIntOption match {
+    Try(s.toInt).toOption match {
       case Some(i) => Right(i)
       case None    => Left(_.error("Expected integer"))
     }

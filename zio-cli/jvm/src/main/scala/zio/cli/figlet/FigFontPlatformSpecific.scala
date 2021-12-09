@@ -21,7 +21,7 @@ trait FigFontPlatformSpecific { self: FigFont.type =>
   ): ZIO[R, Either[E, String], FigFont] =
     for {
       lines <- ZManaged
-                 .fromAutoCloseable(source)
+                 .make(source)(source => UIO(source.close()))
                  .use(s => effectBlockingIO(s.getLines().toSeq))
                  .mapError(Left(_))
       font <- ZIO

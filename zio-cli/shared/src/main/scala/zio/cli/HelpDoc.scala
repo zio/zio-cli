@@ -18,7 +18,7 @@ sealed trait HelpDoc { self =>
   def +(that: HelpDoc): HelpDoc =
     (self, that) match {
       case (self, that) if self.isEmpty   => that
-      case (self, that) if (that.isEmpty) => this
+      case (self, that) if (that.isEmpty) => self
       case _                              => HelpDoc.Sequence(self, that)
     }
 
@@ -35,23 +35,23 @@ sealed trait HelpDoc { self =>
 
   def isHeader: Boolean =
     self match {
-      case HelpDoc.Header(_, _)          => true
-      case HelpDoc.Sequence(left, right) => left.isHeader
-      case _                             => false
+      case HelpDoc.Header(_, _)      => true
+      case HelpDoc.Sequence(left, _) => left.isHeader
+      case _                         => false
     }
 
   def isParagraph: Boolean =
     self match {
-      case HelpDoc.Paragraph(_)          => true
-      case HelpDoc.Sequence(left, right) => left.isParagraph
-      case _                             => false
+      case HelpDoc.Paragraph(_)      => true
+      case HelpDoc.Sequence(left, _) => left.isParagraph
+      case _                         => false
     }
 
   def isDescriptionList: Boolean =
     self match {
-      case HelpDoc.DescriptionList(xs)   => true
-      case HelpDoc.Sequence(left, right) => left.isDescriptionList
-      case _                             => false
+      case HelpDoc.DescriptionList(_) => true
+      case HelpDoc.Sequence(left, _)  => left.isDescriptionList
+      case _                          => false
     }
 
   def isEnumeration: Boolean =
@@ -239,7 +239,7 @@ sealed trait HelpDoc { self =>
     def renderHelpDoc(helpDoc: HelpDoc): Unit =
       helpDoc match {
         case Empty =>
-        case HelpDoc.Header(value, level) =>
+        case HelpDoc.Header(value, _) =>
           writer.unindent()
           renderNewline()
           uppercase = true
@@ -255,7 +255,7 @@ sealed trait HelpDoc { self =>
           renderNewline()
 
         case HelpDoc.DescriptionList(definitions) =>
-          definitions.zipWithIndex.foreach { case ((span, helpDoc), index) =>
+          definitions.zipWithIndex.foreach { case ((span, helpDoc), _) =>
             setStyle(Console.BOLD)
             renderSpan(span)
             resetStyle()
@@ -267,7 +267,7 @@ sealed trait HelpDoc { self =>
           }
 
         case HelpDoc.Enumeration(elements) =>
-          elements.zipWithIndex.foreach { case (helpDoc, index) =>
+          elements.zipWithIndex.foreach { case (helpDoc, _) =>
             writer.indent(2)
             renderText("- ")
             renderHelpDoc(helpDoc)
@@ -425,7 +425,7 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
   private var marginStack: List[Int] = List(startOffset)
 
   def append(s: String): DocWriter = {
-    if (s.length == 0) this
+    if (s.isEmpty) this
     else
       DocWriter.splitNewlines(s) match {
         case None =>
@@ -454,7 +454,7 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             currentColumn += s.length
           }
         case Some(pieces) =>
-          pieces.zipWithIndex.foreach { case (piece, index) =>
+          pieces.zipWithIndex.foreach { case (piece, _) =>
             append(piece)
 
             stringBuilder.append("\n")

@@ -20,7 +20,7 @@ object BuiltInOption {
       Options.file("shell-completion-script").optional("N/A") ++
       ShellType.option.optional("N/A") ++
       Options.integer("shell-completion-index").map(_.toInt).optional("N/A")
-  ).as(BuiltIn)
+  ).as(BuiltIn.apply _)
 
   def builtInOptions(helpDoc: => HelpDoc): Options[Option[BuiltInOption]] =
     builtInOptions.map {

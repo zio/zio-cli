@@ -408,6 +408,7 @@ project/plugins/project/
 *.class
 *.log
 
+.bsp/
 .metals/
 **/metals.sbt
 .bloop/
