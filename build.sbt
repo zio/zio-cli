@@ -45,7 +45,7 @@ lazy val root = project
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
   .in(file("zio-cli"))
-  .settings(stdSettings("zioCli"))
+  .settings(stdSettings("zio-cli"))
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.cli"))
   .settings(
@@ -75,6 +75,7 @@ lazy val examples = crossProject(JSPlatform, JVMPlatform)
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.cli.examples"))
   .settings(
+    skip / publish := true,
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio-streams" % zioVersion
     )
@@ -84,7 +85,7 @@ lazy val examples = crossProject(JSPlatform, JVMPlatform)
 lazy val docs = project
   .in(file("zio-cli-docs"))
   .settings(
-    skip.in(publish) := true,
+    skip / publish := true,
     moduleName := "zio-cli-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
