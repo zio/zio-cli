@@ -1,6 +1,6 @@
 package zio
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 
 package object cli {
 
@@ -15,7 +15,6 @@ package object cli {
     }
 
   }
-
 
   // Either extension toOption
   implicit final class EitherBackfill[+E, +A](private val self: Either[E, A]) extends AnyVal {

@@ -185,7 +185,7 @@ object PrimTypeSpec extends DefaultRunnableSpec {
     second <- Gen.anyLocalDateTime.map(_.toLocalDate)
   } yield if (first isBefore second) Period.between(first, second) else Period.between(second, first)
   val anyPairs = for {
-    uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.anyLong)).map(_.distinctBy(_._1))
+    uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.anyLong)).map(distinctBy(_)(_._1).toList)
     selected    <- Gen.fromIterable(uniquePairs)
   } yield (selected, uniquePairs)
   val anyOffsetTime    = Gen.anyOffsetDateTime.map(_.toOffsetTime)
@@ -198,5 +198,8 @@ object PrimTypeSpec extends DefaultRunnableSpec {
   val anyMonthDay      = anyInstant.map(d => MonthDay.of(d.getMonthValue, d.getDayOfMonth))
   val anyYear          = Gen.int(Year.MIN_VALUE, Year.MAX_VALUE).map(Year.of)
   val anyYearMonth     = anyYear.map(d => YearMonth.of(d.getValue(), 2))
+
+  def distinctBy[A, B](in: Iterable[A])(f: A => B): Iterable[A] =
+    in.groupBy(f).values.map(_.head)
 
 }

@@ -8,7 +8,6 @@ import zio.test.Assertion._
 
 import scala.io.Source
 import java.nio.file._
-import scala.util.Using
 
 object FigFontRenderReportSpec extends DefaultRunnableSpec {
   private val fontDbUrl = "http://www.figlet.org/fontdb.cgi"
@@ -18,7 +17,7 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
     testM("figlet.org Fonts Render Report") {
       for {
         fontDbHtml <- ZManaged
-                        .fromAutoCloseable(effectBlockingIO(Source.fromURL(fontDbUrl)))
+                        .make(effectBlockingIO(Source.fromURL(fontDbUrl)))(source => UIO(source.close()))
                         .use(s => effectBlockingIO(s.getLines().mkString))
         names = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
         items <- ZIO.foreachPar(names) { name =>
@@ -52,24 +51,33 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
       case t: Throwable => Left(t.toString)
     }
 
-  private def renderReport(title: String, items: Seq[(String, Either[String, Chunk[String]])]) = effectBlocking {
-    val path = Files.createTempFile("figlet-report", ".md")
-    Using(Files.newBufferedWriter(path)) { w =>
-      w.write(s"# $title\n")
-      items.foreach {
-        case (url, Left(s)) =>
-          w.write(s"\n* __[FAILED]__ <$url>\n```\n")
-          w.write(s)
-          w.write("```\n")
-        case (url, Right(lines)) =>
-          w.write(s"\n* <$url>\n```\n")
-          lines.foreach { l =>
-            w.write(l)
-            w.write('\n')
+  private def renderReport(title: String, items: Seq[(String, Either[String, Chunk[String]])]) =
+    zio.blocking.blocking {
+      ZManaged.make {
+        ZIO.effect {
+          val path = Files.createTempFile("figlet-report", ".md")
+          (path, Files.newBufferedWriter(path))
+        }
+      } { case (_, w) =>
+        ZIO.unit
+      }.use[Any, Throwable, String] { case (path, w) =>
+        ZIO.effect {
+          w.write(s"# $title\n")
+          items.foreach {
+            case (url, Left(s)) =>
+              w.write(s"\n* __[FAILED]__ <$url>\n```\n")
+              w.write(s)
+              w.write("```\n")
+            case (url, Right(lines)) =>
+              w.write(s"\n* <$url>\n```\n")
+              lines.foreach { l =>
+                w.write(l)
+                w.write('\n')
+              }
+              w.write("```\n")
           }
-          w.write("```\n")
+          path.toUri.toString
+        }
       }
     }
-    path.toUri.toString
-  }
 }
