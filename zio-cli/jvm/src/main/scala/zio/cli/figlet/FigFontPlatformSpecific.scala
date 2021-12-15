@@ -22,7 +22,7 @@ trait FigFontPlatformSpecific { self: FigFont.type =>
     for {
       lines <- ZManaged
                  .make(source)(source => UIO(source.close()))
-                 .use(s => effectBlockingIO(s.getLines().toSeq))
+                 .use(s => effectBlockingIO(Chunk.fromIterator(s.getLines())))
                  .mapError(Left(_))
       font <- ZIO
                 .fromEither(self.fromLines(lines))
