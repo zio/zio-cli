@@ -1,24 +1,26 @@
 package zio.cli.figlet
 
 import zio._
-import zio.blocking._
-import zio.console.putStrLn
+
 import zio.test._
 import zio.test.Assertion._
 
 import scala.io.Source
 import java.nio.file._
+import zio.Console.printLine
+import zio.ZIO.attemptBlockingIO
+import zio.test.ZIOSpecDefault
 
-object FigFontRenderReportSpec extends DefaultRunnableSpec {
+object FigFontRenderReportSpec extends ZIOSpecDefault {
   private val fontDbUrl = "http://www.figlet.org/fontdb.cgi"
   private val fontUrl   = "http://www.figlet.org/fonts/"
 
   override def spec = suite("FigFontRenderReportSpec")(
-    testM("figlet.org Fonts Render Report") {
+    test("figlet.org Fonts Render Report") {
       for {
         fontDbHtml <- ZManaged
-                        .make(effectBlockingIO(Source.fromURL(fontDbUrl)))(source => UIO(source.close()))
-                        .use(s => effectBlockingIO(s.getLines().mkString))
+                        .acquireReleaseWith(attemptBlockingIO(Source.fromURL(fontDbUrl)))(source => UIO(source.close()))
+                        .use(s => attemptBlockingIO(s.getLines().mkString))
         names = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
         items <- ZIO.foreachPar(names) { name =>
                    val url = s"$fontUrl$name"
@@ -35,7 +37,7 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
                  }
         title = s"$fontUrl Render Report"
         path <- renderReport(title, items)
-        _    <- putStrLn(s"$title: $path")
+        _    <- printLine(s"$title: $path")
       } yield assert(items.collect { case (url, Left(s)) => (url, s) })(isEmpty)
     } @@ TestAspect.ignore
 //    }
@@ -52,16 +54,16 @@ object FigFontRenderReportSpec extends DefaultRunnableSpec {
     }
 
   private def renderReport(title: String, items: Seq[(String, Either[String, Chunk[String]])]) =
-    zio.blocking.blocking {
-      ZManaged.make {
-        ZIO.effect {
+    zio.ZIO.blocking {
+      ZManaged.acquireReleaseWith {
+        ZIO.attempt {
           val path = Files.createTempFile("figlet-report", ".md")
           (path, Files.newBufferedWriter(path))
         }
       } { case (_, w) =>
         ZIO.unit
       }.use[Any, Throwable, String] { case (path, w) =>
-        ZIO.effect {
+        ZIO.attempt {
           w.write(s"# $title\n")
           items.foreach {
             case (url, Left(s)) =>

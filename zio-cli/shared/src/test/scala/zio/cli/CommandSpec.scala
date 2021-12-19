@@ -7,13 +7,14 @@ import zio.test.Assertion._
 import zio.test._
 
 import scala.language.postfixOps
+import zio.test.ZIOSpecDefault
 
-object CommandSpec extends DefaultRunnableSpec {
+object CommandSpec extends ZIOSpecDefault {
 
   def spec = suite("Command Spec")(
     suite("Toplevel Command Spec")(
       suite("Command with options followed by args")(
-        testM("Should validate successfully") {
+        test("Should validate successfully") {
           assertM(Tail.command.parse(List("tail", "-n", "100", "foo.log"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(List.empty[String], (BigInt(100), "foo.log")))
           ) *>
@@ -21,7 +22,7 @@ object CommandSpec extends DefaultRunnableSpec {
               equalTo(CommandDirective.UserDefined(List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
             )
         },
-        testM("Should provide auto correct suggestions for misspelled options") {
+        test("Should provide auto correct suggestions for misspelled options") {
           assertM(
             Ag.command
               .parse(List("grep", "--afte", "2", "--before", "3", "fooBar"), CliConfig.default)
@@ -54,7 +55,7 @@ object CommandSpec extends DefaultRunnableSpec {
               )
             )
         },
-        testM("Shows an error if an option is missing") {
+        test("Shows an error if an option is missing") {
           assertM(
             Ag.command
               .parse(List("grep", "--a", "2", "--before", "3", "fooBar"), CliConfig.default)
@@ -67,7 +68,7 @@ object CommandSpec extends DefaultRunnableSpec {
       )
     ),
     suite("test commands joined by | operator")(
-      testM("") {
+      test("") {
         val orElseCommand =
           Command("remote", Options.Empty, Args.none) | Command("log", Options.Empty, Args.none)
 
@@ -77,7 +78,7 @@ object CommandSpec extends DefaultRunnableSpec {
       }
     ),
     suite("test commands with clustered options")(
-      testM("Clustered boolean options are equal to un-clustered options") {
+      test("Clustered boolean options are equal to un-clustered options") {
         val clustered =
           WC.command
             .parse(List("wc", "-clw", "filename"), CliConfig.default)
@@ -102,17 +103,17 @@ object CommandSpec extends DefaultRunnableSpec {
           )
 
         Vector(
-          testM("match first sub command without any surplus arguments") {
+          test("match first sub command without any surplus arguments") {
             assertM(git.parse(List("git", "remote"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           },
-          testM("match first sub command with a surplus options") {
+          test("match first sub command with a surplus options") {
             assertM(git.parse(List("git", "remote", "-v"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(List("-v"), ()))
             )
           },
-          testM("match second sub command without any surplus arguments") {
+          test("match second sub command without any surplus arguments") {
             assertM(git.parse(List("git", "log"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
@@ -127,17 +128,17 @@ object CommandSpec extends DefaultRunnableSpec {
           )
 
         Vector(
-          testM("test sub command with options and arguments") {
+          test("test sub command with options and arguments") {
             assertM(git.parse(List("git", "rebase", "-i", "upstream", "branch"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, (true, ("upstream", "branch"))))
             )
           },
-          testM("test unknown sub command") {
+          test("test unknown sub command") {
             assertM(git.parse(List("git", "abc"), CliConfig.default).flip.map(_.validationErrorType))(
               equalTo(ValidationErrorType.CommandMismatch)
             )
           },
-          testM("test without sub command") {
+          test("test without sub command") {
             git.parse(List("git"), CliConfig.default).map { result =>
               assertTrue {
                 result match {
@@ -158,7 +159,7 @@ object CommandSpec extends DefaultRunnableSpec {
             )
           )
 
-        testM("sub sub command with option and argument")(
+        test("sub sub command with option and argument")(
           assertM(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(Nil, (true, "text")))
           )
@@ -167,7 +168,7 @@ object CommandSpec extends DefaultRunnableSpec {
     ),
     suite("Helpdoc On Command Suite")(
       suite("test adding helpdoc to commands")(
-        testM("add text helpdoc to Single") {
+        test("add text helpdoc to Single") {
           val command = Command("tldr").withHelp("this is some help")
           assertM(command.parse(List("tldr"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(Nil, ()))

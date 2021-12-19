@@ -9,8 +9,9 @@ import zio.test._
 import zio.Chunk
 
 import scala.annotation.tailrec
+import zio.test.ZIOSpecDefault
 
-object FigFontRendererSpec extends DefaultRunnableSpec {
+object FigFontRendererSpec extends ZIOSpecDefault {
   private val header = FigHeader("flf2a", '$', 6, 5, 16, 15, Some(0), Some(24463))
   private val font = testFigFont(
     """

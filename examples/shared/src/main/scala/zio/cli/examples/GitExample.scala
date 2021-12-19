@@ -6,9 +6,10 @@ import zio.cli.{Args, CliApp, Command, Exists, HelpDoc, Options}
 import zio.cli.HelpDoc.Span.text
 
 import zio._
-import zio.console.putStrLn
+import zio.ZIOAppDefault
+import zio.Console.printLine
 
-object GitExample extends App {
+object GitExample extends ZIOAppDefault {
   import java.nio.file.Path
 
   sealed trait Subcommand extends Product with Serializable
@@ -43,10 +44,10 @@ object GitExample extends App {
     command = git
   ) {
     case Subcommand.Add(modified, directory) =>
-      putStrLn(s"Executing `git add $directory` with modified flag set to $modified")
+      printLine(s"Executing `git add $directory` with modified flag set to $modified")
 
     case Subcommand.Remote(verbose) =>
-      putStrLn(s"Executing `git remote` with verbose flag set to $verbose")
+      printLine(s"Executing `git remote` with verbose flag set to $verbose")
   }
 
   override def run(args: List[String]) =

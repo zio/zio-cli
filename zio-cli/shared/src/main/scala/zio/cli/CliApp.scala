@@ -2,13 +2,15 @@ package zio.cli
 
 import zio._
 import zio.cli.figlet.FigFont
-import zio.console._
+
 import zio.cli.HelpDoc.{h1, p}
 import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.BuiltInOption._
-import zio.system._
 
 import scala.annotation.tailrec
+import zio.{ Console, System }
+import zio.Console.printLine
+import zio.System.envs
 
 /**
  * A `CliApp[R, E]` is a complete description of a command-line application, which
@@ -62,10 +64,10 @@ object CliApp {
 
           val header = p(text(name) + text(" ") + text(version) + text(" -- ") + summary)
 
-          putStrLn((header + fancyName + synopsis + helpDoc + footer).toPlaintext(80))
+          printLine((header + fancyName + synopsis + helpDoc + footer).toPlaintext(80))
 
         case ShowCompletionScript(path, shellType) =>
-          putStrLn(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))
+          printLine(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))
         case ShowCompletions(index, shellType) =>
           envs.flatMap { envMap =>
             val compWords = envMap.collect {
@@ -74,7 +76,7 @@ object CliApp {
             }.toList.sortBy(_._1).map(_._2)
 
             val completions = Completion.complete(shellType, compWords, index)
-            ZIO.foreach_(completions)(word => putStrLn(word))
+            ZIO.foreachDiscard(completions)(word => printLine(word))
           }
       }
 
@@ -82,7 +84,7 @@ object CliApp {
       copy(footer = self.footer + newFooter)
 
     def printDocs(helpDoc: HelpDoc): URIO[Console, Unit] =
-      putStrLn(helpDoc.toPlaintext(80)).!
+      printLine(helpDoc.toPlaintext(80)).!
 
     // prepend a first argument in case the CliApp's command is expected to consume it
     @tailrec
@@ -97,7 +99,7 @@ object CliApp {
     def run(args: List[String]): ZIO[R with Console with System, Nothing, ExitCode] =
       command
         .parse(prefix(command) ++ args, config)
-        .foldM(
+        .foldZIO(
           e => printDocs(e.error),
           {
             case CommandDirective.UserDefined(_, value) => execute(value)

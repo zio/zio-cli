@@ -3,8 +3,9 @@ package zio.cli.figlet
 import zio.Chunk
 import zio.test._
 import zio.test.Assertion._
+import zio.test.ZIOSpecDefault
 
-object ParserSpec extends DefaultRunnableSpec {
+object ParserSpec extends ZIOSpecDefault {
   import Parser._
   import ParseResult._
 

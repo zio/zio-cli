@@ -3,10 +3,11 @@ package zio.cli.figlet
 import FigFontRenderer.render
 import FigFontRendererSpec.assertTextBlock
 import zio.test._
+import zio.test.ZIOSpecDefault
 
-object FigFontRendererJvmSpec extends DefaultRunnableSpec {
+object FigFontRendererJvmSpec extends ZIOSpecDefault {
   def spec = suite("FigFontRendererJvmSpec")(
-    testM("ZIO-CLI!!! with standard.flf") {
+    test("ZIO-CLI!!! with standard.flf") {
       for {
         font_        <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
         font: FigFont = font_ // TODO IJ cross-platform projects issue

@@ -169,7 +169,7 @@ object Args {
         else
           value
             .validate(args, conf)
-            .foldM(
+            .foldZIO(
               failure => if (acc.length >= min1 && args.isEmpty) IO.succeed(args -> acc) else IO.fail(failure),
               { case (args, a) => loop(args, a :: acc) }
             )

@@ -1,10 +1,10 @@
 package zio.cli
 
 import zio.test.Assertion.{equalTo, isSubtype}
-import zio.test.DefaultRunnableSpec
 import zio.test.assert
+import zio.test.ZIOSpecDefault
 
-object ReducableSpec extends DefaultRunnableSpec {
+object ReducableSpec extends ZIOSpecDefault {
   override def spec =
     suite("Reducable Spec")(
       test("Can reduce left side units") {
