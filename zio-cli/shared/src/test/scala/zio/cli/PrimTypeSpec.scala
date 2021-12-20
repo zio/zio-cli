@@ -13,7 +13,7 @@ import java.time.MonthDay
 import java.time.Year
 import java.time.YearMonth
 import zio.Random
-import zio.test.{ Gen, ZIOSpecDefault }
+import zio.test.{Gen, ZIOSpecDefault}
 
 object PrimTypeSpec extends ZIOSpecDefault {
 
@@ -173,9 +173,9 @@ object PrimTypeSpec extends ZIOSpecDefault {
   }
 
   val anyTrueBooleanString: Gen[Random, String] =
-    Gen.fromIterable(List("true", "1", "y", "yes", "on")).mapM(randomizeCharCases)
+    Gen.fromIterable(List("true", "1", "y", "yes", "on")).mapZIO(randomizeCharCases)
   val anyFalseBooleanString: Gen[Random, String] =
-    Gen.fromIterable(List("false", "0", "n", "no", "off")).mapM(randomizeCharCases)
+    Gen.fromIterable(List("false", "0", "n", "no", "off")).mapZIO(randomizeCharCases)
 
   val anyBigInt: Gen[Random, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
   val anyBoolean: Gen[Random, Boolean] =

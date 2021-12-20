@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.test.Assertion._
 import zio.test._
-import zio.test.{ Gen, ZIOSpecDefault }
+import zio.test.{Gen, ZIOSpecDefault}
 
 object HelpDocSpec extends ZIOSpecDefault {
 

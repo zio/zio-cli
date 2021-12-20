@@ -8,7 +8,7 @@ import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.BuiltInOption._
 
 import scala.annotation.tailrec
-import zio.{ Console, System }
+import zio.{Console, System}
 import zio.Console.printLine
 import zio.System.envs
 

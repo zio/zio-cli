@@ -86,9 +86,9 @@ object PrimType {
       pathType match {
         case Either => ZIO.unit
         case File =>
-          ZIO.fail(s"Expected path '$value' to be a regular file.").unlessZIO(fileSystem.isRegularFile(path)).ignore
+          ZIO.fail(s"Expected path '$value' to be a regular file.").unlessZIO(fileSystem.isRegularFile(path)).unit
         case Directory =>
-          ZIO.fail(s"Expected path '$value' to be a directory.").unlessZIO(fileSystem.isDirectory(path)).ignore
+          ZIO.fail(s"Expected path '$value' to be a directory.").unlessZIO(fileSystem.isDirectory(path)).unit
       }
 
     private def validateExistence(path: String, expected: Exists, actual: Boolean): IO[String, Unit] =

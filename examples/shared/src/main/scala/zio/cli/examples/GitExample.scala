@@ -1,11 +1,12 @@
 package zio.cli.examples
 
-import java.nio.file.{Path => JPath}
+import zio.ZIOAppArgs
 
+import java.nio.file.{Path => JPath}
 import zio.cli.{Args, CliApp, Command, Exists, HelpDoc, Options}
 import zio.cli.HelpDoc.Span.text
 
-import zio._
+//import zio._
 import zio.ZIOAppDefault
 import zio.Console.printLine
 
@@ -50,6 +51,9 @@ object GitExample extends ZIOAppDefault {
       printLine(s"Executing `git remote` with verbose flag set to $verbose")
   }
 
-  override def run(args: List[String]) =
-    gitApp.run(args)
+  override def run =
+    for {
+      args <- ZIOAppArgs.getArgs
+      _    <- gitApp.run(args.toList)
+    } yield ()
 }

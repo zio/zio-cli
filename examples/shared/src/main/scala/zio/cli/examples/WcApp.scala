@@ -1,4 +1,5 @@
 package zio.cli.examples
+/*
 
 import java.nio.file.Path
 
@@ -58,7 +59,7 @@ object WcApp extends ZIOAppDefault {
     }
 
     (opts, paths) => {
-      zio.Console.printLine(s"executing wc with args: $opts $paths").! *>
+      zio.Console.printLine(s"executing wc with args: $opts $paths").! *> ???
         ZIO.foreachPar[Any, Throwable, Path, WcResult, List](paths)({ path =>
             def option(bool: Boolean, sink: ZSink[Any, Nothing, Byte, Byte, Long])
               : ZSink[Any, Nothing, Byte, Byte, Option[Long]] =
@@ -93,3 +94,6 @@ object WcApp extends ZIOAppDefault {
 
   override def run(args: List[String]) = wcApp.run(args)
 }
+
+
+ */
