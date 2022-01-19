@@ -4,8 +4,9 @@ import zio.test._
 import zio.test.Assertion._
 import FigFontParser._
 import ParseResult._
+import zio.test.ZIOSpecDefault
 
-object LineSpanParserSpec extends DefaultRunnableSpec {
+object LineSpanParserSpec extends ZIOSpecDefault {
   def spec = suite("FigFontParserSpec")(
     suite("line parsing")(
       test("chars") {

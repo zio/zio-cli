@@ -300,11 +300,11 @@ object Options {
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Either[A, B])] =
       left
         .validate(args, conf)
-        .foldM(
+        .foldZIO(
           err1 =>
             right
               .validate(args, conf)
-              .foldM[Any, ValidationError, (List[String], Either[A, B])](
+              .foldZIO[Any, ValidationError, (List[String], Either[A, B])](
                 err2 =>
                   IO.fail(
                     // orElse option is only missing in case neither option was given
@@ -320,7 +320,7 @@ object Options {
           r =>
             right
               .validate(r._1, conf)
-              .foldM(
+              .foldZIO(
                 _ => IO.succeed((r._1, Left(r._2))),
                 _ =>
                   IO.fail(
@@ -352,7 +352,7 @@ object Options {
                    .catchAll(err1 =>
                      right
                        .validate(args, conf)
-                       .foldM(
+                       .foldZIO(
                          err2 => IO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
                          _ => IO.fail(err1)
                        )

@@ -7,8 +7,9 @@ import zio.cli.HelpDoc.Span.{error, text}
 
 import java.time.{LocalDate, MonthDay, Year}
 import java.time.format.DateTimeFormatter
+import zio.test.ZIOSpecDefault
 
-object OptionsSpec extends DefaultRunnableSpec {
+object OptionsSpec extends ZIOSpecDefault {
 
   val f: Options[String]              = Options.text("firstname").alias("f")
   val l: Options[String]              = Options.text("lastname")
@@ -20,12 +21,12 @@ object OptionsSpec extends DefaultRunnableSpec {
   val options: Options[(String, String, BigInt)] = f ++ l ++ a
 
   def spec = suite("Options Suite")(
-    testM("validate boolean option without value") {
+    test("validate boolean option without value") {
       val r = b.validate(List("--verbose"), CliConfig.default)
 
       assertM(r)(equalTo(List() -> true))
     },
-    testM("validate boolean option with followup option") {
+    test("validate boolean option with followup option") {
       val o = Options.boolean("help", true) ++ Options.boolean("v", true)
 
       for {
@@ -38,7 +39,7 @@ object OptionsSpec extends DefaultRunnableSpec {
         assert(v3)(equalTo(List.empty[String] -> (true -> true)) ?? "v3")
       }
     },
-    testM("validate boolean option with negation") {
+    test("validate boolean option with negation") {
       val bNegation: Options[Boolean] =
         Options.boolean("verbose", true, "silent", "s").alias("v")
       for {
@@ -57,60 +58,60 @@ object OptionsSpec extends DefaultRunnableSpec {
         assert(v5)(equalTo(Nil -> false))
       }
     },
-    testM("validate text option 1") {
+    test("validate text option 1") {
       val r = f.validate(List("--firstname", "John"), CliConfig.default)
       assertM(r)(equalTo(List() -> "John"))
     },
-    testM("validate text option with alias") {
+    test("validate text option with alias") {
       val r = f.validate(List("-f", "John"), CliConfig.default)
       assertM(r)(equalTo(List() -> "John"))
     },
-    testM("validate integer option") {
+    test("validate integer option") {
       val r = a.validate(List("--age", "100"), CliConfig.default)
       assertM(r)(equalTo(List() -> BigInt(100)))
     },
-    testM("validate option and get remainder") {
+    test("validate option and get remainder") {
       val r = f.validate(List("--firstname", "John", "--lastname", "Doe"), CliConfig.default)
       assertM(r)(equalTo(List("--lastname", "Doe") -> "John"))
     },
-    testM("validate option and get remainder with different ordering") {
+    test("validate option and get remainder with different ordering") {
       val r = f.validate(List("--bar", "baz", "--firstname", "John", "--lastname", "Doe"), CliConfig.default)
       assertM(r)(equalTo(List("--bar", "baz", "--lastname", "Doe") -> "John"))
     },
-    testM("validate when no valid values are passed") {
+    test("validate when no valid values are passed") {
       val r = f.validate(List("--lastname", "Doe"), CliConfig.default)
       assertM(r.either)(isLeft)
     },
-    testM("validate when option is passed, but not a following value") {
+    test("validate when option is passed, but not a following value") {
       val r = f.validate(List("--firstname"), CliConfig.default)
       assertM(r.either)(isLeft)
     },
-    testM("validate invalid option value") {
+    test("validate invalid option value") {
       val intOption = Options.integer("t")
       val v1        = intOption.validate(List("-t", "abc"), CliConfig.default)
-      assertM(v1.run)(
+      assertM(v1.exit)(
         fails(equalTo(ValidationError(ValidationErrorType.InvalidValue, p(text("abc is not a integer.")))))
       )
     },
-    testM("validate missing option") {
+    test("validate missing option") {
       val intOption = Options.integer("t")
       val v1        = intOption.validate(List(), CliConfig.default)
-      assertM(v1.run)(
+      assertM(v1.exit)(
         fails(equalTo(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find -t option.")))))
       )
     },
-    testM("validate invalid option using withDefault") {
+    test("validate invalid option using withDefault") {
       val o = Options.integer("integer").withDefault(BigInt(0), "0 as default")
       val r = o.validate(List("--integer", "abc"), CliConfig.default)
       assertM(r.either)(isLeft)
     },
-    testM("validate collision of boolean option with negation") {
+    test("validate collision of boolean option with negation") {
       val bNegation: Options[Boolean] =
         Options.boolean("v", true, "s") //.alias("v")
       val v1 = bNegation.validate(List("-v", "-s"), CliConfig.default)
       assertM(v1.either)(isLeft)
     },
-    testM("validate case sensitive CLI config") {
+    test("validate case sensitive CLI config") {
       val caseSensitiveConfig = CliConfig(true, 2)
       val f: Options[String]  = Options.text("Firstname").alias("F")
       for {
@@ -123,36 +124,36 @@ object OptionsSpec extends DefaultRunnableSpec {
         assert(r2)(equalTo(List() -> "John"))
       }
     },
-    testM("validate options for cons") {
+    test("validate options for cons") {
       options.validate(List("--firstname", "John", "--lastname", "Doe", "--age", "100"), CliConfig.default).map {
         case (_, options) =>
           assertTrue(options == (("John", "Doe", BigInt(100))))
       }
     },
-    testM("validate options for cons with remainder") {
+    test("validate options for cons with remainder") {
       val r = options.validate(
         List("--verbose", "true", "--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent", "false"),
         CliConfig.default
       )
       assertM(r)(equalTo(List("--verbose", "true", "--silent", "false") -> (("John", "Doe", BigInt(100)))))
     },
-    testM("validate non supplied optional") {
+    test("validate non supplied optional") {
       val r = aOpt.validate(List(), CliConfig.default)
       assertM(r)(equalTo(List() -> None))
     },
-    testM("validate non supplied optional with remainder") {
+    test("validate non supplied optional with remainder") {
       val r = aOpt.validate(List("--bar", "baz"), CliConfig.default)
       assertM(r)(equalTo(List("--bar", "baz") -> None))
     },
-    testM("validate supplied optional") {
+    test("validate supplied optional") {
       val r = aOpt.validate(List("--age", "20"), CliConfig.default)
       assertM(r)(equalTo(List() -> Some(BigInt(20))))
     },
-    testM("validate supplied optional with remainder") {
+    test("validate supplied optional with remainder") {
       val r = aOpt.validate(List("--firstname", "John", "--age", "20", "--lastname", "Doe"), CliConfig.default)
       assertM(r)(equalTo(List("--firstname", "John", "--lastname", "Doe") -> Some(BigInt(20))))
     },
-    testM("returns a HelpDoc if an option is not an exact match, but is close") {
+    test("returns a HelpDoc if an option is not an exact match, but is close") {
       val r = f.validate(List("--firstme", "Alice"), CliConfig.default)
       assertM(r.either)(
         equalTo(
@@ -166,7 +167,7 @@ object OptionsSpec extends DefaultRunnableSpec {
       )
     },
     suite("orElse")(
-      testM("validate orElse on 2 options") {
+      test("validate orElse on 2 options") {
         val o = Options.text("string").map(Left(_)) | Options.integer("integer").map(Right(_))
         for {
           i <- o.validate(List("--integer", "2"), CliConfig.default)
@@ -176,7 +177,7 @@ object OptionsSpec extends DefaultRunnableSpec {
           assert(s)(equalTo(List() -> Left("two")))
         }
       },
-      testM("validate orElse using fold on 2 options") {
+      test("validate orElse using fold on 2 options") {
         val o = Options.text("string").map(Left(_)) | Options.integer("integer").map(Right(_))
         val output = o.fold(
           (s: String) => s,
@@ -190,7 +191,7 @@ object OptionsSpec extends DefaultRunnableSpec {
           assert(s)(equalTo(List() -> "two"))
         }
       },
-      testM("validate orElse using fold on 3 options") {
+      test("validate orElse using fold on 3 options") {
         val o = Options.text("string").map(s => Left(Left(s))) |
           Options.integer("integer").map(n => Left(Right(n))) |
           Options.decimal("bigdecimal").map(f => Right(f))
@@ -209,7 +210,7 @@ object OptionsSpec extends DefaultRunnableSpec {
           assert(d)(equalTo(List() -> "3.14"))
         }
       },
-      testM("validate orElse using fold on 4 options") {
+      test("validate orElse using fold on 4 options") {
         val o = Options.text("string").map(s => Left(Left(Left(s)))) |
           Options.integer("integer").map(n => Left(Left(Right(n)))) |
           Options.decimal("bigdecimal").map(f => Left(Right(f))) |
@@ -232,7 +233,7 @@ object OptionsSpec extends DefaultRunnableSpec {
           assert(e)(equalTo(List() -> "2020-01-01"))
         }
       },
-      testM("validate orElse using fold on 5 options") {
+      test("validate orElse using fold on 5 options") {
         val o = Options.text("string").map(s => Left(Left(Left(Left(s))))) |
           Options.integer("integer").map(n => Left(Left(Left(Right(n))))) |
           Options.decimal("bigdecimal").map(f => Left(Left(Right(f)))) |
@@ -259,7 +260,7 @@ object OptionsSpec extends DefaultRunnableSpec {
           assert(f)(equalTo(List() -> "--01-01"))
         }
       },
-      testM("validate orElse using fold on 6 options") {
+      test("validate orElse using fold on 6 options") {
         val o = Options.text("string").map(s => Left(Left(Left(Left(Left(s)))))) |
           Options.integer("integer").map(n => Left(Left(Left(Left(Right(n)))))) |
           Options.decimal("bigdecimal").map(f => Left(Left(Left(Right(f))))) |
@@ -290,46 +291,46 @@ object OptionsSpec extends DefaultRunnableSpec {
           assert(g)(equalTo(List() -> "2020"))
         }
       },
-      testM("test orElse options collision") {
+      test("test orElse options collision") {
         val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(List("--integer", "2", "--string", "two"), CliConfig.default)
         assertM(r.either)(isLeft)
       },
-      testM("test orElse with no options given") {
+      test("test orElse with no options given") {
         val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(Nil, CliConfig.default)
         assertM(r.either)(isLeft)
       },
-      testM("validate invalid option in OrElse option when using withDefault") {
+      test("validate invalid option in OrElse option when using withDefault") {
         val o = (Options.integer("min") | Options.integer("max")).withDefault(BigInt(0), "0 as default")
         val r = o.validate(List("--min", "abc"), CliConfig.default)
         assertM(r.either)(isLeft)
       }
     ),
-    testM("returns a HelpDoc if an option is not an exact match and it's a short option") {
+    test("returns a HelpDoc if an option is not an exact match and it's a short option") {
       val r = a.validate(List("--ag", "20"), CliConfig.default)
       assertM(r.either)(
         equalTo(Left(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --age option.")))))
       )
     },
     suite("property arguments")(
-      testM("validate missing option") {
+      test("validate missing option") {
         val r = m.validate(List(), CliConfig.default)
-        assertM(r.run)(
+        assertM(r.exit)(
           fails(equalTo(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --defs option.")))))
         )
       },
-      testM("validate repeated values") {
+      test("validate repeated values") {
         val r = m.validate(List("-d", "key1=v1", "-d", "key2=v2", "--verbose"), CliConfig.default)
 
         assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
       },
-      testM("validate different key/values with alias") {
+      test("validate different key/values with alias") {
         val r = m.validate(List("-d", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
 
         assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
       },
-      testM("validate different key/values") {
+      test("validate different key/values") {
         val r = m.validate(List("--defs", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
 
         assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))

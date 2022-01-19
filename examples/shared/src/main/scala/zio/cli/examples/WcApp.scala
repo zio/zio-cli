@@ -1,15 +1,17 @@
 package zio.cli.examples
+/*
 
 import java.nio.file.Path
 
-import zio.blocking.Blocking
+
 import zio.cli.HelpDoc.Span.text
 import zio.cli._
-import zio.console.{putStrLn, Console}
-import zio.stream.{ZSink, ZStream, ZTransducer}
-import zio.{App, URIO, ZIO}
+import zio.stream.{ZSink, ZStream}
+import zio.{URIO, ZIO}
+import zio.{ Console, ZIOAppDefault }
+import zio.Console.printLine
 
-object WcApp extends App {
+object WcApp extends ZIOAppDefault {
 
   val bytesFlag: Options[Boolean] = Options.boolean("c")
   val linesFlag: Options[Boolean] = Options.boolean("l")
@@ -53,13 +55,12 @@ object WcApp extends App {
         s"${opt(res.countLines)} ${opt(res.countWords)} ${opt(res.countChar)} ${opt(res.countBytes)} ${res.fileName}"
       }
 
-      ZIO.foreach_(res)(r => putStrLn(format(r)).!) *> ZIO.when(res.length > 1)(putStrLn(format(wcTotal(res))).!).ignore
+      ZIO.foreachDiscard(res)(r => printLine(format(r)).!) *> ZIO.when(res.length > 1)(printLine(format(wcTotal(res))).!).ignore
     }
 
     (opts, paths) => {
-      zio.console.putStrLn(s"executing wc with args: $opts $paths").! *>
-        ZIO
-          .foreachParN[Blocking, Throwable, Path, WcResult, List](4)(paths) { path =>
+      zio.Console.printLine(s"executing wc with args: $opts $paths").! *> ???
+        ZIO.foreachPar[Any, Throwable, Path, WcResult, List](paths)({ path =>
             def option(bool: Boolean, sink: ZSink[Any, Nothing, Byte, Byte, Long])
               : ZSink[Any, Nothing, Byte, Byte, Option[Long]] =
               if (bool) sink.map(Some(_)) else ZSink.succeed[Byte, Option[Long]](None)
@@ -75,12 +76,11 @@ object WcApp extends App {
               (byteCount <&> lineCount <&> wordCount <&> charCount).map(t => (t._1._1._1, t._1._1._2, t._1._2, t._2))
 
             ZStream
-              .fromFile(path)
+              .fromFile(path.toFile)
               .run(zippedSinks)
               .map(t => WcResult(path.getFileName.toString, t._1, t._2, t._3, t._4))
-          }
+          }).withParallelism(4)
           .orDie
-          .provideLayer(zio.blocking.Blocking.live)
           .flatMap(res => printResult(res))
     }
   }
@@ -94,3 +94,6 @@ object WcApp extends App {
 
   override def run(args: List[String]) = wcApp.run(args)
 }
+
+
+ */

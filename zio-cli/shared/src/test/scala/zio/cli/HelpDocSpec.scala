@@ -2,28 +2,29 @@ package zio.cli
 
 import zio.test.Assertion._
 import zio.test._
+import zio.test.{Gen, ZIOSpecDefault}
 
-object HelpDocSpec extends DefaultRunnableSpec {
+object HelpDocSpec extends ZIOSpecDefault {
 
   def spec = suite("HelpDocTests")(
     suite("Constructors Suite")(
-      testM("HelpDoc#h1 produces a Header from a String with level 1") {
-        check(Gen.anyString) { string =>
+      test("HelpDoc#h1 produces a Header from a String with level 1") {
+        check(Gen.string) { string =>
           assert(HelpDoc.h1(string))(equalTo(HelpDoc.Header(HelpDoc.Span.Text(string), 1)))
         }
       },
-      testM("HelpDoc#h2 produces a Header from a String with level 2") {
-        check(Gen.anyString) { string =>
+      test("HelpDoc#h2 produces a Header from a String with level 2") {
+        check(Gen.string) { string =>
           assert(HelpDoc.h2(string))(equalTo(HelpDoc.Header(HelpDoc.Span.Text(string), 2)))
         }
       },
-      testM("HelpDoc#h3 produces a Header from a String with level 3") {
-        check(Gen.anyString) { string =>
+      test("HelpDoc#h3 produces a Header from a String with level 3") {
+        check(Gen.string) { string =>
           assert(HelpDoc.h3(string))(equalTo(HelpDoc.Header(HelpDoc.Span.Text(string), 3)))
         }
       },
-      testM("HelpDoc#p produces a Paragraph from a String") {
-        check(Gen.anyString) { string =>
+      test("HelpDoc#p produces a Paragraph from a String") {
+        check(Gen.string) { string =>
           assert(HelpDoc.p(string))(equalTo(HelpDoc.Paragraph(HelpDoc.Span.Text(string))))
         }
       },
@@ -76,12 +77,12 @@ object HelpDocSpec extends DefaultRunnableSpec {
         }
       ),
       suite("HelpDoc#isDescriptionList: Only returns true for HelpDocs that are/start with a DescriptionList")(
-        testM("A DescriptionList returns true") {
+        test("A DescriptionList returns true") {
           check(testDescriptionList) { s =>
             assert(s.isDescriptionList)(isTrue)
           }
         },
-        testM("A DescriptionList beginning with a DescriptionList returns true") {
+        test("A DescriptionList beginning with a DescriptionList returns true") {
           check(testDescriptionList, anySpan) { (desc, span) =>
             assert(HelpDoc.DescriptionList(List((span, desc))).isDescriptionList)(isTrue)
           }
@@ -170,7 +171,7 @@ object HelpDocSpec extends DefaultRunnableSpec {
   val docs            = (testHeader :: testParagraph :: testEmpty :: Nil)
   val testEnumeration = HelpDoc.Enumeration(docs)
   val testSequence    = testParagraph + testEnumeration
-  val anyString       = Gen.anyString
+  val anyString       = Gen.string
   val anySpan = Gen.fromIterable(
     List(
       HelpDoc.Span.text(anyString.toString()),

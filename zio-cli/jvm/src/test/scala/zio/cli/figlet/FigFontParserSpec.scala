@@ -4,10 +4,11 @@ import Layout._
 import SmushingRule._
 import zio.test._
 import zio.test.Assertion._
+import zio.test.ZIOSpecDefault
 
-object FigFontParserSpec extends DefaultRunnableSpec {
+object FigFontParserSpec extends ZIOSpecDefault {
   def spec = suite("FigFontParserSpec")(
-    testM("parse standard.flf") {
+    test("parse standard.flf") {
       for {
         font_        <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
         font: FigFont = font_ // TODO IJ cross-platform projects issue

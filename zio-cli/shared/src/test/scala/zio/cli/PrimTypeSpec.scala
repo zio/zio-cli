@@ -4,8 +4,7 @@ import java.nio.file.{Path => JPath, Paths => JPaths}
 import java.time._
 
 import zio.cli.files.FileSystem
-import zio.{random, IO, UIO, ZIO}
-import zio.random.Random
+import zio.{IO, UIO, ZIO}
 import zio.test.Assertion._
 import zio.test._
 
@@ -13,25 +12,27 @@ import java.time.ZoneOffset
 import java.time.MonthDay
 import java.time.Year
 import java.time.YearMonth
+import zio.Random
+import zio.test.{Gen, ZIOSpecDefault}
 
-object PrimTypeSpec extends DefaultRunnableSpec {
+object PrimTypeSpec extends ZIOSpecDefault {
 
   def spec = suite("PrimTypeTests")(
     suite("Text Suite") {
-      testM("validates everything") {
-        checkM(Gen.anyString) { i =>
+      test("validates everything") {
+        check(Gen.string) { i =>
           assertM(PrimType.Text.validate(i))(equalTo(i))
         }
       }
     },
     suite("Enumeration Suite")(
-      testM("validate return proper value if one of the cases") {
-        checkM(anyPairs) { case ((selectedName, selectedValue), pairs) =>
+      test("validate return proper value if one of the cases") {
+        check(anyPairs) { case ((selectedName, selectedValue), pairs) =>
           assertM(PrimType.Enumeration(pairs: _*).validate(selectedName))(equalTo(selectedValue))
         }
       },
-      testM("validate return error if NOT one of the cases") {
-        checkM(anyPairs) { case (v @ (selectedName, _), pairs) =>
+      test("validate return error if NOT one of the cases") {
+        check(anyPairs) { case (v @ (selectedName, _), pairs) =>
           assertM(
             PrimType.Enumeration(pairs.filterNot(_ == v): _*).validate(selectedName).either
           )(isLeft(startsWithString(s"Expected one of the following cases:")))
@@ -39,43 +40,43 @@ object PrimTypeSpec extends DefaultRunnableSpec {
       }
     ),
     suite("Boolean Suite")(
-      testM("validate true combinations returns proper Boolean representation") {
-        checkM(anyTrueBooleanString) { i =>
+      test("validate true combinations returns proper Boolean representation") {
+        check(anyTrueBooleanString) { i =>
           assertM(PrimType.Bool(None).validate(i))(equalTo(true))
         }
       },
-      testM("validate false combinations returns proper Boolean representation") {
-        checkM(anyFalseBooleanString) { i =>
+      test("validate false combinations returns proper Boolean representation") {
+        check(anyFalseBooleanString) { i =>
           assertM(PrimType.Bool(None).validate(i))(equalTo(false))
         }
       },
-      testM("validate rejects improper Boolean representation") {
+      test("validate rejects improper Boolean representation") {
         assertM(PrimType.Bool(None).validate("bad").either)(
           isLeft(equalTo("bad cannot be recognized as valid boolean."))
         )
       },
-      testM("validate uses default value if value is not provided") {
-        checkM(anyBoolean) { b =>
+      test("validate uses default value if value is not provided") {
+        check(anyBoolean) { b =>
           assertM(PrimType.Bool(Some(b)).validate(None, CliConfig.default))((equalTo(b)))
         }
       }
     ),
     suite("Path Suite")(
-      testM("validate returns proper directory path") {
+      test("validate returns proper directory path") {
         assertM(
           PrimType
             .Path(PathType.Directory, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
-      testM("validate returns proper directory path if both allowed") {
+      test("validate returns proper directory path if both allowed") {
         assertM(
           PrimType
             .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
-      testM("validate returns error if path targets file but directory was expected") {
+      test("validate returns error if path targets file but directory was expected") {
         assertM(
           PrimType
             .Path(PathType.Directory, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
@@ -83,21 +84,21 @@ object PrimTypeSpec extends DefaultRunnableSpec {
             .either
         )(isLeft(equalTo("Expected path 'path' to be a directory.")))
       },
-      testM("validate returns proper file path") {
+      test("validate returns proper file path") {
         assertM(
           PrimType
             .Path(PathType.File, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
-      testM("validate returns proper file path if both allowed") {
+      test("validate returns proper file path if both allowed") {
         assertM(
           PrimType
             .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
-      testM("validate returns error if path targets directory but file was expected") {
+      test("validate returns error if path targets directory but file was expected") {
         assertM(
           PrimType
             .Path(PathType.File, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
@@ -105,7 +106,7 @@ object PrimTypeSpec extends DefaultRunnableSpec {
             .either
         )(isLeft(equalTo("Expected path 'path' to be a regular file.")))
       },
-      testM("validate returns error if file doesn't exits but must exists") {
+      test("validate returns error if file doesn't exits but must exists") {
         assertM(
           PrimType
             .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathExists = false))
@@ -113,7 +114,7 @@ object PrimTypeSpec extends DefaultRunnableSpec {
             .either
         )(isLeft(equalTo("Path 'path' must exist.")))
       },
-      testM("validate returns error if file does exits but must not exists") {
+      test("validate returns error if file does exits but must not exists") {
         assertM(
           PrimType.Path(PathType.Either, shouldExist = Exists.No, mockFileSystem()).validate("path").either
         )(isLeft(equalTo("Path 'path' must not exist.")))
@@ -125,12 +126,12 @@ object PrimTypeSpec extends DefaultRunnableSpec {
       "BigDecimal"
     ),
     simplePrimTypeSuite(PrimType.Integer, anyBigInt, "Integer"),
-    simplePrimTypeSuite(PrimType.Instant, Gen.anyInstant, "Instant"),
+    simplePrimTypeSuite(PrimType.Instant, Gen.instant, "Instant"),
     simplePrimTypeSuite(PrimType.LocalDateTime, anyLocalDateTime, "LocalDateTime"),
     simplePrimTypeSuite(PrimType.LocalDate, anyLocalDate, "LocalDate"),
     simplePrimTypeSuite(PrimType.LocalTime, anyLocalTime, "LocalTime"),
     simplePrimTypeSuite(PrimType.MonthDay, anyMonthDay, "MonthDay"),
-    simplePrimTypeSuite(PrimType.OffsetDateTime, Gen.anyOffsetDateTime, "OffsetDateTime"),
+    simplePrimTypeSuite(PrimType.OffsetDateTime, Gen.offsetDateTime, "OffsetDateTime"),
     simplePrimTypeSuite(PrimType.OffsetTime, anyOffsetTime, "OffsetTime"),
     simplePrimTypeSuite(PrimType.Year, anyYear, "Year"),
     simplePrimTypeSuite(PrimType.YearMonth, anyYearMonth, "YearMonth"),
@@ -142,18 +143,18 @@ object PrimTypeSpec extends DefaultRunnableSpec {
 
   def simplePrimTypeSuite[G, P[G] <: PrimType[G]](primType: P[G], gen: Gen[Random, G], primeTypeName: String) =
     suite(s"$primeTypeName Suite")(
-      testM(s"validate returns proper $primeTypeName representation") {
-        checkM(gen) { i =>
+      test(s"validate returns proper $primeTypeName representation") {
+        check(gen) { i =>
           assertM(primType.validate(i.toString))(equalTo(i))
         }
       },
-      testM(s"validate rejects improper $primeTypeName representation") {
+      test(s"validate rejects improper $primeTypeName representation") {
         assertM(primType.validate("bad").either)(isLeft(equalTo(s"bad is not a ${primType.typeName}.")))
       }
     )
 
   def randomizeCharCases(s: String): ZIO[Random, Nothing, String] =
-    ZIO.foreach(s.toList)(c => random.nextBoolean.map(b => if (b) c.toUpper else c.toLower)).map(_.mkString)
+    ZIO.foreach(s.toList)(c => Random.nextBoolean.map(b => if (b) c.toUpper else c.toLower)).map(_.mkString)
 
   def mockFileSystem(
     correctPath: Boolean = true,
@@ -172,25 +173,25 @@ object PrimTypeSpec extends DefaultRunnableSpec {
   }
 
   val anyTrueBooleanString: Gen[Random, String] =
-    Gen.fromIterable(List("true", "1", "y", "yes", "on")).mapM(randomizeCharCases)
+    Gen.fromIterable(List("true", "1", "y", "yes", "on")).mapZIO(randomizeCharCases)
   val anyFalseBooleanString: Gen[Random, String] =
-    Gen.fromIterable(List("false", "0", "n", "no", "off")).mapM(randomizeCharCases)
+    Gen.fromIterable(List("false", "0", "n", "no", "off")).mapZIO(randomizeCharCases)
 
   val anyBigInt: Gen[Random, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
   val anyBoolean: Gen[Random, Boolean] =
     Gen.fromIterable(List(true, false))
-  val anyInstant = Gen.anyInstant.map(_.atZone(ZoneOffset.UTC))
+  val anyInstant = Gen.instant.map(_.atZone(ZoneOffset.UTC))
   val anyPeriod = for {
-    first  <- Gen.anyLocalDateTime.map(_.toLocalDate)
-    second <- Gen.anyLocalDateTime.map(_.toLocalDate)
+    first  <- Gen.localDateTime.map(_.toLocalDate)
+    second <- Gen.localDateTime.map(_.toLocalDate)
   } yield if (first isBefore second) Period.between(first, second) else Period.between(second, first)
   val anyPairs = for {
-    uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.anyLong)).map(distinctBy(_)(_._1).toList)
+    uniquePairs <- Gen.listOfBounded(2, 100)(Gen.alphaNumericString.zip(Gen.long)).map(distinctBy(_)(_._1).toList)
     selected    <- Gen.fromIterable(uniquePairs)
   } yield (selected, uniquePairs)
-  val anyOffsetTime    = Gen.anyOffsetDateTime.map(_.toOffsetTime)
-  val anyZoneOffset    = Gen.anyOffsetDateTime.map(_.getOffset)
-  val anyZonedDateTime = Gen.anyOffsetDateTime.map(_.toZonedDateTime)
+  val anyOffsetTime    = Gen.offsetDateTime.map(_.toOffsetTime)
+  val anyZoneOffset    = Gen.offsetDateTime.map(_.getOffset)
+  val anyZonedDateTime = Gen.offsetDateTime.map(_.toZonedDateTime)
   val anyZoneId        = anyZonedDateTime.map(_.getZone)
   val anyLocalDateTime = anyInstant.map(_.toLocalDateTime)
   val anyLocalDate     = anyInstant.map(_.toLocalDate)

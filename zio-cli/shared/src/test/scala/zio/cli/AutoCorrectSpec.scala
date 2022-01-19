@@ -2,8 +2,9 @@ package zio.cli
 
 import zio.test.Assertion._
 import zio.test._
+import zio.test.ZIOSpecDefault
 
-object AutoCorrectSpec extends DefaultRunnableSpec {
+object AutoCorrectSpec extends ZIOSpecDefault {
   import AutoCorrect._
 
   def spec = suite("AutoCorrect.levensteinDistance Suite")(
