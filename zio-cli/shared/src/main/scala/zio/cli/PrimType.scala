@@ -327,7 +327,7 @@ object PrimType {
     def validate(value: Option[String], conf: CliConfig): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
       def parse(input: String) = input match {
-        case AcceptedFormat(y, m) => ZIO.succeed(JYearMonth.of(y.toInt, m.toInt))
+        case AcceptedFormat(y, m) => ZIO.attempt(JYearMonth.of(y.toInt, m.toInt))
         case _                    => ZIO.fail(())
       }
 
