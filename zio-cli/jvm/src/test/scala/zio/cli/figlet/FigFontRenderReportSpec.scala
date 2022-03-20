@@ -19,8 +19,10 @@ object FigFontRenderReportSpec extends ZIOSpecDefault {
     test("figlet.org Fonts Render Report") {
       for {
         fontDbHtml <- ZIO.scoped {
-          ZIO.acquireReleaseWith(attemptBlockingIO(Source.fromURL(fontDbUrl)))(source => ZIO.succeed(source.close()))(s => attemptBlockingIO(s.getLines().mkString))
-        }
+                        ZIO.acquireReleaseWith(attemptBlockingIO(Source.fromURL(fontDbUrl)))(source =>
+                          ZIO.succeed(source.close())
+                        )(s => attemptBlockingIO(s.getLines().mkString))
+                      }
         names = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
         items <- ZIO.foreachPar(names) { name =>
                    val url = s"$fontUrl$name"
@@ -63,7 +65,7 @@ object FigFontRenderReportSpec extends ZIOSpecDefault {
           }
         } { case (_, w) =>
           ZIO.unit
-        }{ case (path, w) =>
+        } { case (path, w) =>
           ZIO.attempt {
             w.write(s"# $title\n")
             items.foreach {

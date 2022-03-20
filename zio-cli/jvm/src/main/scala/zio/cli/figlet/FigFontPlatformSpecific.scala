@@ -20,13 +20,11 @@ trait FigFontPlatformSpecific { self: FigFont.type =>
     source: => ZIO[R, E, Source]
   ): ZIO[R, Either[E, String], FigFont] =
     for {
-      lines <- ZIO.scoped[R] {
-                 ZIO
-                   .acquireReleaseWith(source)(source => ZIO.succeed(source.close))(s =>
-                     attemptBlockingIO((Chunk.fromIterator((s.getLines()))))
-                   )
-                   .mapError(Left(_))
-               }
+      lines <- ZIO
+                 .acquireReleaseWith(source)(source => ZIO.succeed(source.close))(s =>
+                   attemptBlockingIO((Chunk.fromIterator((s.getLines()))))
+                 )
+                 .mapError(Left(_))
       font <- ZIO
                 .fromEither(self.fromLines(lines))
                 .mapError(Right(_))
