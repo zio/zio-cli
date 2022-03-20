@@ -200,7 +200,7 @@ object Options {
       options
         .validate(args, conf)
         .catchSome {
-          case error if error.isOptionMissing => UIO(args -> default)
+          case error if error.isOptionMissing => UIO.succeed(args -> default)
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =

@@ -327,7 +327,7 @@ object PrimType {
     def validate(value: Option[String], conf: CliConfig): IO[String, JYearMonth] = {
       val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
       def parse(input: String) = input match {
-        case AcceptedFormat(y, m) => ZIO(JYearMonth.of(y.toInt, m.toInt))
+        case AcceptedFormat(y, m) => ZIO.succeed(JYearMonth.of(y.toInt, m.toInt))
         case _                    => ZIO.fail(())
       }
 
@@ -383,6 +383,6 @@ object PrimType {
 
   private def attempt[A, E](value: Option[String], parse: String => A, typeName: String): IO[String, A] =
     (ZIO.fromOption(value) orElseFail s"$typeName options do not have a default value.").flatMap { value =>
-      ZIO(parse(value)) orElseFail s"$value is not a $typeName."
+      ZIO.attempt(parse(value)) orElseFail s"$value is not a $typeName."
     }
 }
