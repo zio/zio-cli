@@ -6,6 +6,7 @@ import zio.cli.figlet.FigFont
 import zio.cli.HelpDoc.{h1, p}
 import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.BuiltInOption._
+import zio.cli.completion.{Completion, CompletionScript}
 
 import scala.annotation.tailrec
 import zio.{Console, System}
@@ -75,8 +76,11 @@ object CliApp {
                 (idx.drop("COMP_WORD_".length).toInt, word)
             }.toList.sortBy(_._1).map(_._2)
 
-            val completions = Completion.complete(shellType, compWords, index)
-            ZIO.foreachDiscard(completions)(word => printLine(word))
+            Completion
+              .complete(compWords, index, command, config)
+              .flatMap { completions =>
+                ZIO.foreachDiscard(completions)(word => printLine(word))
+              }
           }
       }
 

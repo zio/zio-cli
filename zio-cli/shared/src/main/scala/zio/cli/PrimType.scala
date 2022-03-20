@@ -174,16 +174,18 @@ object PrimType {
 
     def validate(value: Option[String], conf: CliConfig): IO[String, Boolean] =
       value.map(conf.normalizeCase) match {
-        case Some(s) =>
-          s match {
-            case "true" | "1" | "y" | "yes" | "on"  => IO.succeed(true)
-            case "false" | "0" | "n" | "no" | "off" => IO.succeed(false)
-            case _                                  => IO.fail(s"$s cannot be recognized as valid boolean.")
-          }
-        case None => IO.fromOption(defaultValue).orElseFail("Missing default for bool parameter.")
+        case Some(s) if Bool.TrueValues(s)  => IO.succeed(true)
+        case Some(s) if Bool.FalseValues(s) => IO.succeed(false)
+        case Some(s)                        => IO.fail(s"$s cannot be recognized as valid boolean.")
+        case None                           => IO.fromOption(defaultValue).orElseFail("Missing default for bool parameter.")
       }
 
     def helpDoc: HelpDoc.Span = text("A true or false value.")
+  }
+
+  object Bool {
+    val TrueValues: Set[String]  = Set("true", "1", "y", "yes", "on")
+    val FalseValues: Set[String] = Set("false", "0", "n", "no", "off")
   }
 
   /**

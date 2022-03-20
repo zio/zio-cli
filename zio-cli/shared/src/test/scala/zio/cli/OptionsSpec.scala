@@ -16,7 +16,7 @@ object OptionsSpec extends ZIOSpecDefault {
   val a: Options[BigInt]              = Options.integer("age")
   val aOpt: Options[Option[BigInt]]   = Options.integer("age").optional("N/A")
   val b: Options[Boolean]             = Options.boolean("verbose", true)
-  val m: Options[Map[String, String]] = Options.map(name = "defs").alias("d")
+  val m: Options[Map[String, String]] = Options.keyValueMap(name = "defs").alias("d")
 
   val options: Options[(String, String, BigInt)] = f ++ l ++ a
 

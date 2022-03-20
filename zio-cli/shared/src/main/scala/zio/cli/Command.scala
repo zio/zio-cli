@@ -59,6 +59,13 @@ sealed trait Command[+A] { self =>
 }
 
 object Command {
+  def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}|$)")
+
+  def unCluster(args: List[String]): List[String] = args.flatMap { arg =>
+    if (isClusteredOption(arg))
+      arg.substring(1).map(c => s"-$c")
+    else arg :: Nil
+  }
 
   final case class Single[OptionsType, ArgsType](
     name: String,
@@ -105,14 +112,6 @@ object Command {
     }
 
     def names: Set[String] = Set(name)
-
-    def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}|$)")
-
-    def unCluster(args: List[String]): List[String] = args.flatMap { arg =>
-      if (isClusteredOption(arg))
-        arg.substring(1).map(c => s"-$c")
-      else arg :: Nil
-    }
 
     def parse(
       args: List[String],
