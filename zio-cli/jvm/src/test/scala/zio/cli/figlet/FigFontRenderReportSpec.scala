@@ -18,9 +18,9 @@ object FigFontRenderReportSpec extends ZIOSpecDefault {
   override def spec = suite("FigFontRenderReportSpec")(
     test("figlet.org Fonts Render Report") {
       for {
-        fontDbHtml <- ZManaged
-                        .acquireReleaseWith(attemptBlockingIO(Source.fromURL(fontDbUrl)))(source => UIO(source.close()))
-                        .use(s => attemptBlockingIO(s.getLines().mkString))
+        fontDbHtml <- ZIO.acquireReleaseWith(attemptBlockingIO(Source.fromURL(fontDbUrl)))(source =>
+                        ZIO.succeed(source.close())
+                      )(s => attemptBlockingIO(s.getLines().mkString))
         names = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
         items <- ZIO.foreachPar(names) { name =>
                    val url = s"$fontUrl$name"
@@ -55,14 +55,14 @@ object FigFontRenderReportSpec extends ZIOSpecDefault {
 
   private def renderReport(title: String, items: Seq[(String, Either[String, Chunk[String]])]) =
     zio.ZIO.blocking {
-      ZManaged.acquireReleaseWith {
+      ZIO.acquireReleaseWith {
         ZIO.attempt {
           val path = Files.createTempFile("figlet-report", ".md")
           (path, Files.newBufferedWriter(path))
         }
       } { case (_, w) =>
         ZIO.unit
-      }.use[Any, Throwable, String] { case (path, w) =>
+      } { case (path, w) =>
         ZIO.attempt {
           w.write(s"# $title\n")
           items.foreach {
