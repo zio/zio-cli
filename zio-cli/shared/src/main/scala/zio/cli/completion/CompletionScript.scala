@@ -1,12 +1,11 @@
-package zio.cli
-import zio.cli.ShellType.Bash
-import zio.cli.ShellType.ZShell
+package zio.cli.completion
+import zio.cli.ShellType
 import java.nio.file.{Path => JPath}
 
 object CompletionScript {
   def apply(pathToExecutable: JPath, programNames: Set[String], shellType: ShellType): String = shellType match {
-    case Bash   => bash(pathToExecutable, programNames)
-    case ZShell => ???
+    case ShellType.Bash   => bash(pathToExecutable, programNames)
+    case ShellType.ZShell => ???
   }
   private[this] def bash(pathToExecutable: JPath, programNames: Set[String]): String =
     s"""|#/usr/bin/env bash

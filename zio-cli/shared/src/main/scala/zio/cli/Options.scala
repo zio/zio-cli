@@ -229,16 +229,17 @@ object Options {
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(fullName, primType.choices)
 
-    private def supports(s: String, names: List[String], conf: CliConfig): Boolean =
+    private def supports(s: String, conf: CliConfig): Boolean =
       if (conf.caseSensitive)
         names.contains(s)
       else
         names.exists(_.equalsIgnoreCase(s))
 
-    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] = {
-      val names = fullName :: aliases.map(makeFullName).toList
+    val names: List[String] = fullName :: aliases.map(makeFullName).toList
+
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       args match {
-        case head :: tail if supports(head, names, conf) =>
+        case head :: tail if supports(head, conf) =>
           primType match {
             case _: PrimType.Bool =>
               primType
@@ -268,7 +269,6 @@ object Options {
         case Nil =>
           IO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find $fullName option."))))
       }
-    }
 
     def uid: Option[String] = Some(fullName)
 
@@ -381,6 +381,51 @@ object Options {
     override def uid: Option[String] = value.uid
 
     override def helpDoc: HelpDoc = value.helpDoc
+  }
+
+  final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] {
+    self =>
+    override def helpDoc: HelpDoc = argumentOption.helpDoc
+
+    override def synopsis: UsageSynopsis = argumentOption.synopsis
+
+    override def uid: Option[String] = argumentOption.uid
+
+    private def createMapEntry(input: String): (String, String) = {
+      val arr = input.split("=").take(2)
+      arr.head -> arr(1)
+    }
+
+    private def createMapFromStringList(input: List[String]): Predef.Map[String, String] =
+      input.filterNot(_.startsWith("-")).map(createMapEntry).toMap
+
+    private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
+
+    private def fullName: String = makeFullName(argumentOption.name)
+
+    private val argumentNames = fullName :: argumentOption.aliases.map(makeFullName).toList
+
+    private def supports(s: String, conf: CliConfig): Boolean =
+      if (conf.caseSensitive)
+        argumentNames.contains(s)
+      else
+        argumentNames.exists(_.equalsIgnoreCase(s))
+
+    private def processArguments(input: List[String], first: String, conf: CliConfig) = {
+      val r = input.span(s => !s.startsWith("-") || supports(s, conf))
+      (r._2, createMapFromStringList(r._1) + createMapEntry(first))
+    }
+
+    override def validate(
+      args: List[String],
+      conf: CliConfig
+    ): IO[ValidationError, (List[String], Predef.Map[String, String])] =
+      for {
+        n <- argumentOption.validate(args, conf)
+      } yield processArguments(n._1, n._2, conf)
+
+    override private[cli] def modifySingle(f: SingleModifier) =
+      Options.keyValueMap(f(argumentOption))
   }
 
   /**
@@ -531,58 +576,12 @@ object Options {
    * Property arguments may be repeated several times (-D key1=value -D key2=value)
    * or specifying all key/values in one argument (-D key1=value key2=value).
    */
-  def map(name: String): Options[Predef.Map[String, String]] =
-    map(Options.Single(name, Vector.empty, PrimType.Text))
+  def keyValueMap(name: String): Options[Predef.Map[String, String]] =
+    keyValueMap(Options.Single(name, Vector.empty, PrimType.Text))
 
   /**
    * Creates a property flag with from an argument option as Options.single.
    */
-  def map(argumentOption: Options.Single[String]): Options[Predef.Map[String, String]] = {
-    // argument name
-    val argumentName = argumentOption.name
-
-    new Options[Predef.Map[String, String]] { self =>
-      override def helpDoc: HelpDoc = argumentOption.helpDoc
-
-      override def synopsis: UsageSynopsis = argumentOption.synopsis
-
-      override def uid: Option[String] = argumentOption.uid
-
-      private def createMapEntry(input: String): (String, String) = {
-        val arr = input.split("=").take(2)
-        arr.head -> arr(1)
-      }
-
-      private def createMapFromStringList(input: List[String]): Predef.Map[String, String] =
-        input.filterNot(_.startsWith("-")).map(createMapEntry).toMap
-
-      private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
-
-      private def fullName: String = makeFullName(argumentName)
-
-      private val argumentNames = fullName :: argumentOption.aliases.map(makeFullName).toList
-
-      private def supports(s: String, conf: CliConfig): Boolean =
-        if (conf.caseSensitive)
-          argumentNames.contains(s)
-        else
-          argumentNames.exists(_.equalsIgnoreCase(s))
-
-      private def processArguments(input: List[String], first: String, conf: CliConfig) = {
-        val r = input.span(s => !s.startsWith("-") || supports(s, conf))
-        (r._2, createMapFromStringList(r._1) + createMapEntry(first))
-      }
-
-      override def validate(
-        args: List[String],
-        conf: CliConfig
-      ): IO[ValidationError, (List[String], Predef.Map[String, String])] =
-        for {
-          n <- argumentOption.validate(args, conf)
-        } yield processArguments(n._1, n._2, conf)
-
-      override private[cli] def modifySingle(f: SingleModifier) =
-        Options.map(f(argumentOption))
-    }
-  }
+  def keyValueMap(argumentOption: Options.Single[String]): Options[Predef.Map[String, String]] =
+    Options.KeyValueMap(argumentOption)
 }

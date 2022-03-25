@@ -1,5 +1,7 @@
 package zio.cli
 
+import zio.URIO
+
 /**
  * A `CliConfig` describes how arguments from the command-line are to
  * be parsed by ZIO CLI.
@@ -26,4 +28,6 @@ object CliConfig {
    * The default options are case sensitive parsing
    */
   val default: CliConfig = CliConfig(caseSensitive = false, autoCorrectLimit = 2)
+
+  val cliConfig: URIO[CliConfig, CliConfig] = URIO.service
 }
