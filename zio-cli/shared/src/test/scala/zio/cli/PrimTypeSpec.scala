@@ -141,7 +141,7 @@ object PrimTypeSpec extends ZIOSpecDefault {
     simplePrimTypeSuite(PrimType.Period, anyPeriod, "Period")
   )
 
-  def simplePrimTypeSuite[G, P[G] <: PrimType[G]](primType: P[G], gen: Gen[Random, G], primeTypeName: String) =
+  def simplePrimTypeSuite[G, P[G] <: PrimType[G]](primType: P[G], gen: Gen[Any, G], primeTypeName: String) =
     suite(s"$primeTypeName Suite")(
       test(s"validate returns proper $primeTypeName representation") {
         check(gen) { i =>
@@ -153,7 +153,7 @@ object PrimTypeSpec extends ZIOSpecDefault {
       }
     )
 
-  def randomizeCharCases(s: String): ZIO[Random, Nothing, String] =
+  def randomizeCharCases(s: String): UIO[String] =
     ZIO.foreach(s.toList)(c => Random.nextBoolean.map(b => if (b) c.toUpper else c.toLower)).map(_.mkString)
 
   def mockFileSystem(
@@ -172,13 +172,13 @@ object PrimTypeSpec extends ZIOSpecDefault {
     override def isRegularFile(path: JPath): UIO[Boolean] = ZIO.succeed(pathIsRegularFile)
   }
 
-  val anyTrueBooleanString: Gen[Random, String] =
+  val anyTrueBooleanString: Gen[Any, String] =
     Gen.fromIterable(List("true", "1", "y", "yes", "on")).mapZIO(randomizeCharCases)
-  val anyFalseBooleanString: Gen[Random, String] =
+  val anyFalseBooleanString: Gen[Any, String] =
     Gen.fromIterable(List("false", "0", "n", "no", "off")).mapZIO(randomizeCharCases)
 
-  val anyBigInt: Gen[Random, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
-  val anyBoolean: Gen[Random, Boolean] =
+  val anyBigInt: Gen[Any, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
+  val anyBoolean: Gen[Any, Boolean] =
     Gen.fromIterable(List(true, false))
   val anyInstant = Gen.instant.map(_.atZone(ZoneOffset.UTC))
   val anyPeriod = for {
