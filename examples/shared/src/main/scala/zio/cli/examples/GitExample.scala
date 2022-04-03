@@ -6,7 +6,6 @@ import java.nio.file.{Path => JPath}
 import zio.cli.{Args, CliApp, Command, Exists, HelpDoc, Options}
 import zio.cli.HelpDoc.Span.text
 
-//import zio._
 import zio.ZIOAppDefault
 import zio.Console.printLine
 

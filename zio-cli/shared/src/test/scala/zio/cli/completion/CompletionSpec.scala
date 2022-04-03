@@ -10,7 +10,7 @@ import java.nio.file.{Files => JFiles, Path => JPath}
 
 import scala.language.postfixOps
 
-object CompletionSpec extends DefaultRunnableSpec {
+object CompletionSpec extends ZIOSpecDefault {
 
   /**
    * A micro potpourri of functions borrowed (in simplified form) from `zio-nio`.

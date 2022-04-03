@@ -4,7 +4,7 @@ import zio.test.Assertion._
 import zio.test._
 import zio.cli._
 
-object RegularLanguageSpec extends DefaultRunnableSpec {
+object RegularLanguageSpec extends ZIOSpecDefault {
   def spec = suite("RegularLanguage Spec")(
     suite("Toplevel Command Completion Spec")(
       suite("Empty language")(

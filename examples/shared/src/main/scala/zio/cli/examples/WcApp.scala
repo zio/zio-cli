@@ -1,14 +1,11 @@
 package zio.cli.examples
-/*
 
 import java.nio.file.Path
 
-
 import zio.cli.HelpDoc.Span.text
 import zio.cli._
-import zio.stream.{ZSink, ZStream}
-import zio.{URIO, ZIO}
-import zio.{ Console, ZIOAppDefault }
+import zio.stream.{ZPipeline, ZSink, ZStream}
+import zio._
 import zio.Console.printLine
 
 object WcApp extends ZIOAppDefault {
@@ -33,8 +30,8 @@ object WcApp extends ZIOAppDefault {
 
   val wc: Command[(WcOptions, ::[Path])] = Command("wc", options, args)
 
-  val execute: (WcOptions, ::[Path]) => URIO[Console, Unit] = {
-    def printResult(res: List[WcResult]): ZIO[Console, Nothing, Unit] = {
+  val execute: (WcOptions, ::[Path]) => UIO[Unit] = {
+    def printResult(res: List[WcResult]): UIO[Unit] = {
       def wcTotal(results: List[WcResult]) = {
         def optSum(acc: WcResult, elem: WcResult, extract: WcResult => Option[Long]): Option[Long] =
           extract(acc).flatMap(a => extract(elem).map(_ + a))
@@ -55,31 +52,38 @@ object WcApp extends ZIOAppDefault {
         s"${opt(res.countLines)} ${opt(res.countWords)} ${opt(res.countChar)} ${opt(res.countBytes)} ${res.fileName}"
       }
 
-      ZIO.foreachDiscard(res)(r => printLine(format(r)).!) *> ZIO.when(res.length > 1)(printLine(format(wcTotal(res))).!).ignore
+      ZIO.foreachDiscard(res)(r => printLine(format(r)).!) *> ZIO
+        .when(res.length > 1)(printLine(format(wcTotal(res))).!)
+        .ignore
     }
 
     (opts, paths) => {
-      zio.Console.printLine(s"executing wc with args: $opts $paths").! *> ???
-        ZIO.foreachPar[Any, Throwable, Path, WcResult, List](paths)({ path =>
+      zio.Console.printLine(s"executing wc with args: $opts $paths").! *>
+        ZIO
+          .foreachPar[Any, Throwable, Path, WcResult, List](paths)({ path =>
             def option(bool: Boolean, sink: ZSink[Any, Nothing, Byte, Byte, Long])
               : ZSink[Any, Nothing, Byte, Byte, Option[Long]] =
-              if (bool) sink.map(Some(_)) else ZSink.succeed[Byte, Option[Long]](None)
+              if (bool) sink.map(Some(_)) else ZSink.succeed(None)
 
             val byteCount = option(opts.bytes, ZSink.count)
-            val lineCount = option(opts.lines, ZTransducer.utfDecode >>> ZTransducer.splitLines >>> ZSink.count)
+            val lineCount = option(opts.lines, ZPipeline.utfDecode >>> ZPipeline.splitLines >>> ZSink.count)
             val wordCount =
-              option(opts.words, ZTransducer.utfDecode.mapChunks(_.flatMap(_.split("\\s+"))) >>> ZSink.count)
+              option(
+                opts.words,
+                ZPipeline.utfDecode >>> ZPipeline.mapChunks((_: Chunk[String]).flatMap(_.split("\\s+"))) >>> ZSink.count
+              )
             val charCount =
-              option(opts.char, ZTransducer.utfDecode >>> ZSink.foldLeft[String, Long](0L)((s, e) => s + e.length))
+              option(opts.char, ZPipeline.utfDecode >>> ZSink.foldLeft[String, Long](0L)((s, e) => s + e.length))
 
             val zippedSinks: ZSink[Any, Nothing, Byte, Byte, (Option[Long], Option[Long], Option[Long], Option[Long])] =
-              (byteCount <&> lineCount <&> wordCount <&> charCount).map(t => (t._1._1._1, t._1._1._2, t._1._2, t._2))
+              (byteCount <&> lineCount <&> wordCount <&> charCount)
 
             ZStream
               .fromFile(path.toFile)
               .run(zippedSinks)
               .map(t => WcResult(path.getFileName.toString, t._1, t._2, t._3, t._4))
-          }).withParallelism(4)
+          })
+          .withParallelism(4)
           .orDie
           .flatMap(res => printResult(res))
     }
@@ -92,8 +96,9 @@ object WcApp extends ZIOAppDefault {
     wc
   )(execute.tupled)
 
-  override def run(args: List[String]) = wcApp.run(args)
+  override def run =
+    for {
+      args <- ZIOAppArgs.getArgs
+      _    <- wcApp.run(args.toList)
+    } yield ()
 }
-
-
- */
