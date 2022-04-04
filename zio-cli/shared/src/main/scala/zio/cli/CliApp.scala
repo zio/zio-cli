@@ -68,7 +68,7 @@ object CliApp {
 
         case ShowCompletionScript(path, shellType) =>
           printLine(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))
-        case ShowCompletions(index, shellType) =>
+        case ShowCompletions(index, _) =>
           envs.flatMap { envMap =>
             val compWords = envMap.collect {
               case (idx, word) if idx.startsWith("COMP_WORD_") =>

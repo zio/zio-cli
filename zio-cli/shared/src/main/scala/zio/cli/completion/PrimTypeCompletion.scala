@@ -36,9 +36,9 @@ object PrimTypeCompletion {
         ZIO.succeed(Set.empty)
       case PrimType.OffsetTime =>
         ZIO.succeed(Set.empty)
-      case PrimType.Path(PathType.Either | PathType.File, shouldExist, fileSystem) =>
+      case PrimType.Path(PathType.Either | PathType.File, _, _) =>
         compgen.completeFileNames(prefix).map(_.toSet).orDie
-      case PrimType.Path(PathType.Directory, shouldExist, fileSystem) =>
+      case PrimType.Path(PathType.Directory, _, _) =>
         compgen.completeDirectoryNames(prefix).map(_.toSet).orDie
       case PrimType.Period =>
         ZIO.succeed(Set.empty)
