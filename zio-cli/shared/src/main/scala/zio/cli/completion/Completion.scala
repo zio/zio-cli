@@ -18,7 +18,7 @@ object Completion {
      * 1. The chunk that is strictly before the cursor, and
      * 2. The chunk that is at or after the cursor.
      */
-    val (beforeCursor, afterCursor) = words.splitAt(index)
+    val (beforeCursor, _) = words.splitAt(index)
 
     /*
      * Uncluster any flags that are clustered. For example:
@@ -92,7 +92,7 @@ object Completion {
         Epsilon
       case Options.WithDefault(options, _, _) =>
         toRegularLanguage(options).?
-      case single @ Options.Single(_, _, primType: PrimType.Bool, _) =>
+      case single @ Options.Single(_, _, _: PrimType.Bool, _) =>
         single.names.foldLeft[RegularLanguage](Empty)((lang, name) => lang | StringToken(name))
       case single @ Options.Single(_, _, primType, _) =>
         val names = single.names.foldLeft[RegularLanguage](Empty)((lang, name) => lang | StringToken(name))
@@ -112,7 +112,7 @@ object Completion {
         }
       case Options.Map(value, _) =>
         toRegularLanguage(value)
-      case kv @ Options.KeyValueMap(argumentOption) =>
+      case Options.KeyValueMap(argumentOption) =>
         val optionGrammar = toRegularLanguage(argumentOption)
         Permutation(optionGrammar)
     }
@@ -130,7 +130,7 @@ object Completion {
       toRegularLanguage(head) ~ toRegularLanguage(tail)
     case Args.Variadic(value, minOpt, maxOpt) =>
       toRegularLanguage(value).rep(minOpt, maxOpt)
-    case Args.Map(value, f) =>
+    case Args.Map(value, _) =>
       toRegularLanguage(value)
   }
 }
