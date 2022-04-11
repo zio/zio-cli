@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Bash and Zsh Completion · zio-cli</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="generator" content="Docusaurus"/><meta name="description" content="## Overview"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Bash and Zsh Completion · zio-cli"/><meta property="og:type" content="website"/><meta property="og:url" content="https://zio.github.io/zio-cli/"/><meta property="og:description" content="## Overview"/><meta property="og:image" content="https://zio.github.io/zio-cli/img/undraw_online.svg"/><meta name="twitter:card" content="summary"/><meta name="twitter:image" content="https://zio.github.io/zio-cli/img/undraw_tweetstorm.svg"/><link rel="shortcut icon" href="/zio-cli/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="https://unpkg.com/vanilla-back-to-top@7.1.14/dist/vanilla-back-to-top.min.js"></script><script>
+        document.addEventListener('DOMContentLoaded', function() {
+          addBackToTop(
+            {"zIndex":100,"cornerOffset":100}
+          )
+        });
+        </script><script src="/zio-cli/js/scrollSpy.js"></script><link rel="stylesheet" href="/zio-cli/css/main.css"/><script src="/zio-cli/js/codetabs.js"></script></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/zio-cli/"><img class="logo" src="/zio-cli/img/navbar_brand2x.png" alt="zio-cli"/><h2 class="headerTitleWithLogo">zio-cli</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class=""><a href="/zio-cli/docs/overview/overview_index" target="_self">Overview</a></li><li class=""><a href="/zio-cli/docs/usecases/usecases_index" target="_self">Use Cases</a></li><li class=""><a href="api/index.html" target="_self">API</a></li><li class=""><a href="/zio-cli/docs/about/about_index" target="_self">About</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Bash and Zsh Completion</h1></header><article><div><span><h2><a class="anchor" aria-hidden="true" id="overview"></a><a href="#overview" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Overview</h2>
+<p><code>zio-cli</code> supports a mechanism for performing tab completion of command line
+options and arguments in bash and zsh. The approach that <code>zio-cli</code> uses to
+communicate with the shell tooling for performing tab completion is heavily
+inspired by the excellent Haskell
+<a href="https://github.com/pcapriotti/optparse-applicative#bash-zsh-and-fish-completions">optparse-applicative</a>
+library. Every <code>CliApp</code> is extended with a few hidden built-in options for
+providing tab completions to shell environments.</p>
+<p>In what follows, pretend that your CLI application (called <code>my-cli-app</code>) has been
+installed into a stable location in your path (such as the <code>~/.local/bin</code>
+directory favored by the <code>zio-cli</code> installer script).</p>
+<h2><a class="anchor" aria-hidden="true" id="generating-a-completion-shell-script"></a><a href="#generating-a-completion-shell-script" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Generating a completion shell script</h2>
+<p>The <code>--shell-completion-script</code> and <code>--shell-type</code> built-in options produce a
+shell script that enables tab completion. In the example below, we generate a
+completion script (called <code>completion-script.sh</code>):</p>
+<pre><code class="hljs css language-bash">my-cli-app                                       \
+    --shell-completion-script `<span class="hljs-built_in">which</span> my-cli-app` \
+    --shell-type bash &gt; completion-script.sh
+</code></pre>
+<p>After generating the script, you can quickly enable tab completion via:</p>
+<pre><code class="hljs css language-bash"><span class="hljs-built_in">source</span> completion-script.sh
+</code></pre>
+<p>Unfortunately, the tab completion will only be enabled within the current shell
+session. Normally, the output of <code>--shell-completion-script</code> should be shipped
+with the program and copied to the appropriate directory (e.g.,
+<code>/etc/bash_completion.d/</code>) during program installation.</p>
+<h2><a class="anchor" aria-hidden="true" id="how-bash-and-zsh-completions-are-generated"></a><a href="#how-bash-and-zsh-completions-are-generated" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>How Bash and Zsh Completions are Generated</h2>
+<p>The shell completion scripts register an event handler that fires whenever
+<code>my-cli-app</code> is the first term at the terminal prompt and the tab key is
+pressed. This event handler sends information about the terminal contents and
+cursor position back to <code>my-cli-app</code> using another built-in option called
+<code>--shell-completion-index</code> and some special environment variables
+(<code>COMP_WORD_0</code>, <code>COMP_WORD_1</code>, ...).</p>
+<p>When <code>my-cli-app</code> receives these values, it runs a completion algorithm and
+prints the completion terms to the console (one line per completion term). The
+console output feeds back into the shell machinery, which renders the completion
+results in the terminal.</p>
+<p>For example, when the user types the following in the terminal</p>
+<pre><code class="hljs">$ my-cli-app foo <span class="hljs-keyword">bar </span><span class="hljs-keyword">baz
+</span></code></pre>
+<p>and then moves the cursor over &quot;foo&quot; and hits the tab key, <code>my-cli-app</code> is called
+as follows:</p>
+<pre><code class="hljs css language-bash">COMP_WORD_0=my-cli-app     \
+COMP_WORD_1=foo            \
+COMP_WORD_2=bar            \
+COMP_WORD_3=baz            \
+my-cli-app                 \
+--shell-completion-index 1 \
+--shell-type bash
+</code></pre>
+<p>The <code>COMP_WORD_</code> prefix of these environment variables is directly inspired by
+the <code>COMP_WORD</code> array-valued Bash variable that is part of its
+<a href="https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html">programmable completion system</a>.
+Unfortunately, array-valued variables cannot be used as environment variables,
+so our approach instead uses one variable per term in the array.</p>
+<h2><a class="anchor" aria-hidden="true" id="further-reading"></a><a href="#further-reading" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Further Reading</h2>
+<p>The <a href="https://github.com/pcapriotti/optparse-applicative#bash-zsh-and-fish-completions">optparse-applicative documentation</a>
+is an excellent resource that may help to clarify the implementation above.</p>
+</span></div></article></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#overview">Overview</a></li><li><a href="#generating-a-completion-shell-script">Generating a completion shell script</a></li><li><a href="#how-bash-and-zsh-completions-are-generated">How Bash and Zsh Completions are Generated</a></li><li><a href="#further-reading">Further Reading</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/zio-cli/" class="nav-home"><img src="/zio-cli/img/sidebar_brand2x.png" alt="zio-cli"/></a><div><h5>GitHub</h5><a class="github-button" href="https://github.com/zio/zio-cli" data-icon="octicon-star" data-count-href="/zio/zio-cli/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div><div><h5>Chat with us on Discord</h5><a href="https://discord.gg/2ccFBr4"><img src="/zio-cli//img/discord.png" width="120" alt="discord"/></a></div><div><h5>Additional resources</h5><a href="/zio-cli/api/index.html">Scaladoc of zio-cli</a></div></section><section class="copyright">Copyright © 2022 ZIO Maintainers</section></footer></div></body></html>
