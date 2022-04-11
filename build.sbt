@@ -33,7 +33,7 @@ val zioVersion = "2.0.0-RC5"
 lazy val root = project
   .in(file("."))
   .settings(
-    skip in publish := true,
+    skip / publish := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
   .aggregate(
@@ -113,3 +113,5 @@ lazy val sbtZioCli = project
     addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.2.2")
   )
   .enablePlugins(SbtPlugin)
+
+Global / onChangedBuildSource := ReloadOnSourceChanges
