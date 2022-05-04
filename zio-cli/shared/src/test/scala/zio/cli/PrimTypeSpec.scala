@@ -21,19 +21,19 @@ object PrimTypeSpec extends ZIOSpecDefault {
     suite("Text Suite") {
       test("validates everything") {
         check(Gen.string) { i =>
-          assertM(PrimType.Text.validate(i))(equalTo(i))
+          assertZIO(PrimType.Text.validate(i))(equalTo(i))
         }
       }
     },
     suite("Enumeration Suite")(
       test("validate return proper value if one of the cases") {
         check(anyPairs) { case ((selectedName, selectedValue), pairs) =>
-          assertM(PrimType.Enumeration(pairs: _*).validate(selectedName))(equalTo(selectedValue))
+          assertZIO(PrimType.Enumeration(pairs: _*).validate(selectedName))(equalTo(selectedValue))
         }
       },
       test("validate return error if NOT one of the cases") {
         check(anyPairs) { case (v @ (selectedName, _), pairs) =>
-          assertM(
+          assertZIO(
             PrimType.Enumeration(pairs.filterNot(_ == v): _*).validate(selectedName).either
           )(isLeft(startsWithString(s"Expected one of the following cases:")))
         }
@@ -42,42 +42,42 @@ object PrimTypeSpec extends ZIOSpecDefault {
     suite("Boolean Suite")(
       test("validate true combinations returns proper Boolean representation") {
         check(anyTrueBooleanString) { i =>
-          assertM(PrimType.Bool(None).validate(i))(equalTo(true))
+          assertZIO(PrimType.Bool(None).validate(i))(equalTo(true))
         }
       },
       test("validate false combinations returns proper Boolean representation") {
         check(anyFalseBooleanString) { i =>
-          assertM(PrimType.Bool(None).validate(i))(equalTo(false))
+          assertZIO(PrimType.Bool(None).validate(i))(equalTo(false))
         }
       },
       test("validate rejects improper Boolean representation") {
-        assertM(PrimType.Bool(None).validate("bad").either)(
+        assertZIO(PrimType.Bool(None).validate("bad").either)(
           isLeft(equalTo("bad cannot be recognized as valid boolean."))
         )
       },
       test("validate uses default value if value is not provided") {
         check(anyBoolean) { b =>
-          assertM(PrimType.Bool(Some(b)).validate(None, CliConfig.default))((equalTo(b)))
+          assertZIO(PrimType.Bool(Some(b)).validate(None, CliConfig.default))((equalTo(b)))
         }
       }
     ),
     suite("Path Suite")(
       test("validate returns proper directory path") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.Directory, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       test("validate returns proper directory path if both allowed") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       test("validate returns error if path targets file but directory was expected") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.Directory, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
             .validate("path")
@@ -85,21 +85,21 @@ object PrimTypeSpec extends ZIOSpecDefault {
         )(isLeft(equalTo("Expected path 'path' to be a directory.")))
       },
       test("validate returns proper file path") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.File, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       test("validate returns proper file path if both allowed") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathIsRegularFile = true))
             .validate("path")
         )(equalTo(JPaths.get("path")))
       },
       test("validate returns error if path targets directory but file was expected") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.File, shouldExist = Exists.Yes, mockFileSystem(pathIsDirectory = true))
             .validate("path")
@@ -107,7 +107,7 @@ object PrimTypeSpec extends ZIOSpecDefault {
         )(isLeft(equalTo("Expected path 'path' to be a regular file.")))
       },
       test("validate returns error if file doesn't exits but must exists") {
-        assertM(
+        assertZIO(
           PrimType
             .Path(PathType.Either, shouldExist = Exists.Yes, mockFileSystem(pathExists = false))
             .validate("path")
@@ -115,7 +115,7 @@ object PrimTypeSpec extends ZIOSpecDefault {
         )(isLeft(equalTo("Path 'path' must exist.")))
       },
       test("validate returns error if file does exits but must not exists") {
-        assertM(
+        assertZIO(
           PrimType.Path(PathType.Either, shouldExist = Exists.No, mockFileSystem()).validate("path").either
         )(isLeft(equalTo("Path 'path' must not exist.")))
       }
@@ -145,11 +145,11 @@ object PrimTypeSpec extends ZIOSpecDefault {
     suite(s"$primeTypeName Suite")(
       test(s"validate returns proper $primeTypeName representation") {
         check(gen) { i =>
-          assertM(primType.validate(i.toString))(equalTo(i))
+          assertZIO(primType.validate(i.toString))(equalTo(i))
         }
       },
       test(s"validate rejects improper $primeTypeName representation") {
-        assertM(primType.validate("bad").either)(isLeft(equalTo(s"bad is not a ${primType.typeName}.")))
+        assertZIO(primType.validate("bad").either)(isLeft(equalTo(s"bad is not a ${primType.typeName}.")))
       }
     )
 

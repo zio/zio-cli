@@ -126,7 +126,7 @@ object Command {
       if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(name)))
         builtIn(args, conf)
       else
-        IO.fail(None)
+        ZIO.fail(None)
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(name, None) + options.synopsis + args.synopsis
@@ -138,16 +138,16 @@ object Command {
       for {
         args <- args match {
                   case head :: tail =>
-                    if (conf.normalizeCase(head) == conf.normalizeCase(name)) IO.succeed(tail)
+                    if (conf.normalizeCase(head) == conf.normalizeCase(name)) ZIO.succeed(tail)
                     else
-                      IO.fail(
+                      ZIO.fail(
                         ValidationError(
                           ValidationErrorType.CommandMismatch,
                           HelpDoc.p(s"Unexpected command name: ${args.headOption}")
                         )
                       )
                   case Nil =>
-                    IO.fail(
+                    ZIO.fail(
                       ValidationError(ValidationErrorType.CommandMismatch, HelpDoc.p(s"Missing command name: ${name}"))
                     )
                 }
@@ -231,9 +231,9 @@ object Command {
                             CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc))
                           ))
                   help <- help match {
-                            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(h)) => IO.succeed(h)
+                            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(h)) => ZIO.succeed(h)
                             case _ =>
-                              IO.fail(
+                              ZIO.fail(
                                 ValidationError(
                                   ValidationErrorType.InvalidArgument,
                                   HelpDoc.empty

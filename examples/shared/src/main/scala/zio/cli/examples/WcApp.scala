@@ -61,8 +61,8 @@ object WcApp extends ZIOAppDefault {
       zio.Console.printLine(s"executing wc with args: $opts $paths").! *>
         ZIO
           .foreachPar[Any, Throwable, Path, WcResult, List](paths)({ path =>
-            def option(bool: Boolean, sink: ZSink[Any, Nothing, Byte, Byte, Long])
-              : ZSink[Any, Nothing, Byte, Byte, Option[Long]] =
+            def option(bool: Boolean, sink: ZSink[Any, Throwable, Byte, Byte, Long])
+              : ZSink[Any, Throwable, Byte, Byte, Option[Long]] =
               if (bool) sink.map(Some(_)) else ZSink.succeed(None)
 
             val byteCount = option(opts.bytes, ZSink.count)
@@ -75,7 +75,8 @@ object WcApp extends ZIOAppDefault {
             val charCount =
               option(opts.char, ZPipeline.utfDecode >>> ZSink.foldLeft[String, Long](0L)((s, e) => s + e.length))
 
-            val zippedSinks: ZSink[Any, Nothing, Byte, Byte, (Option[Long], Option[Long], Option[Long], Option[Long])] =
+            val zippedSinks
+              : ZSink[Any, Throwable, Byte, Byte, (Option[Long], Option[Long], Option[Long], Option[Long])] =
               (byteCount <&> lineCount <&> wordCount <&> charCount)
 
             ZStream

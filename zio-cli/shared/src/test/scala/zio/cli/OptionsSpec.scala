@@ -24,7 +24,7 @@ object OptionsSpec extends ZIOSpecDefault {
     test("validate boolean option without value") {
       val r = b.validate(List("--verbose"), CliConfig.default)
 
-      assertM(r)(equalTo(List() -> true))
+      assertZIO(r)(equalTo(List() -> true))
     },
     test("validate boolean option with followup option") {
       val o = Options.boolean("help", true) ++ Options.boolean("v", true)
@@ -60,56 +60,56 @@ object OptionsSpec extends ZIOSpecDefault {
     },
     test("validate text option 1") {
       val r = f.validate(List("--firstname", "John"), CliConfig.default)
-      assertM(r)(equalTo(List() -> "John"))
+      assertZIO(r)(equalTo(List() -> "John"))
     },
     test("validate text option with alias") {
       val r = f.validate(List("-f", "John"), CliConfig.default)
-      assertM(r)(equalTo(List() -> "John"))
+      assertZIO(r)(equalTo(List() -> "John"))
     },
     test("validate integer option") {
       val r = a.validate(List("--age", "100"), CliConfig.default)
-      assertM(r)(equalTo(List() -> BigInt(100)))
+      assertZIO(r)(equalTo(List() -> BigInt(100)))
     },
     test("validate option and get remainder") {
       val r = f.validate(List("--firstname", "John", "--lastname", "Doe"), CliConfig.default)
-      assertM(r)(equalTo(List("--lastname", "Doe") -> "John"))
+      assertZIO(r)(equalTo(List("--lastname", "Doe") -> "John"))
     },
     test("validate option and get remainder with different ordering") {
       val r = f.validate(List("--bar", "baz", "--firstname", "John", "--lastname", "Doe"), CliConfig.default)
-      assertM(r)(equalTo(List("--bar", "baz", "--lastname", "Doe") -> "John"))
+      assertZIO(r)(equalTo(List("--bar", "baz", "--lastname", "Doe") -> "John"))
     },
     test("validate when no valid values are passed") {
       val r = f.validate(List("--lastname", "Doe"), CliConfig.default)
-      assertM(r.either)(isLeft)
+      assertZIO(r.either)(isLeft)
     },
     test("validate when option is passed, but not a following value") {
       val r = f.validate(List("--firstname"), CliConfig.default)
-      assertM(r.either)(isLeft)
+      assertZIO(r.either)(isLeft)
     },
     test("validate invalid option value") {
       val intOption = Options.integer("t")
       val v1        = intOption.validate(List("-t", "abc"), CliConfig.default)
-      assertM(v1.exit)(
+      assertZIO(v1.exit)(
         fails(equalTo(ValidationError(ValidationErrorType.InvalidValue, p(text("abc is not a integer.")))))
       )
     },
     test("validate missing option") {
       val intOption = Options.integer("t")
       val v1        = intOption.validate(List(), CliConfig.default)
-      assertM(v1.exit)(
+      assertZIO(v1.exit)(
         fails(equalTo(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find -t option.")))))
       )
     },
     test("validate invalid option using withDefault") {
       val o = Options.integer("integer").withDefault(BigInt(0), "0 as default")
       val r = o.validate(List("--integer", "abc"), CliConfig.default)
-      assertM(r.either)(isLeft)
+      assertZIO(r.either)(isLeft)
     },
     test("validate collision of boolean option with negation") {
       val bNegation: Options[Boolean] =
         Options.boolean("v", true, "s") //.alias("v")
       val v1 = bNegation.validate(List("-v", "-s"), CliConfig.default)
-      assertM(v1.either)(isLeft)
+      assertZIO(v1.either)(isLeft)
     },
     test("validate case sensitive CLI config") {
       val caseSensitiveConfig = CliConfig(true, 2)
@@ -135,27 +135,27 @@ object OptionsSpec extends ZIOSpecDefault {
         List("--verbose", "true", "--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent", "false"),
         CliConfig.default
       )
-      assertM(r)(equalTo(List("--verbose", "true", "--silent", "false") -> (("John", "Doe", BigInt(100)))))
+      assertZIO(r)(equalTo(List("--verbose", "true", "--silent", "false") -> (("John", "Doe", BigInt(100)))))
     },
     test("validate non supplied optional") {
       val r = aOpt.validate(List(), CliConfig.default)
-      assertM(r)(equalTo(List() -> None))
+      assertZIO(r)(equalTo(List() -> None))
     },
     test("validate non supplied optional with remainder") {
       val r = aOpt.validate(List("--bar", "baz"), CliConfig.default)
-      assertM(r)(equalTo(List("--bar", "baz") -> None))
+      assertZIO(r)(equalTo(List("--bar", "baz") -> None))
     },
     test("validate supplied optional") {
       val r = aOpt.validate(List("--age", "20"), CliConfig.default)
-      assertM(r)(equalTo(List() -> Some(BigInt(20))))
+      assertZIO(r)(equalTo(List() -> Some(BigInt(20))))
     },
     test("validate supplied optional with remainder") {
       val r = aOpt.validate(List("--firstname", "John", "--age", "20", "--lastname", "Doe"), CliConfig.default)
-      assertM(r)(equalTo(List("--firstname", "John", "--lastname", "Doe") -> Some(BigInt(20))))
+      assertZIO(r)(equalTo(List("--firstname", "John", "--lastname", "Doe") -> Some(BigInt(20))))
     },
     test("returns a HelpDoc if an option is not an exact match, but is close") {
       val r = f.validate(List("--firstme", "Alice"), CliConfig.default)
-      assertM(r.either)(
+      assertZIO(r.either)(
         equalTo(
           Left(
             ValidationError(
@@ -294,46 +294,46 @@ object OptionsSpec extends ZIOSpecDefault {
       test("test orElse options collision") {
         val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(List("--integer", "2", "--string", "two"), CliConfig.default)
-        assertM(r.either)(isLeft)
+        assertZIO(r.either)(isLeft)
       },
       test("test orElse with no options given") {
         val o = Options.text("string") | Options.integer("integer")
         val r = o.validate(Nil, CliConfig.default)
-        assertM(r.either)(isLeft)
+        assertZIO(r.either)(isLeft)
       },
       test("validate invalid option in OrElse option when using withDefault") {
         val o = (Options.integer("min") | Options.integer("max")).withDefault(BigInt(0), "0 as default")
         val r = o.validate(List("--min", "abc"), CliConfig.default)
-        assertM(r.either)(isLeft)
+        assertZIO(r.either)(isLeft)
       }
     ),
     test("returns a HelpDoc if an option is not an exact match and it's a short option") {
       val r = a.validate(List("--ag", "20"), CliConfig.default)
-      assertM(r.either)(
+      assertZIO(r.either)(
         equalTo(Left(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --age option.")))))
       )
     },
     suite("property arguments")(
       test("validate missing option") {
         val r = m.validate(List(), CliConfig.default)
-        assertM(r.exit)(
+        assertZIO(r.exit)(
           fails(equalTo(ValidationError(ValidationErrorType.MissingValue, p(error("Expected to find --defs option.")))))
         )
       },
       test("validate repeated values") {
         val r = m.validate(List("-d", "key1=v1", "-d", "key2=v2", "--verbose"), CliConfig.default)
 
-        assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+        assertZIO(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
       },
       test("validate different key/values with alias") {
         val r = m.validate(List("-d", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
 
-        assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+        assertZIO(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
       },
       test("validate different key/values") {
         val r = m.validate(List("--defs", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
 
-        assertM(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+        assertZIO(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
       }
     )
   )
