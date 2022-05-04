@@ -43,11 +43,8 @@ object Completion {
      * Repeatedly differentiate the language w.r.t. each of the tokens that
      * occur before the cursor.
      */
-    val derivative: UIO[RegularLanguage] = ZIO.foldLeft(unclustered)(language)((lang, word) =>
-      lang
-        .derive(word)
-        .provideEnvironment(ZEnvironment(cliConfig))
-    )
+    val derivative: UIO[RegularLanguage] =
+      ZIO.foldLeft(unclustered)(language)((lang, word) => lang.derive(word, cliConfig))
 
     val wordToComplete = if (index < words.size) words(index) else ""
 

@@ -1,6 +1,5 @@
 package zio.cli.completion
 
-import zio._
 import zio.test.Assertion._
 import zio.test._
 import zio.cli._
@@ -12,36 +11,36 @@ object RegularLanguageSpec extends ZIOSpecDefault {
         test("Empty language rejects all strings")(
           check(Gen.listOfBounded(0, 5)(Gen.alphaNumericString))(tokens =>
             assertZIO(
-              RegularLanguage.Empty.contains(tokens)
-            )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+              RegularLanguage.Empty.contains(tokens, CliConfig.default)
+            )(equalTo(false))
           )
         )
       ),
       suite("Epsilon language")(
         test("Epsilon language accepts the empty string")(
           assertZIO(
-            RegularLanguage.Epsilon.contains(List.empty)
-          )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+            RegularLanguage.Epsilon.contains(List.empty, CliConfig.default)
+          )(equalTo(true))
         ),
         test("Epsilon language rejects all nonempty strings")(
           check(Gen.listOfBounded(1, 5)(Gen.alphaNumericString))(tokens =>
             assertZIO(
-              RegularLanguage.Empty.contains(tokens)
-            )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+              RegularLanguage.Empty.contains(tokens, CliConfig.default)
+            )(equalTo(false))
           )
         )
       ),
       suite("StringToken language")(
         test("StringToken language accepts its target string")(
           assertZIO(
-            RegularLanguage.StringToken("foo").contains(List("foo"))
-          )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+            RegularLanguage.StringToken("foo").contains(List("foo"), CliConfig.default)
+          )(equalTo(true))
         ),
         test("StringToken language rejects anything other than its target string")(
           check(Gen.alphaNumericString.filter(_ != "foo"))(token =>
             assertZIO(
-              RegularLanguage.StringToken("foo").contains(List(token))
-            )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+              RegularLanguage.StringToken("foo").contains(List(token), CliConfig.default)
+            )(equalTo(false))
           )
         )
       ),
@@ -50,8 +49,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
           test("PrimType.Bool language accepts values that correspond to 'true' and 'false' ")(
             check(Gen.fromIterable(PrimType.Bool.TrueValues ++ PrimType.Bool.FalseValues))(token =>
               assertZIO(
-                RegularLanguage.PrimTypeToken(PrimType.Bool(None)).contains(List(token))
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                RegularLanguage.PrimTypeToken(PrimType.Bool(None)).contains(List(token), CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("PrimType.Bool language rejects values that do not correspond to 'true'/'false'")(
@@ -61,8 +60,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                 .filter(s => !PrimType.Bool.TrueValues(s) && !PrimType.Bool.FalseValues(s))
             )(token =>
               assertZIO(
-                RegularLanguage.PrimTypeToken(PrimType.Bool(None)).contains(List(token))
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                RegularLanguage.PrimTypeToken(PrimType.Bool(None)).contains(List(token), CliConfig.default)
+              )(equalTo(false))
             )
           )
         ),
@@ -87,8 +86,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
               )
             )(token =>
               assertZIO(
-                RegularLanguage.PrimTypeToken(PrimType.ZoneId).contains(List(token))
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                RegularLanguage.PrimTypeToken(PrimType.ZoneId).contains(List(token), CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("PrimType.Bool language rejects some values that are not valid time zone IDs")(
@@ -96,8 +95,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
               Gen.fromIterable(Iterable("invalid", "whatever", "foo"))
             )(token =>
               assertZIO(
-                RegularLanguage.PrimTypeToken(PrimType.ZoneId).contains(List(token))
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                RegularLanguage.PrimTypeToken(PrimType.ZoneId).contains(List(token), CliConfig.default)
+              )(equalTo(false))
             )
           )
         )
@@ -107,8 +106,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
           test("Accepts 'foo' 'bar' 'baz'")(
             assertZIO(
               ("foo" ~ "bar" ~ "baz")
-                .contains(List("foo", "bar", "baz"))
-            )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                .contains(List("foo", "bar", "baz"), CliConfig.default)
+            )(equalTo(true))
           ),
           test("Rejects everything that is not 'foo' 'bar' 'baz'")(
             check(
@@ -124,8 +123,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
             )(tokens =>
               assertZIO(
                 ("foo" ~ "bar" ~ "baz")
-                  .contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                  .contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         )
@@ -135,14 +134,14 @@ object RegularLanguageSpec extends ZIOSpecDefault {
           test("Accepts 'foo' 'bar'")(
             assertZIO(
               ("foo" ~ "bar" | "foo" ~ "baz")
-                .contains(List("foo", "bar"))
-            )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                .contains(List("foo", "bar"), CliConfig.default)
+            )(equalTo(true))
           ),
           test("Accepts 'foo' 'baz'")(
             assertZIO(
               ("foo" ~ "bar" | "foo" ~ "baz")
-                .contains(List("foo", "baz"))
-            )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                .contains(List("foo", "baz"), CliConfig.default)
+            )(equalTo(true))
           ),
           test("Rejects everything that is not 'foo' 'bar' | 'foo' 'baz'")(
             check(
@@ -157,8 +156,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
             )(tokens =>
               assertZIO(
                 ("foo" ~ "bar" | "foo" ~ "baz")
-                  .contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                  .contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         )
@@ -182,8 +181,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
               )
             )(tokens =>
               assertZIO(
-                ("foo" ~ "bar" | "foo" ~ "baz").*.contains(tokens)
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                ("foo" ~ "bar" | "foo" ~ "baz").*.contains(tokens, CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("Rejects everything except zero or more repetitions of 'foo' 'bar' or 'foo' 'baz'")(
@@ -200,8 +199,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
               )
             )(tokens =>
               assertZIO(
-                ("foo" ~ "bar" | "foo" ~ "baz").*.contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                ("foo" ~ "bar" | "foo" ~ "baz").*.contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         ),
@@ -220,8 +219,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
               )
             )(tokens =>
               assertZIO(
-                ("foo" ~ "bar" | "foo" ~ "baz").rep(Some(2), Some(4)).contains(tokens)
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                ("foo" ~ "bar" | "foo" ~ "baz").rep(Some(2), Some(4)).contains(tokens, CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("Rejects everything except two to four or more repetitions of 'foo' 'bar' or 'foo' 'baz'")(
@@ -242,8 +241,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
               )
             )(tokens =>
               assertZIO(
-                ("foo" ~ "bar" | "foo" ~ "baz").rep(Some(2), Some(4)).contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                ("foo" ~ "bar" | "foo" ~ "baz").rep(Some(2), Some(4)).contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         )
@@ -259,8 +258,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                   .Permutation(
                     List("a", "b", "c", "d").map(RegularLanguage.StringToken(_)): _*
                   )
-                  .contains(tokens)
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                  .contains(tokens, CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("Rejects everything except for permutations of {'a', 'b', 'c', 'd'}")(
@@ -283,8 +282,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                   .Permutation(
                     List("a", "b", "c", "d").map(RegularLanguage.StringToken(_)): _*
                   )
-                  .contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                  .contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         ),
@@ -314,8 +313,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                     "b" | "c",
                     RegularLanguage.StringToken("d").*
                   )
-                  .contains(tokens)
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                  .contains(tokens, CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("Rejects language non-members")(
@@ -339,8 +338,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                     "b" | "c",
                     RegularLanguage.StringToken("d").*
                   )
-                  .contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                  .contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         ),
@@ -370,8 +369,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                       RegularLanguage.StringToken("c").?,
                       RegularLanguage.StringToken("d").?
                     ) ~ "z"
-                ).contains(tokens)
-              )(equalTo(true)).provideEnvironment(ZEnvironment(CliConfig.default))
+                ).contains(tokens, CliConfig.default)
+              )(equalTo(true))
             )
           ),
           test("Rejects language non-members")(
@@ -399,8 +398,8 @@ object RegularLanguageSpec extends ZIOSpecDefault {
                       RegularLanguage.StringToken("c").?,
                       RegularLanguage.StringToken("d").?
                     ) ~ "z"
-                ).contains(tokens)
-              )(equalTo(false)).provideEnvironment(ZEnvironment(CliConfig.default))
+                ).contains(tokens, CliConfig.default)
+              )(equalTo(false))
             )
           )
         )

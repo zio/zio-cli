@@ -31,7 +31,7 @@ sealed trait RegularLanguage extends Product with Serializable {
    * @param token The string to use for calculation of the Brzozowski derivative.
    * @return Brzozowski derivative wrapped in an UIO instance.
    */
-  def derive(token: String): URIO[CliConfig, RegularLanguage]
+  def derive(token: String, cliConfig: CliConfig): UIO[RegularLanguage]
 
   def ~(other: RegularLanguage): RegularLanguage                             = Cat(this, other)
   def ~(other: String): RegularLanguage                                      = Cat(this, StringToken(other))
@@ -47,10 +47,10 @@ sealed trait RegularLanguage extends Product with Serializable {
    * @param tokens
    * @return true if and only if `tokens` is in the language.
    */
-  def contains(tokens: List[String]): URIO[CliConfig, Boolean] = {
-    val derivative = ZIO.foldLeft(tokens)(this)((language, word) => language.derive(word))
-    derivative.map(dx => dx.isNullable)
-  }
+  def contains(tokens: List[String], cliConfig: CliConfig): UIO[Boolean] =
+    ZIO
+      .foldLeft(tokens)(this)((language, word) => language.derive(word, cliConfig))
+      .map(dx => dx.isNullable)
 
   /**
    * Returns a set consisting of the first token of all strings in this language
@@ -92,7 +92,7 @@ object RegularLanguage {
   case object Empty extends RegularLanguage {
     def isNullable: Boolean = false
 
-    def derive(token: String) = ZIO.succeed(Empty)
+    def derive(token: String, cliConfig: CliConfig) = ZIO.succeed(Empty)
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       ZIO.succeed(Set.empty)
@@ -106,7 +106,7 @@ object RegularLanguage {
   case object Epsilon extends RegularLanguage {
     def isNullable: Boolean = true
 
-    def derive(token: String) = ZIO.succeed(Empty)
+    def derive(token: String, cliConfig: CliConfig) = ZIO.succeed(Empty)
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       ZIO.succeed(Set(""))
@@ -123,15 +123,13 @@ object RegularLanguage {
    * contains only `value`.
    */
   final case class StringToken(value: String) extends Token {
-    def derive(token: String) =
-      CliConfig.cliConfig
-        .map(cliConfig =>
-          if (cliConfig.caseSensitive)
-            value.equals(token)
-          else
-            value.equalsIgnoreCase(token)
-        )
-        .map(isMatch => if (isMatch) Epsilon else Empty)
+    def derive(token: String, cliConfig: CliConfig) = {
+      val isMatch = if (cliConfig.caseSensitive) value.equals(token) else value.equalsIgnoreCase(token)
+      isMatch match {
+        case true  => ZIO.succeed(Epsilon)
+        case false => ZIO.succeed(Empty)
+      }
+    }
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       ZIO.succeed(Set(value + " ").filter(_.startsWith(prefix)))
@@ -143,7 +141,7 @@ object RegularLanguage {
    * be aliased or renamed to be different than `Command.Single.name`.)
    */
   case object AnyStringToken extends Token {
-    def derive(token: String) = ZIO.succeed(Epsilon)
+    def derive(token: String, cliConfig: CliConfig) = ZIO.succeed(Epsilon)
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       ZIO.succeed(Set.empty)
@@ -154,15 +152,12 @@ object RegularLanguage {
    * any strings `s` where `value.validate(s)` succeeds.
    */
   final case class PrimTypeToken(value: PrimType[Any]) extends Token {
-    def derive(token: String) =
-      CliConfig.cliConfig
-        .flatMap(cliConfig =>
-          value
-            .validate(token, cliConfig)
-            .fold(
-              _ => Empty,
-              _ => Epsilon
-            )
+    def derive(token: String, cliConfig: CliConfig) =
+      value
+        .validate(token, cliConfig)
+        .fold(
+          _ => Empty,
+          _ => Epsilon
         )
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
@@ -175,13 +170,13 @@ object RegularLanguage {
   final case class Cat(left: RegularLanguage, right: RegularLanguage) extends RegularLanguage {
     lazy val isNullable: Boolean = left.isNullable && right.isNullable
 
-    def derive(token: String) =
+    def derive(token: String, cliConfig: CliConfig) =
       if (left.isNullable)
-        left.derive(token).zip(right.derive(token)).map { case (dx, dy) =>
+        left.derive(token, cliConfig).zip(right.derive(token, cliConfig)).map { case (dx, dy) =>
           (dx ~ right) | dy
         }
       else
-        left.derive(token).map(dx => dx ~ right)
+        left.derive(token, cliConfig).map(dx => dx ~ right)
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       if (left.isNullable)
@@ -200,8 +195,8 @@ object RegularLanguage {
   final case class Alt(left: RegularLanguage, right: RegularLanguage) extends RegularLanguage {
     lazy val isNullable: Boolean = left.isNullable || right.isNullable
 
-    def derive(token: String) =
-      left.derive(token).zip(right.derive(token)).map { case (dx, dy) => dx | dy }
+    def derive(token: String, cliConfig: CliConfig) =
+      left.derive(token, cliConfig).zip(right.derive(token, cliConfig)).map { case (dx, dy) => dx | dy }
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       left.firstTokens(prefix, compgen).zip(right.firstTokens(prefix, compgen)).map { case (left, right) =>
@@ -217,12 +212,12 @@ object RegularLanguage {
   final case class Rep(language: RegularLanguage, min: Option[Int], max: Option[Int]) extends RegularLanguage {
     def isNullable: Boolean = min.forall(_ <= 0)
 
-    def derive(token: String) = {
+    def derive(token: String, cliConfig: CliConfig) = {
       val newMin = min.map(_ - 1).filter(_ > 0)
       val newMax = max.map(_ - 1)
 
       if (newMax.forall(_ >= 0))
-        language.derive(token).map(dx => dx ~ language.rep(newMin, newMax))
+        language.derive(token, cliConfig).map(dx => dx ~ language.rep(newMin, newMax))
       else
         ZIO.succeed(Empty)
     }
@@ -251,7 +246,7 @@ object RegularLanguage {
     lazy val desugared: RegularLanguage =
       values.foldLeft[RegularLanguage](Epsilon)((agg, lang) => agg | (lang ~ Permutation(values.filter(_ != lang): _*)))
 
-    def derive(token: String) = desugared.derive(token)
+    def derive(token: String, cliConfig: CliConfig) = desugared.derive(token, cliConfig)
 
     def firstTokens(prefix: String, compgen: Compgen): UIO[Set[String]] =
       ZIO.foreach(values)(lang => lang.firstTokens(prefix, compgen)).map(_.toSet.flatten)
