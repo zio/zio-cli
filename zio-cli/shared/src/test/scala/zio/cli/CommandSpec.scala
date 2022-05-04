@@ -15,15 +15,15 @@ object CommandSpec extends ZIOSpecDefault {
     suite("Toplevel Command Spec")(
       suite("Command with options followed by args")(
         test("Should validate successfully") {
-          assertM(Tail.command.parse(List("tail", "-n", "100", "foo.log"), CliConfig.default))(
+          assertZIO(Tail.command.parse(List("tail", "-n", "100", "foo.log"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(List.empty[String], (BigInt(100), "foo.log")))
           ) *>
-            assertM(Ag.command.parse(List("grep", "--after", "2", "--before", "3", "fooBar"), CliConfig.default))(
+            assertZIO(Ag.command.parse(List("grep", "--after", "2", "--before", "3", "fooBar"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
             )
         },
         test("Should provide auto correct suggestions for misspelled options") {
-          assertM(
+          assertZIO(
             Ag.command
               .parse(List("grep", "--afte", "2", "--before", "3", "fooBar"), CliConfig.default)
               .either
@@ -31,7 +31,7 @@ object CommandSpec extends ZIOSpecDefault {
           )(
             equalTo(Left(p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
-            assertM(
+            assertZIO(
               Ag.command
                 .parse(List("grep", "--after", "2", "--efore", "3", "fooBar"), CliConfig.default)
                 .either
@@ -39,7 +39,7 @@ object CommandSpec extends ZIOSpecDefault {
             )(
               equalTo(Left(p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))))
             ) *>
-            assertM(
+            assertZIO(
               Ag.command
                 .parse(List("grep", "--afte", "2", "--efore", "3", "fooBar"), CliConfig.default)
                 .either
@@ -56,7 +56,7 @@ object CommandSpec extends ZIOSpecDefault {
             )
         },
         test("Shows an error if an option is missing") {
-          assertM(
+          assertZIO(
             Ag.command
               .parse(List("grep", "--a", "2", "--before", "3", "fooBar"), CliConfig.default)
               .either
@@ -72,7 +72,7 @@ object CommandSpec extends ZIOSpecDefault {
         val orElseCommand =
           Command("remote", Options.Empty, Args.none) | Command("log", Options.Empty, Args.none)
 
-        assertM(orElseCommand.parse(List("log"), CliConfig.default))(
+        assertZIO(orElseCommand.parse(List("log"), CliConfig.default))(
           equalTo(CommandDirective.UserDefined(Nil, ()))
         )
       }
@@ -89,8 +89,8 @@ object CommandSpec extends ZIOSpecDefault {
 
         val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, true), List("filename")))
 
-        assertM(clustered)(equalTo(commandDirective))
-        assertM(unClustered)(equalTo(commandDirective))
+        assertZIO(clustered)(equalTo(commandDirective))
+        assertZIO(unClustered)(equalTo(commandDirective))
       }
     ),
     suite("SubCommand Suite")(
@@ -104,17 +104,17 @@ object CommandSpec extends ZIOSpecDefault {
 
         Vector(
           test("match first sub command without any surplus arguments") {
-            assertM(git.parse(List("git", "remote"), CliConfig.default))(
+            assertZIO(git.parse(List("git", "remote"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           },
           test("match first sub command with a surplus options") {
-            assertM(git.parse(List("git", "remote", "-v"), CliConfig.default))(
+            assertZIO(git.parse(List("git", "remote", "-v"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(List("-v"), ()))
             )
           },
           test("match second sub command without any surplus arguments") {
-            assertM(git.parse(List("git", "log"), CliConfig.default))(
+            assertZIO(git.parse(List("git", "log"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           }
@@ -129,12 +129,12 @@ object CommandSpec extends ZIOSpecDefault {
 
         Vector(
           test("test sub command with options and arguments") {
-            assertM(git.parse(List("git", "rebase", "-i", "upstream", "branch"), CliConfig.default))(
+            assertZIO(git.parse(List("git", "rebase", "-i", "upstream", "branch"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, (true, ("upstream", "branch"))))
             )
           },
           test("test unknown sub command") {
-            assertM(git.parse(List("git", "abc"), CliConfig.default).flip.map(_.validationErrorType))(
+            assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map(_.validationErrorType))(
               equalTo(ValidationErrorType.CommandMismatch)
             )
           },
@@ -160,7 +160,7 @@ object CommandSpec extends ZIOSpecDefault {
           )
 
         test("sub sub command with option and argument")(
-          assertM(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default))(
+          assertZIO(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(Nil, (true, "text")))
           )
         )
@@ -170,7 +170,7 @@ object CommandSpec extends ZIOSpecDefault {
       suite("test adding helpdoc to commands")(
         test("add text helpdoc to Single") {
           val command = Command("tldr").withHelp("this is some help")
-          assertM(command.parse(List("tldr"), CliConfig.default))(
+          assertZIO(command.parse(List("tldr"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(Nil, ()))
           )
         },

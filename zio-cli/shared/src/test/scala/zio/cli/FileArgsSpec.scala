@@ -14,26 +14,26 @@ object FileArgsSpec extends ZIOSpecDefault {
     test("Existing file") {
       val arg = Args.file("files", Exists.Yes).repeat
 
-      assertM(
+      assertZIO(
         arg.validate(argsFile.getAbsolutePath :: Nil, CliConfig.default)
       )(equalTo(List.empty[String] -> List(argsFilePath)))
     },
     test("Not Found file") {
       val arg = Args.file("files", Exists.Yes).repeat
-      assertM(
+      assertZIO(
         arg.validate("notFound.file" :: Nil, CliConfig.default).either
       )(isLeft(equalTo(Paragraph(Text("Path 'notFound.file' must exist.")))))
     },
     test("Non Existing file") {
       val arg = Args.file(Exists.No).repeat
 
-      assertM(
+      assertZIO(
         arg.validate("doesNotExist.file" :: Nil, CliConfig.default).either
       )(isRight)
     },
     test("Combination of existing files") {
       val arg = Args.file.repeat
-      assertM(
+      assertZIO(
         arg.validate(List(argsFile.getAbsolutePath, argsFile.getAbsolutePath), CliConfig.default)
       )(equalTo(List.empty[String] -> List(argsFilePath, argsFilePath)))
     }

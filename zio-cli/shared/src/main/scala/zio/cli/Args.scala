@@ -16,7 +16,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import zio.{IO, Zippable}
+import zio.{IO, ZIO, Zippable}
 import zio.cli.HelpDoc.Span
 
 /**
@@ -94,7 +94,7 @@ object Args {
             case (None, Some(choices))             => s"Missing argument ${primType.typeName} with values $choices."
             case (None, None)                      => s"Missing argument ${primType.typeName}."
           }
-          IO.fail(HelpDoc.p(msg))
+          ZIO.fail(HelpDoc.p(msg))
       }
 
     private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
@@ -112,7 +112,7 @@ object Args {
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], Unit)] =
-      IO.succeed((args, ()))
+      ZIO.succeed((args, ()))
   }
 
   final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
@@ -165,12 +165,12 @@ object Args {
       val max1 = max.getOrElse(Int.MaxValue)
 
       def loop(args: List[String], acc: List[A]): IO[HelpDoc, (List[String], List[A])] =
-        if (acc.length >= max1) IO.succeed(args -> acc)
+        if (acc.length >= max1) ZIO.succeed(args -> acc)
         else
           value
             .validate(args, conf)
             .foldZIO(
-              failure => if (acc.length >= min1 && args.isEmpty) IO.succeed(args -> acc) else IO.fail(failure),
+              failure => if (acc.length >= min1 && args.isEmpty) ZIO.succeed(args -> acc) else ZIO.fail(failure),
               { case (args, a) => loop(args, a :: acc) }
             )
 
@@ -192,8 +192,8 @@ object Args {
     def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], B)] =
       value.validate(args, conf).flatMap { case (r, a) =>
         f(a) match {
-          case Left(value)  => IO.fail(value)
-          case Right(value) => IO.succeed((r, value))
+          case Left(value)  => ZIO.fail(value)
+          case Right(value) => ZIO.succeed((r, value))
         }
       }
   }

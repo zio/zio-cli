@@ -46,7 +46,7 @@ object Completion {
     val derivative: UIO[RegularLanguage] = ZIO.foldLeft(unclustered)(language)((lang, word) =>
       lang
         .derive(word)
-        .provideService(cliConfig)
+        .provideEnvironment(ZEnvironment(cliConfig))
     )
 
     val wordToComplete = if (index < words.size) words(index) else ""

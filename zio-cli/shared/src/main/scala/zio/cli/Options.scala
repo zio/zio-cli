@@ -16,7 +16,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import zio.{IO, UIO, Zippable}
+import zio.{IO, ZIO, Zippable}
 import zio.cli.HelpDoc.Span
 import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span._
@@ -183,7 +183,7 @@ object Options {
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Unit)] =
-      IO.succeed((args, ()))
+      ZIO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
 
@@ -200,7 +200,7 @@ object Options {
       options
         .validate(args, conf)
         .catchSome {
-          case error if error.isOptionMissing => UIO.succeed(args -> default)
+          case error if error.isOptionMissing => ZIO.succeed(args -> default)
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =
@@ -256,7 +256,7 @@ object Options {
               fullName,
               conf
             ) <= conf.autoCorrectLimit =>
-          IO.fail(
+          ZIO.fail(
             ValidationError(
               ValidationErrorType.MissingValue,
               p(error(s"""The flag "$head" is not recognized. Did you mean $fullName?"""))
@@ -267,7 +267,7 @@ object Options {
             (head :: args, a)
           }
         case Nil =>
-          IO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find $fullName option."))))
+          ZIO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find $fullName option."))))
       }
 
     def uid: Option[String] = Some(fullName)
@@ -306,7 +306,7 @@ object Options {
               .validate(args, conf)
               .foldZIO[Any, ValidationError, (List[String], Either[A, B])](
                 err2 =>
-                  IO.fail(
+                  ZIO.fail(
                     // orElse option is only missing in case neither option was given
                     (err1.validationErrorType, err2.validationErrorType) match {
                       case (ValidationErrorType.MissingValue, ValidationErrorType.MissingValue) =>
@@ -315,15 +315,15 @@ object Options {
                         ValidationError(ValidationErrorType.InvalidValue, err1.error + err2.error)
                     }
                   ),
-                success => IO.succeed((success._1, Right(success._2)))
+                success => ZIO.succeed((success._1, Right(success._2)))
               ),
           r =>
             right
               .validate(r._1, conf)
               .foldZIO(
-                _ => IO.succeed((r._1, Left(r._2))),
+                _ => ZIO.succeed((r._1, Left(r._2))),
                 _ =>
-                  IO.fail(
+                  ZIO.fail(
                     ValidationError(
                       ValidationErrorType.InvalidValue,
                       p(error(s"Options collision detected. You can only specify either $left or $right."))
@@ -353,8 +353,8 @@ object Options {
                      right
                        .validate(args, conf)
                        .foldZIO(
-                         err2 => IO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
-                         _ => IO.fail(err1)
+                         err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
+                         _ => ZIO.fail(err1)
                        )
                    )
         (args, a) = tuple
@@ -376,7 +376,7 @@ object Options {
     def synopsis: UsageSynopsis = value.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
-      value.validate(args, conf).flatMap(r => f(r._2).fold(e => IO.fail(e), s => IO.succeed(r._1 -> s)))
+      value.validate(args, conf).flatMap(r => f(r._2).fold(e => ZIO.fail(e), s => ZIO.succeed(r._1 -> s)))
 
     override def uid: Option[String] = value.uid
 

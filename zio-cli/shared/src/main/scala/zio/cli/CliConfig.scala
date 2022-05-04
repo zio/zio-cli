@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.URIO
+import zio.{URIO, ZIO}
 
 /**
  * A `CliConfig` describes how arguments from the command-line are to
@@ -29,5 +29,5 @@ object CliConfig {
    */
   val default: CliConfig = CliConfig(caseSensitive = false, autoCorrectLimit = 2)
 
-  val cliConfig: URIO[CliConfig, CliConfig] = URIO.service
+  val cliConfig: URIO[CliConfig, CliConfig] = ZIO.service
 }

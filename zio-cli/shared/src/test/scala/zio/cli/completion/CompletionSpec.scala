@@ -1,6 +1,6 @@
 package zio.cli.completion
 
-import zio.{Scope, ZTraceElement, ZIO}
+import zio.{Scope, Trace, ZIO}
 import zio.stream.{ZStream, ZSink}
 import zio.test.Assertion._
 import zio.test._
@@ -18,20 +18,20 @@ object CompletionSpec extends ZIOSpecDefault {
    * zio >= 2.0.0-RC3.
    */
   object Files {
-    def createTempDirectoryScoped()(implicit trace: ZTraceElement): ZIO[Scope, IOException, JPath] =
+    def createTempDirectoryScoped()(implicit trace: Trace): ZIO[Scope, IOException, JPath] =
       ZIO.acquireRelease(createTempDirectory())(release = deleteRecursive(_).ignore)
 
-    def createTempDirectory()(implicit trace: ZTraceElement): ZIO[Any, IOException, JPath] =
+    def createTempDirectory()(implicit trace: Trace): ZIO[Any, IOException, JPath] =
       ZIO
         .attemptBlocking(JFiles.createTempDirectory(null))
         .refineToOrDie[IOException]
 
-    def deleteRecursive(path: JPath)(implicit trace: ZTraceElement): ZIO[Any, IOException, Long] =
+    def deleteRecursive(path: JPath)(implicit trace: Trace): ZIO[Any, IOException, Long] =
       newDirectoryStream(path).mapZIO(delete).run(ZSink.count) <* delete(path)
 
     def newDirectoryStream(
       dir: JPath
-    )(implicit trace: ZTraceElement): ZStream[Any, IOException, JPath] =
+    )(implicit trace: Trace): ZStream[Any, IOException, JPath] =
       ZStream
         .fromJavaIteratorScoped[Any, JPath](
           ZIO
@@ -42,13 +42,13 @@ object CompletionSpec extends ZIOSpecDefault {
         )
         .refineToOrDie[IOException]
 
-    def delete(path: JPath)(implicit trace: ZTraceElement): ZIO[Any, IOException, Unit] =
+    def delete(path: JPath)(implicit trace: Trace): ZIO[Any, IOException, Unit] =
       ZIO.attemptBlocking(JFiles.delete(path)).refineToOrDie[IOException]
 
-    def createFile(path: JPath)(implicit trace: ZTraceElement): ZIO[Any, IOException, Unit] =
+    def createFile(path: JPath)(implicit trace: Trace): ZIO[Any, IOException, Unit] =
       ZIO.attemptBlocking(JFiles.createFile(path)).unit.refineToOrDie[IOException]
 
-    def createDirectory(path: JPath)(implicit trace: ZTraceElement): ZIO[Any, IOException, Unit] =
+    def createDirectory(path: JPath)(implicit trace: Trace): ZIO[Any, IOException, Unit] =
       ZIO.attemptBlocking(JFiles.createDirectory(path)).unit.refineToOrDie[IOException]
   }
 
@@ -60,7 +60,7 @@ object CompletionSpec extends ZIOSpecDefault {
     suite("Toplevel Command Completion Spec")(
       suite("Command name")(
         test("A different command name in the args list should not affect completion") {
-          assertM(
+          assertZIO(
             Completion.complete(
               List("foo-alias"),
               1,
@@ -72,7 +72,7 @@ object CompletionSpec extends ZIOSpecDefault {
       ),
       suite("Command that accepts no Args or Options")(
         test("Returns no completions") {
-          assertM(
+          assertZIO(
             Completion.complete(List("true"), 1, True.command, CliConfig.default)
           )(equalTo(List.empty))
         }
@@ -80,13 +80,13 @@ object CompletionSpec extends ZIOSpecDefault {
       suite("Command that accepts no Options, single Args")(
         suite("PrimType.Bool")(
           test("No partial word should complete with 'false' and 'true'")(
-            assertM(
+            assertZIO(
               Completion
                 .complete(List("foo"), 1, Command("foo", Options.Empty, Args.bool), CliConfig.default)
             )(equalTo(List("false ", "true ")))
           ),
           test("Partial word 'f' should complete with 'false'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "f"),
                 1,
@@ -96,7 +96,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("false ")))
           ),
           test("Partial word 't' should complete with 'true'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "t"),
                 1,
@@ -106,7 +106,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("true ")))
           ),
           test("Partial word 'true' should return 'true'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "true"),
                 1,
@@ -116,7 +116,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("true ")))
           ),
           test("Partial word 'false' should return 'false'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "false"),
                 1,
@@ -126,7 +126,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("false ")))
           ),
           test("Partial word 'x' should return no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "x"),
                 1,
@@ -138,7 +138,7 @@ object CompletionSpec extends ZIOSpecDefault {
         ),
         suite("PrimType.Decimal")(
           test("No partial word should return no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo"),
                 1,
@@ -148,7 +148,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List.empty))
           ),
           test("Partial word '32.6' should return no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "32.6"),
                 1,
@@ -158,7 +158,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List.empty))
           ),
           test("Partial word 'x' should return no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "32.6"),
                 1,
@@ -170,7 +170,7 @@ object CompletionSpec extends ZIOSpecDefault {
         ),
         suite("PrimType.Enumeration")(
           test("No partial word should return the complete list of enumeration values")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo"),
                 1,
@@ -180,7 +180,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("bar ", "baz ", "bippy ")))
           ),
           test("Partial word 'b' should complete with 'bar', 'baz', 'bippy'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "b"),
                 1,
@@ -190,7 +190,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("bar ", "baz ", "bippy ")))
           ),
           test("Partial word 'ba' should complete with 'bar' and 'baz'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "ba"),
                 1,
@@ -200,7 +200,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("bar ", "baz ")))
           ),
           test("Partial word 'baz' should return 'baz")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "baz"),
                 1,
@@ -210,7 +210,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("baz ")))
           ),
           test("Partial word 'baz' should return 'baz' and 'bazinga'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "baz"),
                 1,
@@ -232,7 +232,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program"),
                         1,
@@ -257,7 +257,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program", "f"),
                         1,
@@ -282,7 +282,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program", "foo.txt"),
                         1,
@@ -307,7 +307,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program", "doesnt-exist"),
                         1,
@@ -332,7 +332,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program"),
                         1,
@@ -357,7 +357,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program", "f"),
                         1,
@@ -382,7 +382,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("program", "fooDir"),
                         1,
@@ -399,7 +399,7 @@ object CompletionSpec extends ZIOSpecDefault {
         ),
         suite("PrimType.ZoneId")(
           test("'US/' prefix provided")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("program", "US/"),
                 1,
@@ -430,7 +430,7 @@ object CompletionSpec extends ZIOSpecDefault {
       suite("Command with no Options, multiple Args")(
         suite("PrimType.Enumeration followed by PrimType.ZoneId")(
           test("Partial word 'baz' should return 'baz' and 'bazinga'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "baz"),
                 1,
@@ -440,7 +440,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("baz ", "bazinga ")))
           ),
           test("Partial word 'US/' should return the US zone IDs")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "baz", "US/"),
                 2,
@@ -467,7 +467,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("Completing ['foo', 'baz', 'US/'] at position 1 should complete with 'baz' and 'bazinga'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "baz", "US/"),
                 1,
@@ -479,7 +479,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("Completing ['foo', 'x', 'US/'] at position 2 should yield no completions ('x' is invalid)")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "x", "US/"),
                 1,
@@ -495,7 +495,7 @@ object CompletionSpec extends ZIOSpecDefault {
       suite("Command with Options, no args")(
         suite("Boolean Options")(
           test("No prefix should show all flags")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo"),
                 1,
@@ -511,7 +511,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-' prefix should show all flags")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-"),
                 1,
@@ -527,7 +527,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-a' prefix should show flags '-b'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-a"),
                 2,
@@ -543,7 +543,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-b' prefix should show flags '-a'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-b"),
                 2,
@@ -559,7 +559,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-a' prefix should show flags '-b', '-c', '-d'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-a"),
                 2,
@@ -575,7 +575,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-d -a' prefix should show flags '-b', '-c'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-d", "-a"),
                 3,
@@ -591,7 +591,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-d -c -b -' prefix should show flags '-a'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-d", "-c", "-b", "-"),
                 4,
@@ -607,7 +607,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("An invalid flag should yield no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-x"),
                 2,
@@ -625,7 +625,7 @@ object CompletionSpec extends ZIOSpecDefault {
         ),
         suite("Int Options")(
           test("No prefix should show all flags")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo"),
                 1,
@@ -641,7 +641,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-c' without integer value should provide no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-c"),
                 2,
@@ -657,7 +657,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-c' with integer value should complete with '-a', '-b', '-d'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-c", "1"),
                 3,
@@ -673,7 +673,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-c' and '-b' with integer value should complete with '-a', '-d'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-c", "1", "-b", "2"),
                 5,
@@ -689,7 +689,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )
           ),
           test("'-c' with integer value and '-b' with no integer value should provide no completions")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "-c", "1", "-b"),
                 4,
@@ -707,7 +707,7 @@ object CompletionSpec extends ZIOSpecDefault {
         ),
         suite("Enumeration Options")(
           test("Partial option name should complete the name of the option")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "--q"),
                 1,
@@ -717,7 +717,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("--quux ")))
           ),
           test("No partial word should return the complete list of enumeration options")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "--quux"),
                 2,
@@ -727,7 +727,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("bar ", "baz ", "bippy ")))
           ),
           test("Partial word 'b' should complete with 'bar', 'baz', 'bippy'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "--quux", "b"),
                 2,
@@ -737,7 +737,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("bar ", "baz ", "bippy ")))
           ),
           test("Partial word 'ba' should complete with 'bar' and 'baz'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "--quux", "ba"),
                 2,
@@ -747,7 +747,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("bar ", "baz ")))
           ),
           test("Partial word 'baz' should return 'baz'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "--quux", "baz"),
                 2,
@@ -757,7 +757,7 @@ object CompletionSpec extends ZIOSpecDefault {
             )(equalTo(List("baz ")))
           ),
           test("Partial word 'baz' should return 'baz' and 'bazinga'")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("foo", "--quux", "baz"),
                 2,
@@ -771,7 +771,7 @@ object CompletionSpec extends ZIOSpecDefault {
       suite("Command with Options and Args")(
         suite("Tail")(
           test("Complete the '-n' option name")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("tail", "-"),
                 1,
@@ -792,7 +792,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("tail", "f"),
                         1,
@@ -809,7 +809,7 @@ object CompletionSpec extends ZIOSpecDefault {
         ),
         suite("WC")(
           test("Complete the option names")(
-            assertM(
+            assertZIO(
               Completion.complete(
                 List("wc", "-"),
                 1,
@@ -830,7 +830,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("wc", "-l", "-c", "f"),
                         3,
@@ -855,7 +855,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     Files.createDirectory(tempDir / "fooDir") *>
                     Files.createDirectory(tempDir / "barDir") *>
                     Files.createDirectory(tempDir / "bippyDir") *>
-                    assertM(
+                    assertZIO(
                       Completion.complete(
                         List("wc", "-l", "-c", "blah.md", "f"),
                         4,

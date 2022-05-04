@@ -113,8 +113,8 @@ object PrimType {
     def validate(value: Option[String], conf: CliConfig): IO[String, A] =
       (ZIO.fromOption(value) orElseFail "Enumeration options do not have a default value.").flatMap { value =>
         cases.find(_._1 == value) match {
-          case None         => IO.fail("Expected one of the following cases: " + cases.map(_._1).mkString(", "))
-          case Some((_, a)) => IO.succeed(a)
+          case None         => ZIO.fail("Expected one of the following cases: " + cases.map(_._1).mkString(", "))
+          case Some((_, a)) => ZIO.succeed(a)
         }
       }
   }
@@ -174,10 +174,10 @@ object PrimType {
 
     def validate(value: Option[String], conf: CliConfig): IO[String, Boolean] =
       value.map(conf.normalizeCase) match {
-        case Some(s) if Bool.TrueValues(s)  => IO.succeed(true)
-        case Some(s) if Bool.FalseValues(s) => IO.succeed(false)
-        case Some(s)                        => IO.fail(s"$s cannot be recognized as valid boolean.")
-        case None                           => IO.fromOption(defaultValue).orElseFail("Missing default for bool parameter.")
+        case Some(s) if Bool.TrueValues(s)  => ZIO.succeed(true)
+        case Some(s) if Bool.FalseValues(s) => ZIO.succeed(false)
+        case Some(s)                        => ZIO.fail(s"$s cannot be recognized as valid boolean.")
+        case None                           => ZIO.fromOption(defaultValue).orElseFail("Missing default for bool parameter.")
       }
 
     def helpDoc: HelpDoc.Span = text("A true or false value.")

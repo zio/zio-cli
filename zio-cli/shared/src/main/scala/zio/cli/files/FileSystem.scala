@@ -23,13 +23,13 @@ object FileSystem {
       ZIO.attempt(JPaths.get(path)) orElseFail s"'$path' is not a recognized path."
 
     override def exists(path: JPath): UIO[Boolean] =
-      ZIO.attempt(JFiles.exists(path)) orElse IO.succeed(false)
+      ZIO.attempt(JFiles.exists(path)) orElse ZIO.succeed(false)
 
     override def isDirectory(path: JPath): UIO[Boolean] =
-      ZIO.attempt(JFiles.isDirectory(path)) orElse IO.succeed(false)
+      ZIO.attempt(JFiles.isDirectory(path)) orElse ZIO.succeed(false)
 
     override def isRegularFile(path: JPath): UIO[Boolean] =
-      ZIO.attempt(JFiles.isRegularFile(path)) orElse IO.succeed(false)
+      ZIO.attempt(JFiles.isRegularFile(path)) orElse ZIO.succeed(false)
   }
 
 }
