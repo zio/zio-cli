@@ -60,7 +60,7 @@ object CliApp {
             p(code(figFont.render(command.names.headOption.getOrElse(name))))
 
           val synopsis = h1("synopsis") +
-            command.synopsis.helpDoc
+            command.synopsis.helpDoc // TODO this should be the synopsis of the corresponding subcommand when needed
 
           val header = p(text(name) + text(" ") + text(version) + text(" -- ") + summary)
 

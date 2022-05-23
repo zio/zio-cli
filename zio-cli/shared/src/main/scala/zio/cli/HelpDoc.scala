@@ -370,8 +370,10 @@ object HelpDoc {
   def p(t: String): HelpDoc  = HelpDoc.Paragraph(Span.text(t))
   def p(span: Span): HelpDoc = HelpDoc.Paragraph(span)
 
-  sealed trait Span {
-    def +(that: Span): Span = Span.Sequence(this, that)
+  sealed trait Span { self =>
+    def +(that: Span): Span = Span.Sequence(self, that)
+
+    final def isEmpty: Boolean = self.size == 0
 
     def size: Int
   }
@@ -398,6 +400,7 @@ object HelpDoc {
       def size = left.size + right.size
     }
 
+    def empty: Span                            = Span.text("")
     def text(t: String): Span                  = Span.Text(t)
     def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
 

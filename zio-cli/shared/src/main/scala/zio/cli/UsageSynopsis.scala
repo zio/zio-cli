@@ -20,13 +20,19 @@ sealed trait UsageSynopsis { self =>
           render(value) + Span.text("...")
 
         case Sequence(left, right) =>
-          render(left) + Span.text(" ") + render(right)
+          val leftSpan  = render(left)
+          val rightSpan = render(right)
 
-        case Alternation(left, right) =>
+          if (leftSpan.isEmpty && rightSpan.isEmpty) Span.empty
+          else if (leftSpan.isEmpty) rightSpan
+          else if (rightSpan.isEmpty) leftSpan
+          else leftSpan + Span.space + rightSpan
+
+        case Alternation(left, right) => // TODO do we really need this?
           render(left) + Span.text("|") + render(right)
 
         case Mixed =>
-          Span.text("<command> [<args>]")
+          Span.text("<command> [<args>]") // TODO should we always display [<args>] here?
 
         case None => Span.text("")
       }

@@ -35,7 +35,7 @@ object GitExample extends ZIOAppDefault {
   }
 
   val git: Command[Subcommand] =
-    Command("git", Options.none, Args.none).subcommands(add)
+    Command("git", Options.none, Args.none).subcommands(add, remote)
 
   val gitApp = CliApp.make(
     name = "Git Version Control",
