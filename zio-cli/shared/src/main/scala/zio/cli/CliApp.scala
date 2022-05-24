@@ -59,12 +59,11 @@ object CliApp {
           val fancyName =
             p(code(figFont.render(command.names.headOption.getOrElse(name))))
 
-          val synopsis2 = h1("synopsis") +
-            synopsis.helpDoc // TODO this should be the synopsis of the corresponding subcommand when needed
+          val synopsisHelpDoc = h1("synopsis") + synopsis.helpDoc
 
           val header = p(text(name) + text(" ") + text(version) + text(" -- ") + summary)
 
-          printLine((header + fancyName + synopsis2 + helpDoc + footer).toPlaintext(80))
+          printLine((header + fancyName + synopsisHelpDoc + helpDoc + footer).toPlaintext(80))
 
         case ShowCompletionScript(path, shellType) =>
           printLine(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))

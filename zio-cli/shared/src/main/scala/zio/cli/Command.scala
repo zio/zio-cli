@@ -78,7 +78,7 @@ object Command {
      * Built-in options supported by the command, such as "--help".
      */
     lazy val builtInOptions: Options[Option[BuiltInOption]] =
-      BuiltInOption.builtInOptions(synopsis, helpDoc)
+      BuiltInOption.builtInOptions(self.synopsis, self.helpDoc)
 
     def builtIn(
       args: List[String],
@@ -201,68 +201,61 @@ object Command {
     def subcommandsDesc[C](c: Command[C]): HelpDoc =
       c match {
         case OrElse(left, right) =>
-          HelpDoc.enumeration(subcommandsDesc(left), subcommandsDesc(right))
+          HelpDoc.enumeration(self.subcommandsDesc(left), self.subcommandsDesc(right))
         case Single(name, desc, _, _) =>
-          HelpDoc.p(HelpDoc.Span.spans(HelpDoc.Span.text(name), HelpDoc.Span.text(" \t "), getHelpDescription(desc)))
+          HelpDoc.p {
+            HelpDoc.Span.spans(HelpDoc.Span.text(name), HelpDoc.Span.text(" \t "), self.getHelpDescription(desc))
+          }
         case Map(cmd, _) =>
-          subcommandsDesc(cmd)
+          self.subcommandsDesc(cmd)
         case _ =>
           HelpDoc.empty
       }
 
     def helpDoc =
-      parent.helpDoc + HelpDoc.h1("Subcommands") + subcommandsDesc(child)
+      self.parent.helpDoc + HelpDoc.h1("Subcommands") + self.subcommandsDesc(self.child)
 
-    def names: Set[String] = parent.names
+    def names: Set[String] = self.parent.names
 
     def parse(
       args: List[String],
       conf: CliConfig
-    ): IO[ValidationError, CommandDirective[(A, B)]] =
-      parent
+    ): IO[ValidationError, CommandDirective[(A, B)]] = {
+      val helpDirectiveForChild =
+        self.child
+          .parse(args.tail, conf)
+          .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
+            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
+              val parentName = self.names.headOption.getOrElse("")
+              CommandDirective.builtIn {
+                BuiltInOption.ShowHelp(
+                  UsageSynopsis.Named(parentName, None) + synopsis,
+                  helpDoc
+                )
+              }
+          }
+
+      val helpDirectiveForParent =
+        ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
+
+      self.parent
         .parse(args, conf)
         .flatMap {
-          // TODO: Try removing this. `git remote --help` was the same as `git --help` when I tested.
-          case CommandDirective.BuiltIn(x) =>
-            x match {
-              case BuiltInOption.ShowHelp(_, _) =>
-                for {
-                  help <- (child.parse(args.tail, conf) orElse ZIO.succeed(
-                            CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc))
-                          ))
-                  tuple <- help match {
-                             case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(s, h)) =>
-                               ZIO.succeed(
-                                 (UsageSynopsis.Named(self.parent.names.headOption.getOrElse(""), None) + s, h)
-                               )
-                             case _ =>
-                               ZIO.fail(
-                                 ValidationError(
-                                   ValidationErrorType.InvalidArgument,
-                                   HelpDoc.empty
-                                 )
-                               )
-                           }
-                  (synopsis, help) = tuple
-                } yield {
-                  CommandDirective.builtIn(BuiltInOption.ShowHelp(synopsis, help))
-                }
-
-              case x => ZIO.succeed(CommandDirective.builtIn(x))
-            }
-
+          case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
+            helpDirectiveForChild orElse helpDirectiveForParent
+          case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
-            child.parse(leftover, conf).map(_.map(b => (a, b)))
-
+            self.child.parse(leftover, conf).map(_.map((a, _)))
           case _ =>
-            ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
+            helpDirectiveForParent
         }
         .catchSome {
           case _ if args.isEmpty =>
-            ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
+            helpDirectiveForParent
         }
+    }
 
-    def synopsis: UsageSynopsis = parent.synopsis + child.synopsis
+    def synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
   }
 
   /**
