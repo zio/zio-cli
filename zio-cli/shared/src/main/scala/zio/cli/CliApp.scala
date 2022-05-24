@@ -55,16 +55,16 @@ object CliApp {
 
     def executeBuiltIn(builtInOption: BuiltInOption): Task[Unit] =
       builtInOption match {
-        case ShowHelp(helpDoc) =>
+        case ShowHelp(synopsis, helpDoc) =>
           val fancyName =
             p(code(figFont.render(command.names.headOption.getOrElse(name))))
 
-          val synopsis = h1("synopsis") +
-            command.synopsis.helpDoc // TODO this should be the synopsis of the corresponding subcommand when needed
+          val synopsis2 = h1("synopsis") +
+            synopsis.helpDoc // TODO this should be the synopsis of the corresponding subcommand when needed
 
           val header = p(text(name) + text(" ") + text(version) + text(" -- ") + summary)
 
-          printLine((header + fancyName + synopsis + helpDoc + footer).toPlaintext(80))
+          printLine((header + fancyName + synopsis2 + helpDoc + footer).toPlaintext(80))
 
         case ShowCompletionScript(path, shellType) =>
           printLine(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))

@@ -78,7 +78,7 @@ object Command {
      * Built-in options supported by the command, such as "--help".
      */
     lazy val builtInOptions: Options[Option[BuiltInOption]] =
-      BuiltInOption.builtInOptions(helpDoc)
+      BuiltInOption.builtInOptions(synopsis, helpDoc)
 
     def builtIn(
       args: List[String],
@@ -225,23 +225,27 @@ object Command {
           // TODO: Try removing this. `git remote --help` was the same as `git --help` when I tested.
           case CommandDirective.BuiltIn(x) =>
             x match {
-              case BuiltInOption.ShowHelp(_) =>
+              case BuiltInOption.ShowHelp(_, _) =>
                 for {
                   help <- (child.parse(args.tail, conf) orElse ZIO.succeed(
-                            CommandDirective.builtIn(BuiltInOption.ShowHelp(self.helpDoc))
+                            CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc))
                           ))
-                  help <- help match {
-                            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(h)) => ZIO.succeed(h)
-                            case _ =>
-                              ZIO.fail(
-                                ValidationError(
-                                  ValidationErrorType.InvalidArgument,
-                                  HelpDoc.empty
-                                )
-                              )
-                          }
+                  tuple <- help match {
+                             case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(s, h)) =>
+                               ZIO.succeed(
+                                 (UsageSynopsis.Named(self.parent.names.headOption.getOrElse(""), None) + s, h)
+                               )
+                             case _ =>
+                               ZIO.fail(
+                                 ValidationError(
+                                   ValidationErrorType.InvalidArgument,
+                                   HelpDoc.empty
+                                 )
+                               )
+                           }
+                  (synopsis, help) = tuple
                 } yield {
-                  CommandDirective.builtIn(BuiltInOption.ShowHelp(help))
+                  CommandDirective.builtIn(BuiltInOption.ShowHelp(synopsis, help))
                 }
 
               case x => ZIO.succeed(CommandDirective.builtIn(x))
@@ -251,10 +255,11 @@ object Command {
             child.parse(leftover, conf).map(_.map(b => (a, b)))
 
           case _ =>
-            ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(helpDoc)))
+            ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
         }
         .catchSome {
-          case _ if args.isEmpty => ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(self.helpDoc)))
+          case _ if args.isEmpty =>
+            ZIO.succeed(CommandDirective.BuiltIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
         }
 
     def synopsis: UsageSynopsis = parent.synopsis + child.synopsis
