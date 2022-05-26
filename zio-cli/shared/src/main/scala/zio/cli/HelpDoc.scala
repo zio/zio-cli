@@ -371,56 +371,58 @@ object HelpDoc {
   def p(span: Span): HelpDoc = HelpDoc.Paragraph(span)
 
   sealed trait Span { self =>
-    def +(that: Span): Span = Span.Sequence(self, that)
+    final def +(that: Span): Span = Span.Sequence(self, that)
 
     final def isEmpty: Boolean = self.size == 0
 
-    def size: Int
+    final def size: Int =
+      self match {
+        case Span.Text(value)           => value.length
+        case Span.Code(value)           => value.length
+        case Span.Error(value)          => value.size
+        case Span.Weak(value)           => value.size
+        case Span.Strong(value)         => value.size
+        case Span.URI(value)            => value.toString.length
+        case Span.Sequence(left, right) => left.size + right.size
+      }
   }
   object Span {
-    final case class Text(value: String) extends Span {
-      def size = value.length
-    }
-    final case class Code(value: String) extends Span {
-      def size = value.length
-    }
-    final case class Error(value: Span) extends Span {
-      def size = value.size
-    }
-    final case class Weak(value: Span) extends Span {
-      def size = value.size
-    }
-    final case class Strong(value: Span) extends Span {
-      def size = value.size
-    }
-    final case class URI(value: java.net.URI) extends Span {
-      def size = value.toString().length
-    }
-    final case class Sequence(left: Span, right: Span) extends Span {
-      def size = left.size + right.size
-    }
-
-    def empty: Span                            = Span.text("")
-    def text(t: String): Span                  = Span.Text(t)
-    def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
-
-    def spans(spans: Iterable[Span]): Span = spans.toList.foldLeft(text("")) { case (span, s) =>
-      Span.Sequence(span, s)
-    }
-    def error(span: Span): Span = Span.Error(span)
-    def error(t: String): Span  = Span.Error(text(t))
+    final case class Text(value: String)               extends Span
+    final case class Code(value: String)               extends Span
+    final case class Error(value: Span)                extends Span
+    final case class Weak(value: Span)                 extends Span
+    final case class Strong(value: Span)               extends Span
+    final case class URI(value: java.net.URI)          extends Span
+    final case class Sequence(left: Span, right: Span) extends Span
 
     def code(t: String): Span = Span.Code(t)
 
-    def weak(span: Span): Span = Span.Weak(span)
-    def weak(t: String): Span  = Span.Weak(text(t))
+    def empty: Span = Span.text("")
+
+    def error(span: Span): Span = Span.Error(span)
+
+    def error(t: String): Span = Span.Error(text(t))
+
+    def space: Span = text(" ")
+
+    def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
+
+    def spans(spans: Iterable[Span]): Span =
+      spans.toList.foldLeft(text("")) { case (span, s) =>
+        Span.Sequence(span, s)
+      }
 
     def strong(span: Span): Span = Span.Strong(span)
-    def strong(t: String): Span  = Span.Strong(text(t))
+
+    def strong(t: String): Span = Span.Strong(text(t))
+
+    def text(t: String): Span = Span.Text(t)
 
     def uri(uri: java.net.URI): Span = Span.URI(uri)
 
-    def space: Span = text(" ")
+    def weak(span: Span): Span = Span.Weak(span)
+
+    def weak(t: String): Span = Span.Weak(text(t))
   }
 }
 
