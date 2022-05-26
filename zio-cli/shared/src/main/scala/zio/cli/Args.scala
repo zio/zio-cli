@@ -16,7 +16,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import zio.{IO, ZIO, Zippable}
+import zio.{IO, UIO, ZIO, Zippable}
 import zio.cli.HelpDoc.Span
 
 /**
@@ -60,7 +60,7 @@ sealed trait Args[+A] { self =>
 
   def synopsis: UsageSynopsis
 
-  def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)]
+  def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
 }
 
 object Args {
@@ -84,8 +84,8 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.Named(name, primType.choices)
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], A)] =
-      args match {
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
+      (args match {
         case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
         case Nil =>
           val msg = (pseudoName, primType.choices) match {
@@ -95,7 +95,7 @@ object Args {
             case (None, None)                      => s"Missing argument ${primType.typeName}."
           }
           ZIO.fail(HelpDoc.p(msg))
-      }
+      }).mapError(ValidationError(ValidationErrorType.InvalidArgument, _))
 
     private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
   }
@@ -111,7 +111,7 @@ object Args {
 
     def synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], Unit)] =
+    def validate(args: List[String], conf: CliConfig): UIO[(List[String], Unit)] =
       ZIO.succeed((args, ()))
   }
 
@@ -126,7 +126,7 @@ object Args {
 
     def synopsis: UsageSynopsis = head.synopsis + tail.synopsis
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], (A, B))] =
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
         tuple    <- head.validate(args, conf)
         (args, a) = tuple
@@ -160,11 +160,11 @@ object Args {
 
     def minSize: Int = min.getOrElse(0) * value.minSize
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], List[A])] = {
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
       val max1 = max.getOrElse(Int.MaxValue)
 
-      def loop(args: List[String], acc: List[A]): IO[HelpDoc, (List[String], List[A])] =
+      def loop(args: List[String], acc: List[A]): IO[ValidationError, (List[String], List[A])] =
         if (acc.length >= max1) ZIO.succeed(args -> acc)
         else
           value
@@ -189,10 +189,10 @@ object Args {
 
     def synopsis: UsageSynopsis = value.synopsis
 
-    def validate(args: List[String], conf: CliConfig): IO[HelpDoc, (List[String], B)] =
+    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
       value.validate(args, conf).flatMap { case (r, a) =>
         f(a) match {
-          case Left(value)  => ZIO.fail(value)
+          case Left(value)  => ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, value))
           case Right(value) => ZIO.succeed((r, value))
         }
       }

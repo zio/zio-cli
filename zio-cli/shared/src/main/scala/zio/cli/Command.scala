@@ -148,10 +148,8 @@ object Command {
                                    }
           tuple                     <- self.options.validate(unCluster(commandOptionsAndArgs), conf)
           (commandArgs, optionsType) = tuple
-          tuple <- self.args
-                     .validate(commandArgs, conf) // TODO validate should return ValidationError
-                     .mapError(ValidationError(ValidationErrorType.InvalidArgument, _))
-          (argsLeftover, argsType) = tuple
+          tuple                     <- self.args.validate(commandArgs, conf)
+          (argsLeftover, argsType)   = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
       parseBuiltInArgs orElse parseUserDefinedArgs

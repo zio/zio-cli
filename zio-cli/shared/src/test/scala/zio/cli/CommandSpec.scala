@@ -142,8 +142,8 @@ object CommandSpec extends ZIOSpecDefault {
             git.parse(List("git"), CliConfig.default).map { result =>
               assertTrue {
                 result match {
-                  case CommandDirective.BuiltIn(ShowHelp(_)) => true
-                  case _                                     => false
+                  case CommandDirective.BuiltIn(ShowHelp(_, _)) => true
+                  case _                                        => false
                 }
               }
             }
