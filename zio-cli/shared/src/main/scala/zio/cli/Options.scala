@@ -194,7 +194,7 @@ object Options {
 
   final case class WithDefault[A](options: Options[A], default: A, defaultDescription: Option[String])
       extends Options[A] {
-    def synopsis: UsageSynopsis = options.synopsis
+    def synopsis: UsageSynopsis = options.synopsis.optional
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       options
@@ -209,7 +209,7 @@ object Options {
     override def helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
         span -> (block + HelpDoc.p(
-          s"This setting is optional. If unspecified, the default value of this option is $default. ${defaultDescription
+          s"This setting is optional. If unspecified, the default value of this option is '$default'. ${defaultDescription
             .getOrElse("")}"
         ))
       }
@@ -227,7 +227,7 @@ object Options {
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Named(fullName, primType.choices)
+      UsageSynopsis.Named(fullName, primType.choices.orElse(Some(primType.typeName)))
 
     private def supports(s: String, conf: CliConfig): Boolean =
       if (conf.caseSensitive)

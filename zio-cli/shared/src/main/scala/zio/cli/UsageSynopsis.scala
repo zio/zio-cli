@@ -11,7 +11,7 @@ sealed trait UsageSynopsis { self =>
     def render(g: UsageSynopsis): Span =
       g match {
         case Named(name, choices) =>
-          Span.text(name) + Span.text(choices.fold("")(v => if (v.length < 10) " " + v else ""))
+          Span.text(name) + choices.fold(Span.empty)(c => Span.space + Span.text(c))
 
         case Optional(value) =>
           Span.text("[") + render(value) + Span.text("]")
@@ -30,13 +30,15 @@ sealed trait UsageSynopsis { self =>
           render(left) + Span.text("|") + render(right)
 
         case Mixed =>
-          Span.text("<command> [<args>]")
+          Span.text("<command>")
 
         case None => Span.text("")
       }
 
     p(render(self))
   }
+
+  def optional: UsageSynopsis = UsageSynopsis.Optional(self)
 }
 object UsageSynopsis {
   final case class Named(name: String, values: scala.Option[String])      extends UsageSynopsis

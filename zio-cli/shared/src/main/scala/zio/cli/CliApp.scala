@@ -53,17 +53,24 @@ object CliApp {
   ) extends CliApp[R, E, Model] { self =>
     def config(newConfig: CliConfig): CliApp[R, E, Model] = copy(config = newConfig)
 
-    def executeBuiltIn(builtInOption: BuiltInOption): Task[Unit] =
+    def executeBuiltIn(builtInOption: BuiltInOption): Task[Unit] = {
+      def getHelpDescription(helpDoc: HelpDoc): HelpDoc.Span =
+        helpDoc match {
+          case HelpDoc.Header(value, _) => value
+          case HelpDoc.Paragraph(value) => value
+          case _                        => HelpDoc.Span.empty
+        }
+
       builtInOption match {
         case ShowHelp(synopsis, helpDoc) =>
           val fancyName =
             p(code(figFont.render(command.names.headOption.getOrElse(name))))
 
-          val synopsisHelpDoc = h1("synopsis") + synopsis.helpDoc
+          val header = p(text(name) + text(" v") + text(version) + text(" -- ") + summary)
 
-          val header = p(text(name) + text(" ") + text(version) + text(" -- ") + summary)
+          val synopsisHelpDoc = h1("usage") + HelpDoc.p(text("$ ") + getHelpDescription(synopsis.helpDoc))
 
-          printLine((header + fancyName + synopsisHelpDoc + helpDoc + footer).toPlaintext(80))
+          printLine((fancyName + header + synopsisHelpDoc + helpDoc + footer).toPlaintext(columnWidth = 120))
 
         case ShowCompletionScript(path, shellType) =>
           printLine(CompletionScript(path, if (command.names.nonEmpty) command.names else Set(name), shellType))
@@ -81,6 +88,7 @@ object CliApp {
               }
           }
       }
+    }
 
     def footer(newFooter: HelpDoc): CliApp[R, E, Model] =
       copy(footer = self.footer + newFooter)

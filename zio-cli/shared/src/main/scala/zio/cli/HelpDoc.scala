@@ -248,7 +248,7 @@ sealed trait HelpDoc { self =>
           resetStyle()
           uppercase = false
           renderNewline()
-          writer.indent(4)
+          writer.indent(2)
 
         case HelpDoc.Paragraph(value) =>
           renderSpan(value)
@@ -260,7 +260,7 @@ sealed trait HelpDoc { self =>
             renderSpan(span)
             resetStyle()
             renderNewline()
-            writer.indent(4)
+            writer.indent(2)
             renderHelpDoc(helpDoc)
             writer.unindent()
             renderNewline()
@@ -268,12 +268,10 @@ sealed trait HelpDoc { self =>
 
         case HelpDoc.Enumeration(elements) =>
           elements.zipWithIndex.foreach { case (helpDoc, _) =>
-            writer.indent(2)
             renderText("- ")
             renderHelpDoc(helpDoc)
-            writer.unindent()
-            renderNewline()
           }
+          writer.unindent()
 
         case HelpDoc.Sequence(left, right) =>
           renderHelpDoc(left)

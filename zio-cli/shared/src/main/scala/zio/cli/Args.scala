@@ -27,6 +27,11 @@ sealed trait Args[+A] { self =>
   final def ++[B](that: Args[B])(implicit zippable: Zippable[A, B]): Args[zippable.Out] =
     Args.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
 
+  final def ?[A1 >: A]: Args[::[A1]] = Args.Variadic(self, Some(1), None).map {
+    case head :: tail => ::(head, tail)
+    case Nil          => throw new IllegalStateException("Args.Variadic is not respecting the minimum.")
+  }
+
   final def * : Args[List[A]] = Args.Variadic(self, None, None)
 
   def ??(that: String): Args[A]
@@ -53,10 +58,7 @@ sealed trait Args[+A] { self =>
 
   final def repeat: Args[List[A]] = self.*
 
-  final def repeat1[A1 >: A]: Args[::[A1]] = Args.Variadic(self, Some(1), None).map {
-    case head :: tail => ::(head, tail)
-    case Nil          => throw new IllegalStateException("Args.Variadic is not respecting the minimum.")
-  }
+  final def repeat1[A1 >: A]: Args[::[A1]] = self.?
 
   def synopsis: UsageSynopsis
 

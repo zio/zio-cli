@@ -202,7 +202,11 @@ object Command {
             HelpDoc.enumeration(subcommandsDesc(left), subcommandsDesc(right))
           case Single(name, desc, _, _) =>
             HelpDoc.p {
-              HelpDoc.Span.spans(HelpDoc.Span.text(name), HelpDoc.Span.text(" \t "), getHelpDescription(desc))
+              HelpDoc.Span.spans(
+                getHelpDescription(command.synopsis.helpDoc),
+                HelpDoc.Span.text("\t"), // TODO correctly calculate the number of tabs
+                getHelpDescription(desc)
+              )
             }
           case Map(cmd, _) =>
             subcommandsDesc(cmd)
@@ -210,7 +214,7 @@ object Command {
             HelpDoc.empty
         }
 
-      self.parent.helpDoc + HelpDoc.h1("Subcommands") + subcommandsDesc(self.child)
+      self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child)
     }
 
     def names: Set[String] = self.parent.names
