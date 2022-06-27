@@ -26,8 +26,10 @@ import zio.cli.files.FileSystem
  *
  * Each primitive type has a way to parse and validate from a string.
  */
-sealed trait PrimType[+A] {
+sealed trait PrimType[+A] { self =>
   def helpDoc: HelpDoc.Span
+
+  def isBool: Boolean
 
   def typeName: String
 
@@ -63,6 +65,8 @@ object PrimType {
       case (PathType.File, Exists.Either)      => text("A file.")
       case (PathType.Directory, Exists.Either) => text("A directory.")
     }
+
+    def isBool: Boolean = false
 
     def typeName: String =
       pathType match {
@@ -106,6 +110,8 @@ object PrimType {
   final case class Enumeration[A](cases: (String, A)*) extends PrimType[A] {
     def helpDoc: HelpDoc.Span = text("One of the following cases: " + cases.map(_._1).mkString(", ") + ".")
 
+    def isBool: Boolean = false
+
     def typeName: String = "choice"
 
     def choices: Option[String] = Some(cases.map(_._1).mkString(" | "))
@@ -123,6 +129,8 @@ object PrimType {
    * Type representing any text.
    */
   case object Text extends PrimType[String] {
+    def isBool: Boolean = false
+
     def typeName: String = "text"
 
     def choices: Option[String] = None
@@ -137,6 +145,8 @@ object PrimType {
    * Type representing decimal value via BigDecimal.
    */
   case object Decimal extends PrimType[BigDecimal] {
+    def isBool: Boolean = false
+
     def typeName: String = "decimal"
 
     def choices: Option[String] = None
@@ -151,6 +161,8 @@ object PrimType {
    * Type representing integer value via BigInt.
    */
   case object Integer extends PrimType[BigInt] {
+    def isBool: Boolean = false
+
     def typeName: String = "integer"
 
     def choices: Option[String] = None
@@ -168,6 +180,8 @@ object PrimType {
    * @param defaultValue Default value used then param is not provided
    */
   final case class Bool(defaultValue: Option[Boolean]) extends PrimType[Boolean] {
+    def isBool: Boolean = true
+
     def typeName: String = "boolean"
 
     def choices: Option[String] = Some("true | false")
@@ -192,6 +206,8 @@ object PrimType {
    * Type representing parameter for instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.
    */
   case object Instant extends PrimType[JInstant] {
+    def isBool: Boolean = false
+
     def typeName: String = "instant"
 
     def choices: Option[String] = None
@@ -206,6 +222,7 @@ object PrimType {
    * Type representing parameter for a date in ISO_LOCAL_DATE format, such as 2007-12-03.
    */
   case object LocalDate extends PrimType[JLocalDate] {
+    def isBool: Boolean  = false
     def typeName: String = "date"
 
     def choices: Option[String] = None
@@ -220,6 +237,8 @@ object PrimType {
    * Type representing a date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.
    */
   case object LocalDateTime extends PrimType[JLocalDateTime] {
+    def isBool: Boolean = false
+
     def typeName: String = "date-time"
 
     def choices: Option[String] = None
@@ -235,6 +254,8 @@ object PrimType {
    * Type representing a time without a time-zone in the ISO-8601 format, such as 10:15:30.
    */
   case object LocalTime extends PrimType[JLocalTime] {
+    def isBool: Boolean = false
+
     def typeName: String = "local-time"
 
     def choices: Option[String] = None
@@ -249,6 +270,8 @@ object PrimType {
    * Type representing a month-day in the ISO-8601 format such as 12-03.
    */
   case object MonthDay extends PrimType[JMonthDay] {
+    def isBool: Boolean = false
+
     def typeName: String = "month-day"
 
     def choices: Option[String] = None
@@ -263,6 +286,8 @@ object PrimType {
    * Type representing a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.
    */
   case object OffsetDateTime extends PrimType[JOffsetDateTime] {
+    def isBool: Boolean = false
+
     def typeName: String = "offset-date-time"
 
     def choices: Option[String] = None
@@ -278,6 +303,8 @@ object PrimType {
    * Type representing a time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00.
    */
   case object OffsetTime extends PrimType[JOffsetTime] {
+    def isBool: Boolean = false
+
     def typeName: String = "offset-time"
 
     def choices: Option[String] = None
@@ -293,6 +320,8 @@ object PrimType {
    * Type representing a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
    */
   case object Period extends PrimType[JPeriod] {
+    def isBool: Boolean = false
+
     def typeName: String = "period"
 
     def choices: Option[String] = None
@@ -308,6 +337,8 @@ object PrimType {
    * Type representing a year in the ISO-8601 format, such as 2007.
    */
   case object Year extends PrimType[JYear] {
+    def isBool: Boolean = false
+
     def typeName: String = "year"
 
     def choices: Option[String] = None
@@ -322,6 +353,8 @@ object PrimType {
    * Type representing a year-month in the ISO-8601 format, such as 2007-12..
    */
   case object YearMonth extends PrimType[JYearMonth] {
+    def isBool: Boolean = false
+
     def typeName: String = "year-month"
 
     def choices: Option[String] = None
@@ -344,6 +377,8 @@ object PrimType {
    * Type representing a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.
    */
   case object ZonedDateTime extends PrimType[JZonedDateTime] {
+    def isBool: Boolean = false
+
     def typeName: String = "zoned-date-time"
 
     def choices: Option[String] = None
@@ -359,6 +394,8 @@ object PrimType {
    * Type representing a time-zone ID, such as Europe/Paris.
    */
   case object ZoneId extends PrimType[JZoneId] {
+    def isBool: Boolean = false
+
     def typeName: String = "zone-id"
 
     def choices: Option[String] = None
@@ -373,6 +410,8 @@ object PrimType {
    * Type representing a time-zone offset from Greenwich/UTC, such as +02:00.
    */
   case object ZoneOffset extends PrimType[JZoneOffset] {
+    def isBool: Boolean = false
+
     def typeName: String = "zone-offset"
 
     def choices: Option[String] = None

@@ -227,7 +227,10 @@ object Options {
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Named(fullName, primType.choices.orElse(Some(primType.typeName)))
+      UsageSynopsis.Named(
+        fullName,
+        if (!primType.isBool) primType.choices.orElse(Some(primType.typeName)) else None
+      )
 
     private def supports(s: String, conf: CliConfig): Boolean =
       if (conf.caseSensitive)
@@ -295,7 +298,7 @@ object Options {
     override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
       OrElse(left.modifySingle(f), right.modifySingle(f))
 
-    def synopsis: UsageSynopsis = left.synopsis + right.synopsis
+    def synopsis: UsageSynopsis = UsageSynopsis.Alternation(left.synopsis, right.synopsis)
 
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Either[A, B])] =
       left

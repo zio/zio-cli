@@ -26,7 +26,7 @@ sealed trait UsageSynopsis { self =>
 
           leftSpan + separator + rightSpan
 
-        case Alternation(left, right) => // TODO do we really need this?
+        case Alternation(left, right) =>
           render(left) + Span.text("|") + render(right)
 
         case Mixed =>

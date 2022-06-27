@@ -70,6 +70,7 @@ object CliApp {
 
           val synopsisHelpDoc = h1("usage") + HelpDoc.p(text("$ ") + getHelpDescription(synopsis.helpDoc))
 
+          // TODO add rendering of built-in options such as help
           printLine((fancyName + header + synopsisHelpDoc + helpDoc + footer).toPlaintext(columnWidth = 120))
 
         case ShowCompletionScript(path, shellType) =>

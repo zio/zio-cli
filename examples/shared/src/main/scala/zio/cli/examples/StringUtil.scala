@@ -12,7 +12,8 @@ object StringUtil extends ZIOAppDefault {
     final case class Join(strings: NonEmptyChunk[String], separator: String)  extends Subcommand
   }
 
-  val firstOption     = Options.boolean("first") ?? "display just the first substring"
+  val firstOption =
+    Options.boolean(name = "first", ifPresent = true, negationName = "no-first") ?? "display just the first substring"
   val separatorOption = Options.text("separator").alias("s").withDefault(",")
   val stringArg       = Args.text("string") ?? "string to split"
 

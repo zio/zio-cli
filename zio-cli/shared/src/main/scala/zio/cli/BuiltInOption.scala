@@ -4,6 +4,7 @@ import java.nio.file.{Path => JPath}
 
 sealed trait BuiltInOption extends Product with Serializable
 object BuiltInOption {
+  // TODO add built-in option to show version
   final case class ShowHelp(synopsis: UsageSynopsis, helpDoc: HelpDoc)                 extends BuiltInOption
   final case class ShowCompletionScript(pathToExecutable: JPath, shellType: ShellType) extends BuiltInOption
   final case class ShowCompletions(index: Int, shellType: ShellType)                   extends BuiltInOption
