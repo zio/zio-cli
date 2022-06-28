@@ -17,7 +17,7 @@ object BuiltInOption {
   )
 
   lazy val builtInOptions = (
-    Options.boolean("help") ++
+    Options.boolean("help").alias("h") ++
       Options.file("shell-completion-script").optional("N/A") ++
       ShellType.option.optional("N/A") ++
       Options.integer("shell-completion-index").map(_.toInt).optional("N/A")

@@ -35,7 +35,7 @@ object StringUtil extends ZIOAppDefault {
     Command("string-util", Options.none, Args.none).subcommands(split, join)
 
   val stringUtilApp = CliApp.make(
-    name = "string-util",
+    name = "String Util",
     version = "0.0.1",
     summary = text("CLI to some string utilities"),
     command = stringUtil

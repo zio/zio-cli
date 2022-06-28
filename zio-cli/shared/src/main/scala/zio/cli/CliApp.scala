@@ -63,8 +63,7 @@ object CliApp {
 
       builtInOption match {
         case ShowHelp(synopsis, helpDoc) =>
-          val fancyName =
-            p(code(figFont.render(command.names.headOption.getOrElse(name))))
+          val fancyName = p(code(figFont.render(name)))
 
           val header = p(text(name) + text(" v") + text(version) + text(" -- ") + summary)
 
