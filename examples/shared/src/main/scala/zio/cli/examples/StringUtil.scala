@@ -13,7 +13,7 @@ object StringUtil extends ZIOAppDefault {
   }
 
   val firstOption =
-    Options.boolean(name = "first", ifPresent = true, negationName = "no-first") ?? "display just the first substring"
+    Options.boolean(name = "first").alias("f") ?? "display just the first substring"
   val separatorOption = Options.text("separator").alias("s").withDefault(",")
   val stringArg       = Args.text("string") ?? "string to split"
 

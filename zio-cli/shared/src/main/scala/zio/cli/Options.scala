@@ -232,46 +232,57 @@ object Options {
         if (!primType.isBool) primType.choices.orElse(Some(primType.typeName)) else None
       )
 
-    private def supports(s: String, conf: CliConfig): Boolean =
-      if (conf.caseSensitive)
-        names.contains(s)
-      else
-        names.exists(_.equalsIgnoreCase(s))
-
     val names: List[String] = fullName :: aliases.map(makeFullName).toList
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       args match {
-        case head :: tail if supports(head, conf) =>
-          primType match {
-            case _: PrimType.Bool =>
-              primType
-                .validate(None, conf)
-                .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), tail -> _)
-            case _ =>
-              primType
-                .validate(tail.headOption, conf)
-                .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), tail.drop(1) -> _)
-          }
-        case head :: _
-            if name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
+        case head :: tail =>
+          val (rest, supported) = processArg(head, tail, conf)
+          if (supported) {
+            primType match {
+              case _: PrimType.Bool =>
+                primType
+                  .validate(None, conf)
+                  .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest -> _)
+              case _ =>
+                primType
+                  .validate(rest.headOption, conf)
+                  .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
+            }
+          } else if (
+            name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
               head,
               fullName,
               conf
-            ) <= conf.autoCorrectLimit =>
-          ZIO.fail(
-            ValidationError(
-              ValidationErrorType.MissingValue,
-              p(error(s"""The flag "$head" is not recognized. Did you mean $fullName?"""))
+            ) <= conf.autoCorrectLimit
+          ) {
+            ZIO.fail(
+              ValidationError(
+                ValidationErrorType.MissingValue,
+                p(error(s"""The flag "$head" is not recognized. Did you mean $fullName?"""))
+              )
             )
-          )
-        case head :: tail =>
-          validate(tail, conf).map { case (args, a) =>
-            (head :: args, a)
+          } else {
+            validate(rest, conf).map { case (args, a) =>
+              (head :: args, a)
+            }
           }
         case Nil =>
           ZIO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find $fullName option."))))
       }
+
+    private def processArg(arg: String, args: List[String], conf: CliConfig): (List[String], Boolean) = {
+      def process(predicate: String => Boolean): (List[String], Boolean) =
+        if (predicate(arg)) (args, true)
+        else if (arg.startsWith("--")) {
+          val splitArg = arg.split("=", -1)
+          if (splitArg.length == 2) (splitArg(1) :: args, predicate(splitArg.head))
+          else (args, false)
+        } else (args, false)
+
+      if (conf.caseSensitive) process(names.contains)
+      else process(s => names.exists(_.equalsIgnoreCase(s)))
+    }
 
     def uid: Option[String] = Some(fullName)
 
