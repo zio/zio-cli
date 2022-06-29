@@ -18,9 +18,9 @@ object BuiltInOption {
 
   lazy val builtInOptions = (
     Options.boolean("help").alias("h") ++
-      Options.file("shell-completion-script").optional("N/A") ++
-      ShellType.option.optional("N/A") ++
-      Options.integer("shell-completion-index").map(_.toInt).optional("N/A")
+      Options.file("shell-completion-script").optional ++
+      ShellType.option.optional ++
+      Options.integer("shell-completion-index").map(_.toInt).optional
   ).as(BuiltIn.apply _)
 
   def builtInOptions(usageSynopsis: => UsageSynopsis, helpDoc: => HelpDoc): Options[Option[BuiltInOption]] =

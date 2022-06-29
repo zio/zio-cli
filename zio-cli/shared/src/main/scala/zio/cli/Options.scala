@@ -17,7 +17,6 @@ import java.time.{
   ZonedDateTime => JZonedDateTime
 }
 import zio.{IO, ZIO, Zippable}
-import zio.cli.HelpDoc.Span
 import zio.cli.HelpDoc.p
 import zio.cli.HelpDoc.Span._
 
@@ -157,7 +156,7 @@ sealed trait Options[+A] { self =>
       scala.util.Try(f(a)).toEither.left.map(e => ValidationError(ValidationErrorType.InvalidValue, p(e.getMessage)))
     )
 
-  final def optional(desc: String): Options[Option[A]] = self.map(Some(_)).withDefault(None, desc)
+  final def optional: Options[Option[A]] = self.map(Some(_)).withDefault(None)
 
   def synopsis: UsageSynopsis
 
@@ -166,10 +165,7 @@ sealed trait Options[+A] { self =>
   def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
 
   def withDefault[A1 >: A](value: A1): Options[A1] =
-    Options.WithDefault(self, value, None)
-
-  def withDefault[A1 >: A](value: A1, valueDescription: String): Options[A1] =
-    Options.WithDefault(self, value, Some(valueDescription))
+    Options.WithDefault(self, value)
 
   private[cli] def modifySingle(f: SingleModifier): Options[A]
 }
@@ -192,8 +188,7 @@ object Options {
     override def uid: Option[String] = None
   }
 
-  final case class WithDefault[A](options: Options[A], default: A, defaultDescription: Option[String])
-      extends Options[A] {
+  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] {
     def synopsis: UsageSynopsis = options.synopsis.optional
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
@@ -204,14 +199,11 @@ object Options {
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =
-      WithDefault(options.modifySingle(f), default, defaultDescription)
+      WithDefault(options.modifySingle(f), default)
 
     override def helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
-        span -> (block + HelpDoc.p(
-          s"This setting is optional. If unspecified, the default value of this option is '$default'. ${defaultDescription
-            .getOrElse("")}"
-        ))
+        span -> (block + HelpDoc.p(s"This setting is optional. Default: '$default'."))
       }
 
     override def uid: Option[String] = options.uid
@@ -228,11 +220,11 @@ object Options {
 
     def synopsis: UsageSynopsis =
       UsageSynopsis.Named(
-        fullName,
+        names,
         if (!primType.isBool) primType.choices.orElse(Some(primType.typeName)) else None
       )
 
-    val names: List[String] = fullName :: aliases.map(makeFullName).toList
+    val names: List[String] = (name :: aliases.toList).map(makeFullName).sortBy(!_._1).map(_._2)
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       args match {
@@ -286,23 +278,12 @@ object Options {
 
     def uid: Option[String] = Some(fullName)
 
-    private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
+    private def makeFullName(s: String): (Boolean, String) = if (s.length == 1) (true, "-" + s) else (false, "--" + s)
 
-    private def fullName: String = makeFullName(name)
+    private def fullName: String = makeFullName(name)._2
 
-    override def helpDoc: HelpDoc = {
-
-      val allNames = Vector("--" + name) ++ aliases.map("--" + _)
-
-      HelpDoc.DescriptionList(
-        List(
-          spans(allNames.map(weak(_)).zipWithIndex.map { case (span, index) =>
-            if (index != allNames.length - 1) span + Span.text(", ") else span
-          }) ->
-            (p(primType.helpDoc) + description)
-        )
-      )
-    }
+    override def helpDoc: HelpDoc =
+      HelpDoc.DescriptionList(List(synopsis.helpDoc.getSpan -> (p(primType.helpDoc) + description)))
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] {
@@ -462,10 +443,10 @@ object Options {
 
     negationNames match {
       case Nil =>
-        option.withDefault(!ifPresent, (!ifPresent).toString)
+        option.withDefault(!ifPresent)
       case head :: tail =>
         val negationOption = Single(head, tail.toVector, PrimType.Bool(Some(!ifPresent)))
-        (option | negationOption).withDefault(!ifPresent, (!ifPresent).toString)
+        (option | negationOption).withDefault(!ifPresent)
     }
   }
 

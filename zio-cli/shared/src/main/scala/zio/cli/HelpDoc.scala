@@ -24,6 +24,13 @@ sealed trait HelpDoc { self =>
 
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
 
+  def getSpan: Span =
+    self match {
+      case HelpDoc.Header(value, _) => value
+      case HelpDoc.Paragraph(value) => value
+      case _                        => HelpDoc.Span.empty
+    }
+
   def isEmpty: Boolean =
     self match {
       case HelpDoc.Empty                 => true

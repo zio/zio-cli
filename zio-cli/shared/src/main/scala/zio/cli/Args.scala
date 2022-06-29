@@ -17,7 +17,7 @@ import java.time.{
   ZonedDateTime => JZonedDateTime
 }
 import zio.{IO, UIO, ZIO, Zippable}
-import zio.cli.HelpDoc.Span
+import zio.cli.HelpDoc.{Span, p}
 
 /**
  * A `Args` represents arguments that can be passed to a command-line application.
@@ -27,7 +27,7 @@ sealed trait Args[+A] { self =>
   final def ++[B](that: Args[B])(implicit zippable: Zippable[A, B]): Args[zippable.Out] =
     Args.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
 
-  final def ?[A1 >: A]: Args[::[A1]] = Args.Variadic(self, Some(1), None).map {
+  final def +[A1 >: A]: Args[::[A1]] = Args.Variadic(self, Some(1), None).map {
     case head :: tail => ::(head, tail)
     case Nil          => throw new IllegalStateException("Args.Variadic is not respecting the minimum.")
   }
@@ -58,7 +58,7 @@ sealed trait Args[+A] { self =>
 
   final def repeat: Args[List[A]] = self.*
 
-  final def repeat1[A1 >: A]: Args[::[A1]] = self.?
+  final def repeat1[A1 >: A]: Args[::[A1]] = self.+
 
   def synopsis: UsageSynopsis
 
@@ -75,8 +75,7 @@ object Args {
     def helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          Span.weak(name) ->
-            (description | HelpDoc.p(primType.helpDoc))
+          Span.weak(name) -> (p(primType.helpDoc) + description)
         )
       )
 
@@ -84,7 +83,7 @@ object Args {
 
     def minSize: Int = 1
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Named(name, primType.choices)
+    def synopsis: UsageSynopsis = UsageSynopsis.Named(List(name), primType.choices)
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       (args match {

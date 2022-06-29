@@ -14,7 +14,7 @@ object OptionsSpec extends ZIOSpecDefault {
   val f: Options[String]              = Options.text("firstname").alias("f")
   val l: Options[String]              = Options.text("lastname")
   val a: Options[BigInt]              = Options.integer("age")
-  val aOpt: Options[Option[BigInt]]   = Options.integer("age").optional("N/A")
+  val aOpt: Options[Option[BigInt]]   = Options.integer("age").optional
   val b: Options[Boolean]             = Options.boolean("verbose", true)
   val m: Options[Map[String, String]] = Options.keyValueMap(name = "defs").alias("d")
 
@@ -101,7 +101,7 @@ object OptionsSpec extends ZIOSpecDefault {
       )
     },
     test("validate invalid option using withDefault") {
-      val o = Options.integer("integer").withDefault(BigInt(0), "0 as default")
+      val o = Options.integer("integer").withDefault(BigInt(0))
       val r = o.validate(List("--integer", "abc"), CliConfig.default)
       assertZIO(r.either)(isLeft)
     },
@@ -302,7 +302,7 @@ object OptionsSpec extends ZIOSpecDefault {
         assertZIO(r.either)(isLeft)
       },
       test("validate invalid option in OrElse option when using withDefault") {
-        val o = (Options.integer("min") | Options.integer("max")).withDefault(BigInt(0), "0 as default")
+        val o = (Options.integer("min") | Options.integer("max")).withDefault(BigInt(0))
         val r = o.validate(List("--min", "abc"), CliConfig.default)
         assertZIO(r.either)(isLeft)
       }

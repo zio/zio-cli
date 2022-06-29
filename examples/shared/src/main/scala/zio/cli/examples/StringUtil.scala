@@ -13,9 +13,9 @@ object StringUtil extends ZIOAppDefault {
   }
 
   val firstOption =
-    Options.boolean(name = "first").alias("f") ?? "display just the first substring"
-  val separatorOption = Options.text("separator").alias("s").withDefault(",")
-  val stringArg       = Args.text("string") ?? "string to split"
+    Options.boolean(name = "first").alias("f") ?? "Display just the first substring."
+  val separatorOption = Options.text("separator").alias("s").withDefault(",") ?? "Separator regex."
+  val stringArg       = Args.text("string") ?? "String to split."
 
   val split =
     Command("split", firstOption ++ separatorOption, stringArg)
@@ -25,7 +25,7 @@ object StringUtil extends ZIOAppDefault {
       }
 
   val join =
-    Command("join", separatorOption, Args.text("string").? ?? "one or more strings")
+    Command("join", separatorOption, Args.text("string").+ ?? "Strings to join.")
       .withHelp(p("Join the command-arguments into a single string"))
       .map { case (separator, strings) =>
         Subcommand.Join(NonEmptyChunk.fromCons(strings), separator)
@@ -38,6 +38,7 @@ object StringUtil extends ZIOAppDefault {
     name = "String Util",
     version = "0.0.1",
     summary = text("CLI to some string utilities"),
+    footer = HelpDoc.p("©Copyright 2022"),
     command = stringUtil
   ) {
     case Subcommand.Split(string, first, separator) =>

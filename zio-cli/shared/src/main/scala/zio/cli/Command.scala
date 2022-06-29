@@ -156,7 +156,7 @@ object Command {
     }
 
     def synopsis: UsageSynopsis =
-      UsageSynopsis.Named(self.name, None) + self.options.synopsis + self.args.synopsis
+      UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] { self =>
@@ -189,32 +189,38 @@ object Command {
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
     def helpDoc = {
-      def getHelpDescription(helpDoc: HelpDoc): HelpDoc.Span =
-        helpDoc match {
-          case HelpDoc.Header(value, _) => value
-          case HelpDoc.Paragraph(value) => value
-          case _                        => HelpDoc.Span.space
-        }
-
-      def subcommandsDesc[C](command: Command[C]): HelpDoc =
+      def getMaxSynopsisLength[C](command: Command[C]): Int =
         command match {
           case OrElse(left, right) =>
-            HelpDoc.enumeration(subcommandsDesc(left), subcommandsDesc(right))
-          case Single(name, desc, _, _) =>
+            Math.max(left.synopsis.helpDoc.getSpan.size, right.synopsis.helpDoc.getSpan.size)
+          case Single(_, _, _, _) =>
+            command.synopsis.helpDoc.getSpan.size
+          case Map(cmd, _) =>
+            getMaxSynopsisLength(cmd)
+          case _ =>
+            0
+        }
+
+      def subcommandsDesc[C](command: Command[C], maxSynopsisLength: Int): HelpDoc =
+        command match {
+          case OrElse(left, right) =>
+            HelpDoc.enumeration(subcommandsDesc(left, maxSynopsisLength), subcommandsDesc(right, maxSynopsisLength))
+          case Single(_, desc, _, _) =>
+            val synopsisSpan = command.synopsis.helpDoc.getSpan
             HelpDoc.p {
               HelpDoc.Span.spans(
-                getHelpDescription(command.synopsis.helpDoc),
-                HelpDoc.Span.text("\t"), // TODO correctly calculate the number of tabs
-                getHelpDescription(desc)
+                synopsisSpan,
+                HelpDoc.Span.text(" " * (maxSynopsisLength - synopsisSpan.size + 2)),
+                desc.getSpan
               )
             }
           case Map(cmd, _) =>
-            subcommandsDesc(cmd)
+            subcommandsDesc(cmd, maxSynopsisLength)
           case _ =>
             HelpDoc.empty
         }
 
-      self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child)
+      self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child, getMaxSynopsisLength(self.child))
     }
 
     def names: Set[String] = self.parent.names
@@ -231,7 +237,7 @@ object Command {
               val parentName = self.names.headOption.getOrElse("")
               CommandDirective.builtIn {
                 BuiltInOption.ShowHelp(
-                  UsageSynopsis.Named(parentName, None) + synopsis,
+                  UsageSynopsis.Named(List(parentName), None) + synopsis,
                   helpDoc
                 )
               }

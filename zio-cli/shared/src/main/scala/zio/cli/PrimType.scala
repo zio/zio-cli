@@ -138,7 +138,7 @@ object PrimType {
     def validate(value: Option[String], conf: CliConfig): IO[String, String] =
       attempt(value, v => v, typeName)
 
-    def helpDoc: HelpDoc.Span = text("A user defined piece of text.")
+    def helpDoc: HelpDoc.Span = text("A user-defined piece of text.")
   }
 
   /**
