@@ -13,13 +13,12 @@ package zio.cli
  */
 sealed trait HelpDoc { self =>
   import HelpDoc._
-  import scala.Console
 
   def +(that: HelpDoc): HelpDoc =
     (self, that) match {
-      case (self, that) if self.isEmpty   => that
-      case (self, that) if (that.isEmpty) => self
-      case _                              => HelpDoc.Sequence(self, that)
+      case (self, that) if self.isEmpty => that
+      case (self, that) if that.isEmpty => self
+      case _                            => HelpDoc.Sequence(self, that)
     }
 
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
@@ -338,10 +337,10 @@ object HelpDoc {
   final case class Header(value: Span, level: Int)                     extends HelpDoc
   final case class Paragraph(value: Span)                              extends HelpDoc
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
-  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc {
+  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc { self =>
     def flatten: Enumeration =
       Enumeration(
-        elements.flatMap {
+        self.elements.flatMap {
           case Enumeration(elements) => elements
           case other                 => List(other)
         }
@@ -431,16 +430,16 @@ object HelpDoc {
   }
 }
 
-private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) {
-  private var marginStack: List[Int] = List(startOffset)
+private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) { self =>
+  private var marginStack: List[Int] = List(self.startOffset)
 
   def append(s: String): DocWriter = {
-    if (s.isEmpty) this
+    if (s.isEmpty) self
     else
       DocWriter.splitNewlines(s) match {
         case None =>
-          if (currentColumn + s.length > columnWidth) {
-            val remainder = columnWidth - currentColumn
+          if (self.currentColumn + s.length > self.columnWidth) {
+            val remainder = self.columnWidth - self.currentColumn
 
             val lastSpace = {
               val lastSpace = s.take(remainder + 1).lastIndexOf(' ')
@@ -455,35 +454,35 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             append("\n")
             append(after)
           } else {
-            val padding = currentMargin - currentColumn
+            val padding = self.currentMargin - self.currentColumn
             if (padding > 0) {
-              stringBuilder.append(DocWriter.margin(padding))
-              currentColumn += padding
+              self.stringBuilder.append(DocWriter.margin(padding))
+              self.currentColumn += padding
             }
-            stringBuilder.append(s)
-            currentColumn += s.length
+            self.stringBuilder.append(s)
+            self.currentColumn += s.length
           }
         case Some(pieces) =>
           pieces.zipWithIndex.foreach { case (piece, _) =>
             append(piece)
 
-            stringBuilder.append("\n")
-            currentColumn = 0
+            self.stringBuilder.append("\n")
+            self.currentColumn = 0
           }
       }
 
     this
   }
 
-  def currentMargin: Int = marginStack.sum
+  def currentMargin: Int = self.marginStack.sum
 
-  var currentColumn: Int = startOffset
+  var currentColumn: Int = self.startOffset
 
-  def indent(adjust: Int): Unit = marginStack = adjust :: marginStack
+  def indent(adjust: Int): Unit = self.marginStack = adjust :: self.marginStack
 
   override def toString(): String = stringBuilder.toString()
 
-  def unindent(): Unit = marginStack = marginStack.drop(1)
+  def unindent(): Unit = self.marginStack = self.marginStack.drop(1)
 }
 private[cli] object DocWriter {
   private def margin(n: Int): String = if (n <= 0) "" else List.fill(n)(" ").mkString

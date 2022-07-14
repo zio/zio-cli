@@ -1,5 +1,8 @@
 package zio.cli
 
+import zio._
+import zio.cli.HelpDoc.{Span, p}
+
 import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
@@ -16,8 +19,6 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import zio.{IO, UIO, ZIO, Zippable}
-import zio.cli.HelpDoc.{Span, p}
 
 /**
  * A `Args` represents arguments that can be passed to a command-line application.
@@ -70,85 +71,85 @@ object Args {
   final case class Single[+A](pseudoName: Option[String], primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
       extends Args[A] {
     self =>
-    def ??(that: String): Args[A] = copy(description = description + HelpDoc.p(that))
+    def ??(that: String): Args[A] = copy(description = self.description + HelpDoc.p(that))
 
-    def helpDoc: HelpDoc =
+    lazy val helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          Span.weak(name) -> (p(primType.helpDoc) + description)
+          Span.weak(name) -> (p(self.primType.helpDoc) + self.description)
         )
       )
 
-    def maxSize: Int = 1
+    lazy val maxSize: Int = 1
 
-    def minSize: Int = 1
+    lazy val minSize: Int = 1
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Named(List(name), primType.choices)
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Named(List(name), self.primType.choices)
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       (args match {
-        case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
+        case head :: tail => self.primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
         case Nil =>
-          val msg = (pseudoName, primType.choices) match {
+          val msg = (self.pseudoName, self.primType.choices) match {
             case (Some(pseudoName), Some(choices)) => s"Missing argument <$pseudoName> with values $choices."
             case (Some(pseudoName), _)             => s"Missing argument <$pseudoName>."
-            case (None, Some(choices))             => s"Missing argument ${primType.typeName} with values $choices."
-            case (None, None)                      => s"Missing argument ${primType.typeName}."
+            case (None, Some(choices))             => s"Missing argument ${self.primType.typeName} with values $choices."
+            case (None, None)                      => s"Missing argument ${self.primType.typeName}."
           }
           ZIO.fail(HelpDoc.p(msg))
       }).mapError(ValidationError(ValidationErrorType.InvalidArgument, _))
 
-    private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
+    private def name: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
   }
 
   case object Empty extends Args[Unit] {
     def ??(that: String): Args[Unit] = Empty
 
-    def helpDoc: HelpDoc = HelpDoc.Empty
+    lazy val helpDoc: HelpDoc = HelpDoc.Empty
 
-    def maxSize: Int = 0
+    lazy val maxSize: Int = 0
 
-    def minSize: Int = 0
+    lazy val minSize: Int = 0
 
-    def synopsis: UsageSynopsis = UsageSynopsis.None
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], conf: CliConfig): UIO[(List[String], Unit)] =
       ZIO.succeed((args, ()))
   }
 
-  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] {
-    def ??(that: String): Args[(A, B)] = Both(head ?? that, tail ?? that)
+  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] { self =>
+    def ??(that: String): Args[(A, B)] = Both(self.head ?? that, self.tail ?? that)
 
-    def helpDoc: HelpDoc = head.helpDoc + tail.helpDoc
+    lazy val helpDoc: HelpDoc = self.head.helpDoc + self.tail.helpDoc
 
-    def maxSize: Int = head.maxSize + tail.maxSize
+    lazy val maxSize: Int = self.head.maxSize + self.tail.maxSize
 
-    def minSize: Int = head.minSize + tail.minSize
+    lazy val minSize: Int = self.head.minSize + self.tail.minSize
 
-    def synopsis: UsageSynopsis = head.synopsis + tail.synopsis
+    lazy val synopsis: UsageSynopsis = self.head.synopsis + self.tail.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
-        tuple    <- head.validate(args, conf)
+        tuple    <- self.head.validate(args, conf)
         (args, a) = tuple
-        tuple    <- tail.validate(args, conf)
+        tuple    <- self.tail.validate(args, conf)
         (args, b) = tuple
       } yield (args, (a, b))
   }
 
-  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] {
-    def ??(that: String): Args[List[A]] = Variadic(value ?? that, min, max)
+  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] { self =>
+    def ??(that: String): Args[List[A]] = Variadic(self.value ?? that, self.min, self.max)
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Repeated(value.synopsis)
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Repeated(self.value.synopsis)
 
-    def helpDoc: HelpDoc = value.helpDoc.mapDescriptionList { case (span, block) =>
+    lazy val helpDoc: HelpDoc = self.value.helpDoc.mapDescriptionList { case (span, block) =>
       val newSpan = span + Span.text(
-        if (max.isDefined) s" $minSize - $maxSize" else if (minSize == 0) "..." else s" $minSize+"
+        if (self.max.isDefined) s" $minSize - $maxSize" else if (minSize == 0) "..." else s" $minSize+"
       )
       val newBlock =
         block +
           HelpDoc.p(
-            if (max.isDefined)
+            if (self.max.isDefined)
               s"This argument must be repeated at least $minSize times and may be repeated up to $maxSize times."
             else if (minSize == 0) "This argument may be repeated zero or more times."
             else s"This argument must be repeated at least $minSize times."
@@ -157,18 +158,18 @@ object Args {
       (newSpan, newBlock)
     }
 
-    def maxSize: Int = max.getOrElse(Int.MaxValue / 2) * value.maxSize
+    lazy val maxSize: Int = self.max.getOrElse(Int.MaxValue / 2) * self.value.maxSize
 
-    def minSize: Int = min.getOrElse(0) * value.minSize
+    lazy val minSize: Int = self.min.getOrElse(0) * value.minSize
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
-      val max1 = max.getOrElse(Int.MaxValue)
+      val max1 = self.max.getOrElse(Int.MaxValue)
 
       def loop(args: List[String], acc: List[A]): IO[ValidationError, (List[String], List[A])] =
         if (acc.length >= max1) ZIO.succeed(args -> acc)
         else
-          value
+          self.value
             .validate(args, conf)
             .foldZIO(
               failure => if (acc.length >= min1 && args.isEmpty) ZIO.succeed(args -> acc) else ZIO.fail(failure),
@@ -179,20 +180,20 @@ object Args {
     }
   }
 
-  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] {
-    def ??(that: String): Args[B] = Map(value ?? that, f)
+  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] { self =>
+    def ??(that: String): Args[B] = Map(self.value ?? that, self.f)
 
-    def helpDoc: HelpDoc = value.helpDoc
+    lazy val helpDoc: HelpDoc = self.value.helpDoc
 
-    def maxSize: Int = value.maxSize
+    lazy val maxSize: Int = self.value.maxSize
 
-    def minSize: Int = value.minSize
+    lazy val minSize: Int = self.value.minSize
 
-    def synopsis: UsageSynopsis = value.synopsis
+    lazy val synopsis: UsageSynopsis = self.value.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
-      value.validate(args, conf).flatMap { case (r, a) =>
-        f(a) match {
+      self.value.validate(args, conf).flatMap { case (r, a) =>
+        self.f(a) match {
           case Left(value)  => ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, value))
           case Right(value) => ZIO.succeed((r, value))
         }

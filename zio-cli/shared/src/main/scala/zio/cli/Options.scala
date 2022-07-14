@@ -1,5 +1,9 @@
 package zio.cli
 
+import zio.cli.HelpDoc.Span._
+import zio.cli.HelpDoc.p
+import zio.{IO, ZIO, Zippable}
+
 import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
@@ -16,10 +20,6 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import zio.{IO, ZIO, Zippable}
-import zio.cli.HelpDoc.p
-import zio.cli.HelpDoc.Span._
-
 import scala.collection.immutable.Nil
 
 /**
@@ -175,38 +175,38 @@ trait SingleModifier {
 }
 
 object Options {
-  case object Empty extends Options[Unit] {
-    def synopsis: UsageSynopsis = UsageSynopsis.None
+  case object Empty extends Options[Unit] { self =>
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Unit)] =
       ZIO.succeed((args, ()))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
 
-    override def helpDoc: HelpDoc = HelpDoc.Empty
+    override lazy val helpDoc: HelpDoc = HelpDoc.Empty
 
-    override def uid: Option[String] = None
+    override lazy val uid: Option[String] = None
   }
 
-  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] {
-    def synopsis: UsageSynopsis = options.synopsis.optional
+  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] { self =>
+    lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
-      options
+      self.options
         .validate(args, conf)
         .catchSome {
-          case error if error.isOptionMissing => ZIO.succeed(args -> default)
+          case error if error.isOptionMissing => ZIO.succeed(args -> self.default)
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =
-      WithDefault(options.modifySingle(f), default)
+      WithDefault(self.options.modifySingle(f), self.default)
 
-    override def helpDoc: HelpDoc =
+    override lazy val helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
-        span -> (block + HelpDoc.p(s"This setting is optional. Default: '$default'."))
+        span -> (block + HelpDoc.p(s"This setting is optional. Default: '${self.default}'."))
       }
 
-    override def uid: Option[String] = options.uid
+    override lazy val uid: Option[String] = self.options.uid
   }
 
   final case class Single[+A](
@@ -218,49 +218,49 @@ object Options {
 
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
-    def synopsis: UsageSynopsis =
+    lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(
-        names,
-        if (!primType.isBool) primType.choices.orElse(Some(primType.typeName)) else None
+        self.names,
+        if (!self.primType.isBool) self.primType.choices.orElse(Some(self.primType.typeName)) else None
       )
-
-    val names: List[String] = (name :: aliases.toList).map(makeFullName).sortBy(!_._1).map(_._2)
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       args match {
         case head :: tail =>
           val (rest, supported) = processArg(head, tail, conf)
           if (supported) {
-            primType match {
+            self.primType match {
               case _: PrimType.Bool =>
-                primType
+                self.primType
                   .validate(None, conf)
                   .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest -> _)
               case _ =>
-                primType
+                self.primType
                   .validate(rest.headOption, conf)
                   .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
             }
           } else if (
-            name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
+            self.name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
               head,
-              fullName,
+              self.fullName,
               conf
             ) <= conf.autoCorrectLimit
           ) {
             ZIO.fail(
               ValidationError(
                 ValidationErrorType.MissingValue,
-                p(error(s"""The flag "$head" is not recognized. Did you mean $fullName?"""))
+                p(error(s"""The flag "$head" is not recognized. Did you mean ${self.fullName}?"""))
               )
             )
           } else {
-            validate(rest, conf).map { case (args, a) =>
+            self.validate(rest, conf).map { case (args, a) =>
               (head :: args, a)
             }
           }
         case Nil =>
-          ZIO.fail(ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find $fullName option."))))
+          ZIO.fail(
+            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${self.fullName} option.")))
+          )
       }
 
     private def processArg(arg: String, args: List[String], conf: CliConfig): (List[String], Boolean) = {
@@ -272,32 +272,34 @@ object Options {
           else (args, false)
         } else (args, false)
 
-      if (conf.caseSensitive) process(names.contains)
-      else process(s => names.exists(_.equalsIgnoreCase(s)))
+      if (conf.caseSensitive) process(self.names.contains)
+      else process(s => self.names.exists(_.equalsIgnoreCase(s)))
     }
 
-    def uid: Option[String] = Some(fullName)
+    lazy val uid: Option[String] = Some(self.fullName)
 
     private def makeFullName(s: String): (Boolean, String) = if (s.length == 1) (true, "-" + s) else (false, "--" + s)
 
-    private def fullName: String = makeFullName(name)._2
+    lazy val names: List[String] = (self.name :: self.aliases.toList).map(self.makeFullName).sortBy(!_._1).map(_._2)
 
-    override def helpDoc: HelpDoc =
-      HelpDoc.DescriptionList(List(synopsis.helpDoc.getSpan -> (p(primType.helpDoc) + description)))
+    private lazy val fullName: String = self.makeFullName(self.name)._2
+
+    override lazy val helpDoc: HelpDoc =
+      HelpDoc.DescriptionList(List(self.synopsis.helpDoc.getSpan -> (p(self.primType.helpDoc) + self.description)))
   }
 
-  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] {
+  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] { self =>
     override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
-      OrElse(left.modifySingle(f), right.modifySingle(f))
+      OrElse(left.modifySingle(f), self.right.modifySingle(f))
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Alternation(left.synopsis, right.synopsis)
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Alternation(self.left.synopsis, self.right.synopsis)
 
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Either[A, B])] =
-      left
+      self.left
         .validate(args, conf)
         .foldZIO(
           err1 =>
-            right
+            self.right
               .validate(args, conf)
               .foldZIO[Any, ValidationError, (List[String], Either[A, B])](
                 err2 =>
@@ -313,7 +315,7 @@ object Options {
                 success => ZIO.succeed((success._1, Right(success._2)))
               ),
           r =>
-            right
+            self.right
               .validate(r._1, conf)
               .foldZIO(
                 _ => ZIO.succeed((r._1, Left(r._2))),
@@ -321,31 +323,34 @@ object Options {
                   ZIO.fail(
                     ValidationError(
                       ValidationErrorType.InvalidValue,
-                      p(error(s"Options collision detected. You can only specify either $left or $right."))
+                      p(
+                        error(s"Options collision detected. You can only specify either ${self.left} or ${self.right}.")
+                      )
                     )
                   )
               )
         )
 
-    override def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
+    override lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
-    override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
+    override lazy val uid: Option[String] = self.left.uid.toList ++ self.right.uid.toList match {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
   }
 
-  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] {
-    override def modifySingle(f: SingleModifier): Options[(A, B)] = Both(left.modifySingle(f), right.modifySingle(f))
+  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] { self =>
+    override def modifySingle(f: SingleModifier): Options[(A, B)] =
+      Both(self.left.modifySingle(f), self.right.modifySingle(f))
 
-    def synopsis: UsageSynopsis = left.synopsis + right.synopsis
+    lazy val synopsis: UsageSynopsis = self.left.synopsis + self.right.synopsis
 
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
-        tuple <- left
+        tuple <- self.left
                    .validate(args, conf)
                    .catchAll(err1 =>
-                     right
+                     self.right
                        .validate(args, conf)
                        .foldZIO(
                          err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
@@ -353,74 +358,74 @@ object Options {
                        )
                    )
         (args, a) = tuple
-        tuple    <- right.validate(args, conf)
+        tuple    <- self.right.validate(args, conf)
         (args, b) = tuple
       } yield args -> (a -> b)
 
-    override def helpDoc: HelpDoc = left.helpDoc + right.helpDoc
+    override lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
-    override def uid: Option[String] = (left.uid.toList ++ right.uid.toList) match {
+    override lazy val uid: Option[String] = self.left.uid.toList ++ self.right.uid.toList match {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
   }
 
-  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] {
-    override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
+  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] { self =>
+    override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
 
-    def synopsis: UsageSynopsis = value.synopsis
+    lazy val synopsis: UsageSynopsis = self.value.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
-      value.validate(args, conf).flatMap(r => f(r._2).fold(e => ZIO.fail(e), s => ZIO.succeed(r._1 -> s)))
+      self.value.validate(args, conf).flatMap(r => self.f(r._2).fold(e => ZIO.fail(e), s => ZIO.succeed(r._1 -> s)))
 
-    override def uid: Option[String] = value.uid
+    override lazy val uid: Option[String] = self.value.uid
 
-    override def helpDoc: HelpDoc = value.helpDoc
+    override lazy val helpDoc: HelpDoc = self.value.helpDoc
   }
 
   final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] {
     self =>
-    override def helpDoc: HelpDoc = argumentOption.helpDoc
+    override def helpDoc: HelpDoc = self.argumentOption.helpDoc
 
-    override def synopsis: UsageSynopsis = argumentOption.synopsis
+    override def synopsis: UsageSynopsis = self.argumentOption.synopsis
 
-    override def uid: Option[String] = argumentOption.uid
-
-    private def createMapEntry(input: String): (String, String) = {
-      val arr = input.split("=").take(2)
-      arr.head -> arr(1)
-    }
-
-    private def createMapFromStringList(input: List[String]): Predef.Map[String, String] =
-      input.filterNot(_.startsWith("-")).map(createMapEntry).toMap
-
-    private def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
-
-    private def fullName: String = makeFullName(argumentOption.name)
-
-    private val argumentNames = fullName :: argumentOption.aliases.map(makeFullName).toList
-
-    private def supports(s: String, conf: CliConfig): Boolean =
-      if (conf.caseSensitive)
-        argumentNames.contains(s)
-      else
-        argumentNames.exists(_.equalsIgnoreCase(s))
-
-    private def processArguments(input: List[String], first: String, conf: CliConfig) = {
-      val r = input.span(s => !s.startsWith("-") || supports(s, conf))
-      (r._2, createMapFromStringList(r._1) + createMapEntry(first))
-    }
+    override def uid: Option[String] = self.argumentOption.uid
 
     override def validate(
       args: List[String],
       conf: CliConfig
-    ): IO[ValidationError, (List[String], Predef.Map[String, String])] =
-      for {
-        n <- argumentOption.validate(args, conf)
-      } yield processArguments(n._1, n._2, conf)
+    ): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
+      def processArguments(
+        input: List[String],
+        first: String,
+        conf: CliConfig
+      ): (List[String], Predef.Map[String, String]) = {
+        val r = input.span(s => !s.startsWith("-") || supports(s, conf))
+        (r._2, createMapFromStringList(r._1) + createMapEntry(first))
+      }
+
+      def supports(s: String, conf: CliConfig): Boolean = {
+        val argumentNames =
+          makeFullName(self.argumentOption.name) :: self.argumentOption.aliases.map(makeFullName).toList
+
+        if (conf.caseSensitive) argumentNames.contains(s) else argumentNames.exists(_.equalsIgnoreCase(s))
+      }
+
+      def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
+
+      def createMapFromStringList(input: List[String]): Predef.Map[String, String] =
+        input.filterNot(_.startsWith("-")).map(createMapEntry).toMap
+
+      def createMapEntry(input: String): (String, String) = {
+        val arr = input.split("=").take(2)
+        arr.head -> arr(1)
+      }
+
+      self.argumentOption.validate(args, conf).map(tuple => processArguments(tuple._1, tuple._2, conf))
+    }
 
     override private[cli] def modifySingle(f: SingleModifier) =
-      Options.keyValueMap(f(argumentOption))
+      Options.keyValueMap(f(self.argumentOption))
   }
 
   /**
@@ -531,7 +536,7 @@ object Options {
     Single(name, Vector.empty, PrimType.OffsetTime)
 
   /**
-   * Createsa parameter excepting  a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
+   * Creates a parameter excepting  a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
    */
   def period(name: String): Options[JPeriod] =
     Single(name, Vector.empty, PrimType.Period)

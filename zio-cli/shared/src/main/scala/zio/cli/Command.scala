@@ -1,8 +1,8 @@
 package zio.cli
 
-import zio.{IO, ZIO}
 import zio.cli.HelpDoc.h1
 import zio.cli.ValidationErrorType.CommandMismatch
+import zio.{IO, ZIO}
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application
@@ -77,19 +77,7 @@ object Command {
     args: Args[ArgsType]
   ) extends Command[(OptionsType, ArgsType)] { self =>
 
-    /**
-     * Built-in options supported by the command, such as "--help".
-     */
-    lazy val builtInOptions: Options[Option[BuiltInOption]] =
-      BuiltInOption.builtInOptions(self.synopsis, self.helpDoc)
-
-    def builtIn(
-      args: List[String],
-      conf: CliConfig
-    ): IO[Option[HelpDoc], CommandDirective[(OptionsType, ArgsType)]] =
-      builtInOptions.validate(args, conf).mapBoth(_.error, _._2).some.map(CommandDirective.BuiltIn)
-
-    def helpDoc: HelpDoc = {
+    lazy val helpDoc: HelpDoc = {
       val helpHeader = {
         val desc = self.help
 
@@ -114,14 +102,20 @@ object Command {
       helpHeader + argumentsSection + optionsSection
     }
 
-    def names: Set[String] = Set(self.name)
+    lazy val names: Set[String] = Set(self.name)
 
     def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] = {
       val parseBuiltInArgs =
-        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) self.builtIn(args, conf)
+        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name)))
+          BuiltInOption
+            .builtInOptions(self.synopsis, self.helpDoc)
+            .validate(args, conf)
+            .mapBoth(_.error, _._2)
+            .some
+            .map(CommandDirective.BuiltIn)
         else ZIO.fail(None)
 
       val parseUserDefinedArgs =
@@ -155,14 +149,14 @@ object Command {
       parseBuiltInArgs orElse parseUserDefinedArgs
     }
 
-    def synopsis: UsageSynopsis =
+    lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] { self =>
-    def helpDoc = self.command.helpDoc
+    lazy val helpDoc = self.command.helpDoc
 
-    def names: Set[String] = self.command.names
+    lazy val names: Set[String] = self.command.names
 
     def parse(
       args: List[String],
@@ -170,13 +164,13 @@ object Command {
     ): IO[ValidationError, CommandDirective[B]] =
       self.command.parse(args, conf).map(_.map(f))
 
-    def synopsis: UsageSynopsis = self.command.synopsis
+    lazy val synopsis: UsageSynopsis = self.command.synopsis
   }
 
   final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] { self =>
-    def helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
+    lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
-    def names: Set[String] = self.left.names ++ self.right.names
+    lazy val names: Set[String] = self.left.names ++ self.right.names
 
     def parse(
       args: List[String],
@@ -184,11 +178,11 @@ object Command {
     ): IO[ValidationError, CommandDirective[A]] =
       self.left.parse(args, conf).catchSome { case ValidationError(CommandMismatch, _) => self.right.parse(args, conf) }
 
-    def synopsis: UsageSynopsis = UsageSynopsis.Mixed
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Mixed
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
-    def helpDoc = {
+    lazy val helpDoc = {
       def getMaxSynopsisLength[C](command: Command[C]): Int =
         command match {
           case OrElse(left, right) =>
@@ -223,7 +217,7 @@ object Command {
       self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child, getMaxSynopsisLength(self.child))
     }
 
-    def names: Set[String] = self.parent.names
+    lazy val names: Set[String] = self.parent.names
 
     def parse(
       args: List[String],
@@ -263,7 +257,7 @@ object Command {
         }
     }
 
-    def synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
+    lazy val synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
   }
 
   /**

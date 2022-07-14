@@ -16,18 +16,19 @@ object BuiltInOption {
     shellCompletionIndex: Option[Int]
   )
 
-  lazy val builtInOptions = (
-    Options.boolean("help").alias("h") ++
-      Options.file("shell-completion-script").optional ++
-      ShellType.option.optional ++
-      Options.integer("shell-completion-index").map(_.toInt).optional
-  ).as(BuiltIn.apply _)
+  def builtInOptions(usageSynopsis: => UsageSynopsis, helpDoc: => HelpDoc): Options[Option[BuiltInOption]] = {
+    val options = (
+      Options.boolean("help").alias("h") ++
+        Options.file("shell-completion-script").optional ++
+        ShellType.option.optional ++
+        Options.integer("shell-completion-index").map(_.toInt).optional
+    ).as(BuiltIn.apply _)
 
-  def builtInOptions(usageSynopsis: => UsageSynopsis, helpDoc: => HelpDoc): Options[Option[BuiltInOption]] =
-    builtInOptions.map {
+    options.map {
       case BuiltIn(true, _, _, _)                      => Some(ShowHelp(usageSynopsis, helpDoc))
       case BuiltIn(_, Some(path), Some(shellType), _)  => Some(ShowCompletionScript(path, shellType))
       case BuiltIn(_, _, Some(shellType), Some(index)) => Some(ShowCompletions(index, shellType))
       case _                                           => None
     }
+  }
 }

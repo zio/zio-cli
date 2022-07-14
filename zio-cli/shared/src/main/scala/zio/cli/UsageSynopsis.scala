@@ -3,9 +3,9 @@ package zio.cli
 import zio.cli.HelpDoc._
 
 sealed trait UsageSynopsis { self =>
-  def +(that: UsageSynopsis): UsageSynopsis = UsageSynopsis.Sequence(self, that)
+  final def +(that: UsageSynopsis): UsageSynopsis = UsageSynopsis.Sequence(self, that)
 
-  def helpDoc: HelpDoc = {
+  final def helpDoc: HelpDoc = {
     import UsageSynopsis._
 
     def render(g: UsageSynopsis): Span =
@@ -38,7 +38,7 @@ sealed trait UsageSynopsis { self =>
     p(render(self))
   }
 
-  def optional: UsageSynopsis = UsageSynopsis.Optional(self)
+  final def optional: UsageSynopsis = UsageSynopsis.Optional(self)
 }
 object UsageSynopsis {
   final case class Named(names: List[String], acceptedValues: scala.Option[String]) extends UsageSynopsis
