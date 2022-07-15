@@ -58,8 +58,12 @@ object OptionsSpec extends ZIOSpecDefault {
         assert(v5)(equalTo(Nil -> false))
       }
     },
-    test("validate text option 1") {
+    test("validate text option") {
       val r = f.validate(List("--firstname", "John"), CliConfig.default)
+      assertZIO(r)(equalTo(List() -> "John"))
+    },
+    test("validate text option with alternative format") {
+      val r = f.validate(List("--firstname=John"), CliConfig.default)
       assertZIO(r)(equalTo(List() -> "John"))
     },
     test("validate text option with alias") {

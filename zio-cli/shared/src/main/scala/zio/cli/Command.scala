@@ -59,7 +59,6 @@ sealed trait Command[+A] { self =>
 }
 
 object Command {
-  // TODO this should not be here
   def unCluster(args: List[String]): List[String] = {
     def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}|$)")
 
