@@ -5,7 +5,7 @@ import zio.cli.HelpDoc.Span.text
 import zio.cli.HelpDoc.p
 import zio.cli._
 
-object StringUtil extends ZIOAppDefault {
+object StringUtil extends ZIOCliDefault {
   sealed trait Subcommand
   object Subcommand {
     final case class Split(string: String, first: Boolean, separator: String) extends Subcommand
@@ -34,7 +34,7 @@ object StringUtil extends ZIOAppDefault {
   val stringUtil: Command[Subcommand] =
     Command("string-util", Options.none, Args.none).subcommands(split, join)
 
-  val stringUtilApp = CliApp.make(
+  val cliApp = CliApp.make(
     name = "String Util",
     version = "0.0.1",
     summary = text("CLI to some string utilities"),
@@ -47,10 +47,4 @@ object StringUtil extends ZIOAppDefault {
     case Subcommand.Join(strings, separator) =>
       Console.printLine(strings.mkString(separator))
   }
-
-  override def run =
-    for {
-      args <- ZIOAppArgs.getArgs
-      _    <- stringUtilApp.run(args.toList)
-    } yield ()
 }

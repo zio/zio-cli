@@ -1,15 +1,12 @@
 package zio.cli.examples
 
-import zio.ZIOAppArgs
+import zio.Console.printLine
+import zio.cli.HelpDoc.Span.text
+import zio.cli._
 
 import java.nio.file.{Path => JPath}
-import zio.cli.{Args, CliApp, Command, Exists, HelpDoc, Options}
-import zio.cli.HelpDoc.Span.text
 
-import zio.ZIOAppDefault
-import zio.Console.printLine
-
-object GitExample extends ZIOAppDefault {
+object GitExample extends ZIOCliDefault {
   import java.nio.file.Path
 
   sealed trait Subcommand extends Product with Serializable
@@ -37,7 +34,7 @@ object GitExample extends ZIOAppDefault {
   val git: Command[Subcommand] =
     Command("git", Options.none, Args.none).subcommands(add, remote)
 
-  val gitApp = CliApp.make(
+  val cliApp = CliApp.make(
     name = "Git Version Control",
     version = "0.9.2",
     summary = text("a client for the git dvcs protocol"),
@@ -49,10 +46,4 @@ object GitExample extends ZIOAppDefault {
     case Subcommand.Remote(verbose) =>
       printLine(s"Executing `git remote` with verbose flag set to $verbose")
   }
-
-  override def run =
-    for {
-      args <- ZIOAppArgs.getArgs
-      _    <- gitApp.run(args.toList)
-    } yield ()
 }

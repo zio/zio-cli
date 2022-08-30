@@ -15,7 +15,7 @@ import scala.annotation.tailrec
  * A `CliApp[R, E]` is a complete description of a command-line application, which
  * requires environment `R`, and may fail with a value of type `E`.
  */
-sealed trait CliApp[-R, +E, Model] {
+sealed trait CliApp[-R, +E, +Model] {
   def run(args: List[String]): ZIO[R, Nothing, ExitCode]
 
   def config(newConfig: CliConfig): CliApp[R, E, Model]
