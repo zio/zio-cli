@@ -185,7 +185,7 @@ object Command {
       def getMaxSynopsisLength[C](command: Command[C]): Int =
         command match {
           case OrElse(left, right) =>
-            Math.max(left.synopsis.helpDoc.getSpan.size, right.synopsis.helpDoc.getSpan.size)
+            Math.max(getMaxSynopsisLength(left), getMaxSynopsisLength(right))
           case Single(_, _, _, _) =>
             command.synopsis.helpDoc.getSpan.size
           case Map(cmd, _) =>
