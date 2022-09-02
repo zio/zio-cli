@@ -20,9 +20,15 @@ object FileArgsSpec extends ZIOSpecDefault {
     },
     test("Not Found file") {
       val arg = Args.file("files", Exists.Yes).repeat
-      assertZIO(
+      assertZIO {
         arg.validate("notFound.file" :: Nil, CliConfig.default).either
-      )(isLeft(equalTo(Paragraph(Text("Path 'notFound.file' must exist.")))))
+      } {
+        isLeft {
+          equalTo {
+            ValidationError(ValidationErrorType.InvalidArgument, Paragraph(Text("Path 'notFound.file' must exist.")))
+          }
+        }
+      }
     },
     test("Non Existing file") {
       val arg = Args.file(Exists.No).repeat

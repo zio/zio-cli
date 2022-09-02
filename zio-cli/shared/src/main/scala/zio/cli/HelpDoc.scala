@@ -13,16 +13,22 @@ package zio.cli
  */
 sealed trait HelpDoc { self =>
   import HelpDoc._
-  import scala.Console
 
   def +(that: HelpDoc): HelpDoc =
     (self, that) match {
-      case (self, that) if self.isEmpty   => that
-      case (self, that) if (that.isEmpty) => self
-      case _                              => HelpDoc.Sequence(self, that)
+      case (self, that) if self.isEmpty => that
+      case (self, that) if that.isEmpty => self
+      case _                            => HelpDoc.Sequence(self, that)
     }
 
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
+
+  def getSpan: Span =
+    self match {
+      case HelpDoc.Header(value, _) => value
+      case HelpDoc.Paragraph(value) => value
+      case _                        => HelpDoc.Span.empty
+    }
 
   def isEmpty: Boolean =
     self match {
@@ -248,7 +254,7 @@ sealed trait HelpDoc { self =>
           resetStyle()
           uppercase = false
           renderNewline()
-          writer.indent(4)
+          writer.indent(2)
 
         case HelpDoc.Paragraph(value) =>
           renderSpan(value)
@@ -260,7 +266,7 @@ sealed trait HelpDoc { self =>
             renderSpan(span)
             resetStyle()
             renderNewline()
-            writer.indent(4)
+            writer.indent(2)
             renderHelpDoc(helpDoc)
             writer.unindent()
             renderNewline()
@@ -268,12 +274,10 @@ sealed trait HelpDoc { self =>
 
         case HelpDoc.Enumeration(elements) =>
           elements.zipWithIndex.foreach { case (helpDoc, _) =>
-            writer.indent(2)
             renderText("- ")
             renderHelpDoc(helpDoc)
-            writer.unindent()
-            renderNewline()
           }
+          writer.unindent()
 
         case HelpDoc.Sequence(left, right) =>
           renderHelpDoc(left)
@@ -333,10 +337,10 @@ object HelpDoc {
   final case class Header(value: Span, level: Int)                     extends HelpDoc
   final case class Paragraph(value: Span)                              extends HelpDoc
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
-  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc {
+  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc { self =>
     def flatten: Enumeration =
       Enumeration(
-        elements.flatMap {
+        self.elements.flatMap {
           case Enumeration(elements) => elements
           case other                 => List(other)
         }
@@ -370,67 +374,72 @@ object HelpDoc {
   def p(t: String): HelpDoc  = HelpDoc.Paragraph(Span.text(t))
   def p(span: Span): HelpDoc = HelpDoc.Paragraph(span)
 
-  sealed trait Span {
-    def +(that: Span): Span = Span.Sequence(this, that)
+  sealed trait Span { self =>
+    final def +(that: Span): Span = Span.Sequence(self, that)
 
-    def size: Int
+    final def isEmpty: Boolean = self.size == 0
+
+    final def size: Int =
+      self match {
+        case Span.Text(value)           => value.length
+        case Span.Code(value)           => value.length
+        case Span.Error(value)          => value.size
+        case Span.Weak(value)           => value.size
+        case Span.Strong(value)         => value.size
+        case Span.URI(value)            => value.toString.length
+        case Span.Sequence(left, right) => left.size + right.size
+      }
   }
   object Span {
-    final case class Text(value: String) extends Span {
-      def size = value.length
-    }
-    final case class Code(value: String) extends Span {
-      def size = value.length
-    }
-    final case class Error(value: Span) extends Span {
-      def size = value.size
-    }
-    final case class Weak(value: Span) extends Span {
-      def size = value.size
-    }
-    final case class Strong(value: Span) extends Span {
-      def size = value.size
-    }
-    final case class URI(value: java.net.URI) extends Span {
-      def size = value.toString().length
-    }
-    final case class Sequence(left: Span, right: Span) extends Span {
-      def size = left.size + right.size
-    }
-
-    def text(t: String): Span                  = Span.Text(t)
-    def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
-
-    def spans(spans: Iterable[Span]): Span = spans.toList.foldLeft(text("")) { case (span, s) =>
-      Span.Sequence(span, s)
-    }
-    def error(span: Span): Span = Span.Error(span)
-    def error(t: String): Span  = Span.Error(text(t))
+    final case class Text(value: String)               extends Span
+    final case class Code(value: String)               extends Span
+    final case class Error(value: Span)                extends Span
+    final case class Weak(value: Span)                 extends Span
+    final case class Strong(value: Span)               extends Span
+    final case class URI(value: java.net.URI)          extends Span
+    final case class Sequence(left: Span, right: Span) extends Span
 
     def code(t: String): Span = Span.Code(t)
 
-    def weak(span: Span): Span = Span.Weak(span)
-    def weak(t: String): Span  = Span.Weak(text(t))
+    def empty: Span = Span.text("")
+
+    def error(span: Span): Span = Span.Error(span)
+
+    def error(t: String): Span = Span.Error(text(t))
+
+    def space: Span = text(" ")
+
+    def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
+
+    def spans(spans: Iterable[Span]): Span =
+      spans.toList.foldLeft(text("")) { case (span, s) =>
+        Span.Sequence(span, s)
+      }
 
     def strong(span: Span): Span = Span.Strong(span)
-    def strong(t: String): Span  = Span.Strong(text(t))
+
+    def strong(t: String): Span = Span.Strong(text(t))
+
+    def text(t: String): Span = Span.Text(t)
 
     def uri(uri: java.net.URI): Span = Span.URI(uri)
 
-    def space: Span = text(" ")
+    def weak(span: Span): Span = Span.Weak(span)
+
+    def weak(t: String): Span = Span.Weak(text(t))
   }
 }
 
-private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) {
-  private var marginStack: List[Int] = List(startOffset)
+private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) { self =>
+  private var marginStack: List[Int] = List(self.startOffset)
 
   def append(s: String): DocWriter = {
-    if (s.isEmpty) this
+    if (s.isEmpty) self
     else
       DocWriter.splitNewlines(s) match {
         case None =>
-          if (currentColumn + s.length > columnWidth) {
-            val remainder = columnWidth - currentColumn
+          if (self.currentColumn + s.length > self.columnWidth) {
+            val remainder = self.columnWidth - self.currentColumn
 
             val lastSpace = {
               val lastSpace = s.take(remainder + 1).lastIndexOf(' ')
@@ -445,35 +454,35 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             append("\n")
             append(after)
           } else {
-            val padding = currentMargin - currentColumn
+            val padding = self.currentMargin - self.currentColumn
             if (padding > 0) {
-              stringBuilder.append(DocWriter.margin(padding))
-              currentColumn += padding
+              self.stringBuilder.append(DocWriter.margin(padding))
+              self.currentColumn += padding
             }
-            stringBuilder.append(s)
-            currentColumn += s.length
+            self.stringBuilder.append(s)
+            self.currentColumn += s.length
           }
         case Some(pieces) =>
           pieces.zipWithIndex.foreach { case (piece, _) =>
             append(piece)
 
-            stringBuilder.append("\n")
-            currentColumn = 0
+            self.stringBuilder.append("\n")
+            self.currentColumn = 0
           }
       }
 
     this
   }
 
-  def currentMargin: Int = marginStack.sum
+  def currentMargin: Int = self.marginStack.sum
 
-  var currentColumn: Int = startOffset
+  var currentColumn: Int = self.startOffset
 
-  def indent(adjust: Int): Unit = marginStack = adjust :: marginStack
+  def indent(adjust: Int): Unit = self.marginStack = adjust :: self.marginStack
 
   override def toString(): String = stringBuilder.toString()
 
-  def unindent(): Unit = marginStack = marginStack.drop(1)
+  def unindent(): Unit = self.marginStack = self.marginStack.drop(1)
 }
 private[cli] object DocWriter {
   private def margin(n: Int): String = if (n <= 0) "" else List.fill(n)(" ").mkString

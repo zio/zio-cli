@@ -87,7 +87,7 @@ object Completion {
     options match {
       case Options.Empty =>
         Epsilon
-      case Options.WithDefault(options, _, _) =>
+      case Options.WithDefault(options, _) =>
         toRegularLanguage(options).?
       case single @ Options.Single(_, _, _: PrimType.Bool, _) =>
         single.names.foldLeft[RegularLanguage](Empty)((lang, name) => lang | StringToken(name))

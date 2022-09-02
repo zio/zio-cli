@@ -1,14 +1,14 @@
 package zio.cli.examples
 
-import java.nio.file.Path
-
+import zio.Console.printLine
+import zio._
 import zio.cli.HelpDoc.Span.text
 import zio.cli._
 import zio.stream.{ZPipeline, ZSink, ZStream}
-import zio._
-import zio.Console.printLine
 
-object WcApp extends ZIOAppDefault {
+import java.nio.file.Path
+
+object WcApp extends ZIOCliDefault {
 
   val bytesFlag: Options[Boolean] = Options.boolean("c")
   val linesFlag: Options[Boolean] = Options.boolean("l")
@@ -90,16 +90,10 @@ object WcApp extends ZIOAppDefault {
     }
   }
 
-  val wcApp = CliApp.make(
+  val cliApp = CliApp.make(
     "ZIO Word Count",
     "0.1.2",
     text("counts words in the file"),
     wc
   )(execute.tupled)
-
-  override def run =
-    for {
-      args <- ZIOAppArgs.getArgs
-      _    <- wcApp.run(args.toList)
-    } yield ()
 }
