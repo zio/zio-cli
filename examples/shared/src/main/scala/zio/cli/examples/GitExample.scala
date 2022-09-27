@@ -13,6 +13,13 @@ object GitExample extends ZIOCliDefault {
   object Subcommand {
     final case class Add(modified: Boolean, directory: JPath) extends Subcommand
     final case class Remote(verbose: Boolean)                 extends Subcommand
+    object Remote {
+      sealed trait RemoteSubcommand extends Subcommand
+      //final case class Root(Version: Boolean) extends RemoteSubcommand
+      final case class Add(name: String, url: String) extends RemoteSubcommand
+      final case class Remove(name: String)           extends RemoteSubcommand
+
+    }
   }
 
   val modifiedFlag: Options[Boolean] = Options.boolean("m")
@@ -26,10 +33,27 @@ object GitExample extends ZIOCliDefault {
   val verboseFlag: Options[Boolean] = Options.boolean("verbose").alias("v")
   val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
 
-  val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = Command("remote", verboseFlag, Args.none).withHelp(remoteHelp).map { verbose =>
-    Subcommand.Remote(verbose)
+  val remoteAdd = {
+    val remoteAddHelp: HelpDoc = HelpDoc.p("Add remote subcommand description")
+    Command("add", Options.text("name") ++ Options.text("url")).withHelp(remoteAddHelp).map { case (name, url) =>
+      Subcommand.Remote.Add(name, url)
+    }
   }
+
+  val remoteRemove = {
+    val remoteRemoveHelp: HelpDoc = HelpDoc.p("Remove remote subcommand description")
+    Command("remove", Args.text("name")).withHelp(remoteRemoveHelp).map(Subcommand.Remote.Remove)
+  }
+
+  val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
+  val remote = Command("remote", verboseFlag, Args.none)
+    .withHelp(remoteHelp)
+    .map(Subcommand.Remote(_))
+    .subcommands(remoteAdd, remoteRemove)
+    .map { case (verbose, remoteSubcommand) =>
+      remoteSubcommand
+
+    }
 
   val git: Command[Subcommand] =
     Command("git", Options.none, Args.none).subcommands(add, remote)
@@ -45,5 +69,15 @@ object GitExample extends ZIOCliDefault {
 
     case Subcommand.Remote(verbose) =>
       printLine(s"Executing `git remote` with verbose flag set to $verbose")
+
+    case Subcommand.Remote.Add(name, url) =>
+      printLine(s"Executing `git remote add $name $url`")
+    case Subcommand.Remote.Remove(name) =>
+      printLine(s"Executing `git remote remove $name`")
   }
+}
+
+object Example2 extends scala.App {
+
+  println(GitExample.git.helpDoc)
 }

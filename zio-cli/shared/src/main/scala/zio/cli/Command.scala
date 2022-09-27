@@ -190,8 +190,8 @@ object Command {
             command.synopsis.helpDoc.getSpan.size
           case Map(cmd, _) =>
             getMaxSynopsisLength(cmd)
-          case _ =>
-            0
+          case Subcommands(parent, _) =>
+            getMaxSynopsisLength(parent)
         }
 
       def subcommandsDesc[C](command: Command[C], maxSynopsisLength: Int): HelpDoc =
@@ -209,8 +209,8 @@ object Command {
             }
           case Map(cmd, _) =>
             subcommandsDesc(cmd, maxSynopsisLength)
-          case _ =>
-            HelpDoc.empty
+          case Subcommands(parent, _) =>
+            subcommandsDesc(parent, maxSynopsisLength)
         }
 
       self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child, getMaxSynopsisLength(self.child))
