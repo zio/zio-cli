@@ -224,8 +224,8 @@ object Command {
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
       val helpDirectiveForChild = {
         val safeTail = args match {
-          case Nil          => Nil
-          case head :: tail => tail
+          case Nil       => Nil
+          case _ :: tail => tail
         }
         self.child
           .parse(safeTail, conf)
