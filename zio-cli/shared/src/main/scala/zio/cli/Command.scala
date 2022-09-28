@@ -222,9 +222,13 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
-      val helpDirectiveForChild =
+      val helpDirectiveForChild = {
+        val safeTail = args match {
+          case Nil          => Nil
+          case head :: tail => tail
+        }
         self.child
-          .parse(args.tail, conf)
+          .parse(safeTail, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
               val parentName = self.names.headOption.getOrElse("")
@@ -235,6 +239,7 @@ object Command {
                 )
               }
           }
+      }
 
       val helpDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
