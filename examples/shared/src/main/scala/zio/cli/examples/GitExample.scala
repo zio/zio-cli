@@ -46,14 +46,12 @@ object GitExample extends ZIOCliDefault {
   }
 
   val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = Command("remote", verboseFlag, Args.none)
-    .withHelp(remoteHelp)
-    .map(Subcommand.Remote(_))
-    .subcommands(remoteAdd, remoteRemove)
-    .map { case (verbose, remoteSubcommand) =>
-      remoteSubcommand
-
-    }
+  val remote = {
+    val gitRemote       = Command("remote", verboseFlag).withHelp(remoteHelp).map(Subcommand.Remote(_))
+    val gitRemoteAdd    = Command("remote").withHelp(remoteHelp).subcommands(remoteAdd)
+    val gitRemoteRemove = Command("remote").withHelp(remoteHelp).subcommands(remoteRemove)
+    gitRemote | gitRemoteAdd | gitRemoteRemove
+  }
 
   val git: Command[Subcommand] =
     Command("git", Options.none, Args.none).subcommands(add, remote)
@@ -66,14 +64,13 @@ object GitExample extends ZIOCliDefault {
   ) {
     case Subcommand.Add(modified, directory) =>
       printLine(s"Executing `git add $directory` with modified flag set to $modified")
-
-    case Subcommand.Remote(verbose) =>
-      printLine(s"Executing `git remote` with verbose flag set to $verbose")
-
     case Subcommand.Remote.Add(name, url) =>
       printLine(s"Executing `git remote add $name $url`")
     case Subcommand.Remote.Remove(name) =>
       printLine(s"Executing `git remote remove $name`")
+    case Subcommand.Remote(verbose) =>
+      printLine(s"Executing `git remote` with verbose flag set to $verbose")
+
   }
 }
 
