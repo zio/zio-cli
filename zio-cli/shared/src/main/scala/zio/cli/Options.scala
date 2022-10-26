@@ -248,7 +248,7 @@ object Options {
           ) {
             ZIO.fail(
               ValidationError(
-                ValidationErrorType.MissingValue,
+                ValidationErrorType.InvalidValue,
                 p(error(s"""The flag "$head" is not recognized. Did you mean ${self.fullName}?"""))
               )
             )
