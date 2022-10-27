@@ -11,7 +11,9 @@ sealed trait UsageSynopsis { self =>
     def render(g: UsageSynopsis): Span =
       g match {
         case Named(names, acceptedValues) =>
-          Span.text(names.mkString(", ")) + acceptedValues.fold(Span.empty)(c => Span.space + Span.text(c))
+          val mainSpan =
+            Span.text(names.mkString(", ")) + acceptedValues.fold(Span.empty)(c => Span.space + Span.text(c))
+          if (names.length > 1) Span.text("(") + mainSpan + Span.text(")") else mainSpan
 
         case Optional(value) =>
           Span.text("[") + render(value) + Span.text("]")
