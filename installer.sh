@@ -19,7 +19,7 @@ version="VERSION"
 downloadUrl="DOWNLOAD_URL"
 
 shouldEnsureNativeImage="${ENSURE_NATIVE_IMAGE}"
-graalvmVersion="${GRAALVM_VERSION:-20.3.0}"
+graalvmVersion="${GRAALVM_VERSION:-22.3.0}"
 javaVersion="${GRAALVM_JAVA_VERSION:-java8}"
 
 xdgUsrHome="${XDG_DATA_HOME:-"$HOME/.local/share"}"
@@ -36,7 +36,7 @@ installGraalVm() {
 	if ! [ -d "${graalvmDir}" ]; then
 
 		case "$(uname -s)" in
-		Darwin*) os="mac" ;;
+		Darwin*) os="darwin" ;;
 		Linux*) os="linux" ;;
 		CYGWIN*) os="windows" ;;
 		MINGW*) os="windows" ;;
@@ -74,7 +74,7 @@ ensureCli() {
 	if ! [ -f "${versionedBin}" ]; then
 
 		if [ -n "${shouldEnsureNativeImage}" ] && ! command -v native-image >/dev/null; then
-			PATH="${PATH}:${graalvmDir}/bin"
+			PATH="${PATH}:${graalvmDir}/Contents/Home/bin"
 			installGraalVm && installNativeImage
 		fi
 
@@ -85,7 +85,7 @@ ensureCli() {
 }
 
 buildNativeImage() {
-	PATH="${PATH}:${graalvmDir}/bin"
+	PATH="${PATH}:${graalvmDir}/Contents/Home/bin"
 	export GRAALVM_HOME="${graalvmDir}"
 	cd "${appDir}/bin"
 	native-image -jar "$(basename "${versionedJar}")" "$(basename "${versionedBin}")"

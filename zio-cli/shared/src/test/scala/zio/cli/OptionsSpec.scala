@@ -163,7 +163,20 @@ object OptionsSpec extends ZIOSpecDefault {
         equalTo(
           Left(
             ValidationError(
-              ValidationErrorType.MissingValue,
+              ValidationErrorType.InvalidValue,
+              p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))
+            )
+          )
+        )
+      )
+    },
+    test("returns a HelpDoc if an option with a default value is not an exact match, but is close") {
+      val r = f.withDefault("Jack").validate(List("--firstme"), CliConfig.default)
+      assertZIO(r.either)(
+        equalTo(
+          Left(
+            ValidationError(
+              ValidationErrorType.InvalidValue,
               p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))
             )
           )
