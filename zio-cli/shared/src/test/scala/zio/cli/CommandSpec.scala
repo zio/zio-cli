@@ -124,13 +124,24 @@ object CommandSpec extends ZIOSpecDefault {
 
         val git =
           Command("git", Options.Empty, Args.none).subcommands(
-            Command("rebase", Options.boolean("i", true), Args.text ++ Args.text)
+            Command(
+              "rebase",
+              Options.boolean("i", true) ++ Options.text("empty").withDefault("drop"),
+              Args.text ++ Args.text
+            )
           )
 
         Vector(
-          test("test sub command with options and arguments") {
+          test("test sub command with required options and arguments") {
             assertZIO(git.parse(List("git", "rebase", "-i", "upstream", "branch"), CliConfig.default))(
-              equalTo(CommandDirective.UserDefined(Nil, (true, ("upstream", "branch"))))
+              equalTo(CommandDirective.UserDefined(Nil, ((true, "drop"), ("upstream", "branch"))))
+            )
+          },
+          test("test sub command with required and optional options and arguments") {
+            assertZIO(
+              git.parse(List("git", "rebase", "-i", "--empty", "ask", "upstream", "branch"), CliConfig.default)
+            )(
+              equalTo(CommandDirective.UserDefined(Nil, ((true, "ask"), ("upstream", "branch"))))
             )
           },
           test("test unknown sub command") {
