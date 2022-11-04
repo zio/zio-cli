@@ -119,32 +119,31 @@ object Command {
 
       val parseUserDefinedArgs =
         for {
-          optionsAndArgs <- args match {
-                              case head :: tail =>
-                                ZIO
-                                  .succeed(tail)
-                                  .when(conf.normalizeCase(head) == conf.normalizeCase(self.name))
-                                  .some
-                                  .orElseFail {
-                                    ValidationError(
-                                      ValidationErrorType.CommandMismatch,
-                                      HelpDoc.p(s"Missing command name: ${self.name}")
-                                    )
-                                  }
-                              case Nil =>
-                                ZIO.fail {
-                                  ValidationError(
-                                    ValidationErrorType.CommandMismatch,
-                                    HelpDoc.p(s"Missing command name: ${self.name}")
-                                  )
-                                }
-                            }
-          tuple                                <- self.options.validate(unCluster(optionsAndArgs), conf)
-          (optionsLeftoverAndArgs, optionsType) = tuple
-          (optionsLeftover, args)               = optionsLeftoverAndArgs.partition(_.startsWith("-"))
-          tuple                                <- self.args.validate(args, conf)
-          (argsLeftover, argsType)              = tuple
-        } yield CommandDirective.userDefined(argsLeftover ++ optionsLeftover, (optionsType, argsType))
+          commandOptionsAndArgs <- args match {
+                                     case head :: tail =>
+                                       ZIO
+                                         .succeed(tail)
+                                         .when(conf.normalizeCase(head) == conf.normalizeCase(self.name))
+                                         .some
+                                         .orElseFail {
+                                           ValidationError(
+                                             ValidationErrorType.CommandMismatch,
+                                             HelpDoc.p(s"Missing command name: ${self.name}")
+                                           )
+                                         }
+                                     case Nil =>
+                                       ZIO.fail {
+                                         ValidationError(
+                                           ValidationErrorType.CommandMismatch,
+                                           HelpDoc.p(s"Missing command name: ${self.name}")
+                                         )
+                                       }
+                                   }
+          tuple                     <- self.options.validate(unCluster(commandOptionsAndArgs), conf)
+          (commandArgs, optionsType) = tuple
+          tuple                     <- self.args.validate(commandArgs, conf)
+          (argsLeftover, argsType)   = tuple
+        } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
       parseBuiltInArgs orElse parseUserDefinedArgs
     }
