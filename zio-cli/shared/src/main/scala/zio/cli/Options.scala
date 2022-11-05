@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.cli.HelpDoc.Span._
 import zio.cli.HelpDoc.p
-import zio.{IO, ZIO, Zippable}
+import zio.{Console, IO, UIO, ZIO, Zippable}
 
 import java.nio.file.{Path => JPath}
 import java.time.{
@@ -20,7 +20,6 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
-import scala.collection.immutable.Nil
 
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
@@ -146,6 +145,15 @@ sealed trait Options[+A] { self =>
 
   def helpDoc: HelpDoc
 
+  final def isBool: Boolean =
+    self.asInstanceOf[Options[_]] match {
+      case Options.Empty                   => false
+      case Options.WithDefault(options, _) => options.isBool
+      case Single(_, _, primType, _)       => primType.isBool
+      case Options.Map(value, _)           => value.isBool
+      case _                               => false
+    }
+
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
 
   final def mapOrFail[B](f: A => Either[ValidationError, B]): Options[B] =
@@ -155,8 +163,15 @@ sealed trait Options[+A] { self =>
     self.mapOrFail((a: A) =>
       scala.util.Try(f(a)).toEither.left.map(e => ValidationError(ValidationErrorType.InvalidValue, p(e.getMessage)))
     )
-
   final def optional: Options[Option[A]] = self.map(Some(_)).withDefault(None)
+
+  final def primitiveType: Option[PrimType[A]] =
+    self match {
+      case Single(_, _, primType, _) => Some(primType)
+      case _                         => None
+    }
+
+  def generateArgs: UIO[List[String]]
 
   def synopsis: UsageSynopsis
 
@@ -186,6 +201,8 @@ object Options {
     override lazy val helpDoc: HelpDoc = HelpDoc.Empty
 
     override lazy val uid: Option[String] = None
+
+    override def generateArgs: UIO[List[String]] = ZIO.succeed(List.empty)
   }
 
   final case class WithDefault[A](options: Options[A], default: A) extends Options[A] { self =>
@@ -207,6 +224,26 @@ object Options {
       }
 
     override lazy val uid: Option[String] = self.options.uid
+
+    override def generateArgs: UIO[List[String]] = {
+      val typeInfo =
+        self.options.primitiveType match {
+          case Some(primType) => s"${primType.typeName}, default: $default"
+          case None           => s"default: $default"
+        }
+
+      if (self.options.isBool) {
+        for {
+          raw   <- (Console.print(s"${self.options.uid.getOrElse("")} ($typeInfo): ") *> Console.readLine).orDie
+          result = if (PrimType.Bool.TrueValues.contains(raw)) List(self.uid.getOrElse("")) else List.empty
+        } yield result
+      } else {
+        for {
+          value <- (Console.print(s"${self.options.uid.getOrElse("")} ($typeInfo): ") *> Console.readLine).orDie
+          result = if (value.isEmpty) List.empty else List(self.uid.getOrElse(""), value)
+        } yield result
+      }
+    }
   }
 
   final case class Single[+A](
@@ -286,6 +323,10 @@ object Options {
 
     override lazy val helpDoc: HelpDoc =
       HelpDoc.DescriptionList(List(self.synopsis.helpDoc.getSpan -> (p(self.primType.helpDoc) + self.description)))
+
+    override def generateArgs: UIO[List[String]] =
+      (Console.print(s"${self.uid.getOrElse("")} (${self.primType.typeName}): ") *> Console.readLine).orDie
+        .map(List(self.names.head, _))
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] { self =>
@@ -337,6 +378,14 @@ object Options {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
+
+    override def generateArgs: UIO[List[String]] =
+      for {
+        option <- (Console.print(s"Choose one option ($uid): ") *> Console.readLine).orDie
+        res <- if (option == self.left.uid.getOrElse("")) left.generateArgs
+               else if (option == self.right.uid.getOrElse("")) right.generateArgs
+               else Console.printLine("Invalid option").orDie *> self.generateArgs
+      } yield res
   }
 
   final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] { self =>
@@ -368,6 +417,8 @@ object Options {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
+
+    override def generateArgs: UIO[List[String]] = self.left.generateArgs.zipWith(self.right.generateArgs)(_ ++ _)
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] { self =>
@@ -381,6 +432,8 @@ object Options {
     override lazy val uid: Option[String] = self.value.uid
 
     override lazy val helpDoc: HelpDoc = self.value.helpDoc
+
+    override def generateArgs: UIO[List[String]] = self.value.generateArgs
   }
 
   final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] {
@@ -426,6 +479,10 @@ object Options {
 
     override private[cli] def modifySingle(f: SingleModifier) =
       Options.keyValueMap(f(self.argumentOption))
+
+    override def generateArgs: UIO[List[String]] =
+      (Console.print(s"${self.uid.getOrElse("")} (key=value pairs): ") *> Console.readLine).orDie
+        .map(input => self.uid.getOrElse("") :: input.split(" ").toList)
   }
 
   /**

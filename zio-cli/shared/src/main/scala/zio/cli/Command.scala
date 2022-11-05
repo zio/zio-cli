@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.cli.HelpDoc.h1
 import zio.cli.ValidationErrorType.CommandMismatch
-import zio.{IO, ZIO}
+import zio.{IO, UIO, ZIO}
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application
@@ -34,6 +34,10 @@ sealed trait Command[+A] { self =>
       case subcommands: Command.Subcommands[_, _] =>
         subcommands.copy(parent = subcommands.parent.withHelp(help)).asInstanceOf[Command[A]]
     }
+
+  def generateArgs: UIO[List[String]]
+
+  def getSubcommands: Map[String, Command[_]]
 
   def helpDoc: HelpDoc
 
@@ -110,7 +114,7 @@ object Command {
       val parseBuiltInArgs =
         if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name)))
           BuiltInOption
-            .builtInOptions(self.synopsis, self.helpDoc)
+            .builtInOptions(self, self.synopsis, self.helpDoc)
             .validate(args, conf)
             .mapBoth(_.error, _._2)
             .some
@@ -150,6 +154,14 @@ object Command {
 
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
+
+    def generateArgs: UIO[List[String]] =
+      for {
+        options <- self.options.generateArgs
+        args    <- self.args.generateArgs
+      } yield List(self.name) ++ options ++ args
+
+    def getSubcommands: Predef.Map[String, Command[_]] = Predef.Map(self.name -> self)
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] { self =>
@@ -164,6 +176,10 @@ object Command {
       self.command.parse(args, conf).map(_.map(f))
 
     lazy val synopsis: UsageSynopsis = self.command.synopsis
+
+    def generateArgs: UIO[List[String]] = self.command.generateArgs
+
+    def getSubcommands: Predef.Map[String, Command[_]] = self.command.getSubcommands
   }
 
   final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] { self =>
@@ -178,6 +194,10 @@ object Command {
       self.left.parse(args, conf).catchSome { case ValidationError(CommandMismatch, _) => self.right.parse(args, conf) }
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Mixed
+
+    def generateArgs: UIO[List[String]] = self.left.generateArgs.zipWith(self.right.generateArgs)(_ ++ _)
+
+    def getSubcommands: Predef.Map[String, Command[_]] = self.left.getSubcommands ++ self.right.getSubcommands
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
@@ -244,12 +264,28 @@ object Command {
       val helpDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
 
+      val wizardDirectiveForChild = {
+        val safeTail = args match {
+          case Nil       => Nil
+          case _ :: tail => tail
+        }
+        self.child
+          .parse(safeTail, conf)
+          .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
+            case directive @ CommandDirective.BuiltIn(BuiltInOption.Wizard(_)) => directive
+          }
+      }
+
+      val wizardDirectiveForParent =
+        ZIO.succeed(CommandDirective.builtIn(BuiltInOption.Wizard(self)))
+
       self.parent
         .parse(args, conf)
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
-          case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
+          case CommandDirective.BuiltIn(_) =>
+            wizardDirectiveForChild orElse wizardDirectiveForParent
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             self.child.parse(leftover, conf).map(_.map((a, _)))
           case _ =>
@@ -262,6 +298,10 @@ object Command {
     }
 
     lazy val synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
+
+    def generateArgs: UIO[List[String]] = self.parent.generateArgs.zipWith(self.child.generateArgs)(_ ++ _)
+
+    def getSubcommands: Predef.Map[String, Command[_]] = self.child.getSubcommands
   }
 
   /**

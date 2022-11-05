@@ -8,7 +8,7 @@ trait ZIOCli extends ZIOApp {
 
   override def run =
     for {
-      args     <- ZIOAppArgs.getArgs
-      exitCode <- cliApp.run(args.toList)
-    } yield exitCode
+      args   <- ZIOAppArgs.getArgs
+      result <- cliApp.run(args.toList)
+    } yield result
 }
