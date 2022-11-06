@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.Console.printLine
+import zio.Console.{print, printLine, readLine}
 import zio.System.envs
 import zio._
 import zio.cli.BuiltInOption._
@@ -16,7 +16,7 @@ import scala.annotation.tailrec
  * requires environment `R`, and may fail with a value of type `E`.
  */
 sealed trait CliApp[-R, +E, +Model] {
-  def run(args: List[String]): ZIO[R, Nothing, ExitCode]
+  def run(args: List[String]): ZIO[R, Any, Any]
 
   def config(newConfig: CliConfig): CliApp[R, E, Model]
 
@@ -56,8 +56,8 @@ object CliApp {
     def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
-    def run(args: List[String]): ZIO[R, Nothing, ExitCode] = {
-      def executeBuiltIn(builtInOption: BuiltInOption): Task[Unit] =
+    def run(args: List[String]): ZIO[R, Any, Any] = {
+      def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, Any, Any] =
         builtInOption match {
           case ShowHelp(synopsis, helpDoc) =>
             val fancyName = p(code(self.figFont.render(self.name)))
@@ -86,6 +86,21 @@ object CliApp {
                   ZIO.foreachDiscard(completions)(word => printLine(word))
                 }
             }
+          case Wizard(command) =>
+            val subcommands = command.getSubcommands
+
+            for {
+              subcommandName <- if (subcommands.size == 1) ZIO.succeed(subcommands.keys.head)
+                                else
+                                  (print("Command" + subcommands.keys.mkString("(", "|", "): ")) *> readLine).orDie
+              subcommand <-
+                ZIO
+                  .fromOption(subcommands.get(subcommandName))
+                  .orElseFail(ValidationError(ValidationErrorType.InvalidValue, HelpDoc.p("Invalid subcommand")))
+              args   <- subcommand.generateArgs
+              _      <- Console.printLine(s"Executing command: ${(prefix(self.command) ++ args).mkString(" ")}")
+              result <- self.run(args)
+            } yield result
         }
 
       // prepend a first argument in case the CliApp's command is expected to consume it
@@ -104,10 +119,12 @@ object CliApp {
           e => printDocs(e.error),
           {
             case CommandDirective.UserDefined(_, value) => self.execute(value)
-            case CommandDirective.BuiltIn(x)            => executeBuiltIn(x)
+            case CommandDirective.BuiltIn(x) =>
+              executeBuiltIn(x).catchSome { case e: ValidationError =>
+                printDocs(e.error)
+              }
           }
         )
-        .exitCode
     }
 
     def summary(s: HelpDoc.Span): CliApp[R, E, Model] =

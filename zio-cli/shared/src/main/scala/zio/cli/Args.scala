@@ -43,6 +43,8 @@ sealed trait Args[+A] { self =>
 
   final def between(min: Int, max: Int): Args[List[A]] = Args.Variadic(self, Some(min), Some(max))
 
+  def generateArgs: UIO[List[String]]
+
   def helpDoc: HelpDoc
 
   final def map[B](f: A => B): Args[B] = Args.Map(self, (a: A) => Right(f(a)))
@@ -62,6 +64,8 @@ sealed trait Args[+A] { self =>
   final def repeat1[A1 >: A]: Args[::[A1]] = self.+
 
   def synopsis: UsageSynopsis
+
+  def uid: Option[String]
 
   def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
 }
@@ -100,6 +104,11 @@ object Args {
       }).mapError(ValidationError(ValidationErrorType.InvalidArgument, _))
 
     private def name: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
+
+    def generateArgs: UIO[List[String]] =
+      (Console.print(s"${self.uid.getOrElse("")} (${self.primType.typeName}): ") *> Console.readLine).orDie.map(List(_))
+
+    def uid: Option[String] = Some(self.name)
   }
 
   case object Empty extends Args[Unit] {
@@ -115,6 +124,10 @@ object Args {
 
     def validate(args: List[String], conf: CliConfig): UIO[(List[String], Unit)] =
       ZIO.succeed((args, ()))
+
+    def generateArgs: UIO[List[String]] = ZIO.succeed(List.empty)
+
+    def uid: Option[String] = None
   }
 
   final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] { self =>
@@ -135,6 +148,13 @@ object Args {
         tuple    <- self.tail.validate(args, conf)
         (args, b) = tuple
       } yield (args, (a, b))
+
+    def generateArgs: UIO[List[String]] = self.head.generateArgs.zipWith(self.tail.generateArgs)(_ ++ _)
+
+    def uid: Option[String] = self.head.uid.toList ++ self.tail.uid.toList match {
+      case Nil  => None
+      case list => Some(list.mkString(", "))
+    }
   }
 
   final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] { self =>
@@ -178,6 +198,23 @@ object Args {
 
       loop(args, Nil).map { case (args, list) => (args, list.reverse) }
     }
+
+    def generateArgs: UIO[List[String]] = {
+      val repetitionsString =
+        (self.min, self.max) match {
+          case (Some(min), Some(max)) => s"$min - $max repetitions"
+          case (Some(1), _)           => "1 repetition minimum"
+          case (Some(min), _)         => s"$min repetitions minimum"
+          case (_, Some(1))           => "1 repetition maximum"
+          case (_, Some(max))         => s"$max repetitions maximum"
+          case _                      => ""
+        }
+      (Console.print(s"${self.uid.getOrElse("")} ($repetitionsString): ") *> Console.readLine).orDie.map { input =>
+        input.split(" ").toList
+      }
+    }
+
+    def uid: Option[String] = self.value.uid
   }
 
   final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] { self =>
@@ -198,6 +235,10 @@ object Args {
           case Right(value) => ZIO.succeed((r, value))
         }
       }
+
+    def generateArgs: UIO[List[String]] = self.value.generateArgs
+
+    def uid: Option[String] = self.value.uid
   }
 
   /**

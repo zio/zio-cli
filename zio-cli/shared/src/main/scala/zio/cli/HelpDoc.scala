@@ -389,6 +389,17 @@ object HelpDoc {
         case Span.URI(value)            => value.toString.length
         case Span.Sequence(left, right) => left.size + right.size
       }
+
+    final def text: String =
+      self match {
+        case Span.Text(value)           => value
+        case Span.Code(value)           => value
+        case Span.Error(value)          => value.text
+        case Span.Weak(value)           => value.text
+        case Span.Strong(value)         => value.text
+        case Span.URI(value)            => value.toString
+        case Span.Sequence(left, right) => left.text + right.text
+      }
   }
   object Span {
     final case class Text(value: String)               extends Span
