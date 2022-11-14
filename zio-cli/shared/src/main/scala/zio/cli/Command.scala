@@ -284,8 +284,9 @@ object Command {
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
-          case CommandDirective.BuiltIn(_) =>
+          case CommandDirective.BuiltIn(BuiltInOption.Wizard(_)) =>
             wizardDirectiveForChild orElse wizardDirectiveForParent
+          case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             self.child.parse(leftover, conf).map(_.map((a, _)))
           case _ =>
