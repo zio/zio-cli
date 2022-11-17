@@ -26,7 +26,8 @@ xdgUsrHome="${XDG_DATA_HOME:-"$HOME/.local/share"}"
 xdgSysHome="${XDG_DATA_HOME:-/usr/share}"
 xdgHome="$([ "$EUID" = "0" ] && echo "${xdgSysHome}" || echo "${xdgUsrHome}")"
 appDir="${xdgHome}/${appName}"
-versionedBin="${appDir}/bin/${appName}_${version}" # native executable
+binName="${appDir}/bin/${appName}"                 # native executable
+versionedBin="${binName}_${version}"               # native executable + version
 versionedJar="${versionedBin}.jar"                 # downloaded JAR
 graalvmDir="${xdgHome}/graalvm-ce-${javaVersion}-${graalvmVersion}"
 
@@ -88,7 +89,8 @@ buildNativeImage() {
 	PATH="${PATH}:${graalvmDir}/Contents/Home/bin"
 	export GRAALVM_HOME="${graalvmDir}"
 	cd "${appDir}/bin"
-	native-image -jar "$(basename "${versionedJar}")" "$(basename "${versionedBin}")"
+	native-image --no-fallback -jar "$(basename "${versionedJar}")" "$(basename "${versionedBin}")"
+	ln -s "$(basename "${versionedBin}")" "$(basename "${binName}")"
 	cd -
 	success native-image
 }
