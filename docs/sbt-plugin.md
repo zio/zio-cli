@@ -1,6 +1,7 @@
 ---
-id: sbt_plugin
+id: sbt-plugin
 title: "ZIO CLI SBT Plugin"
+sidebar_label: "SBT Plugin"
 ---
 
 ## Overview
