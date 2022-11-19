@@ -8,7 +8,7 @@
 Rapidly build powerful command-line applications powered by ZIO
 
 # Documentation
-[zio-cli Microsite](https://zio.github.io/zio-cli/)
+[zio-cli Microsite](https://zio.dev/zio-cli/)
 
 # Contributing
 [Documentation for contributors](https://zio.github.io/zio-cli/docs/about/about_contributing)
