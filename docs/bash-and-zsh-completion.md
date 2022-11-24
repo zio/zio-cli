@@ -1,9 +1,10 @@
 ---
-id: bash_and_zsh_completion
+id: bash-and-zsh-completion
 title: "Bash and Zsh Completion"
 ---
 
 ## Overview
+
 `zio-cli` supports a mechanism for performing tab completion of command line
 options and arguments in bash and zsh. The approach that `zio-cli` uses to
 communicate with the shell tooling for performing tab completion is heavily
