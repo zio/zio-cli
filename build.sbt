@@ -103,7 +103,7 @@ lazy val docs = project
     ),
     docsPublishBranch := "master"
   )
-  .dependsOn(root)
+  .dependsOn(root, zioCliJVM)
   .enablePlugins(WebsitePlugin)
 
 lazy val sbtZioCli = project
