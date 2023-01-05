@@ -93,9 +93,17 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
-    )
+    ),
+    projectName := "ZIO CLI",
+    badgeInfo := Some(
+      BadgeInfo(
+        artifact = "zio-cli_2.13",
+        projectStage = ProjectStage.Experimental
+      )
+    ),
+    docsPublishBranch := "master"
   )
-  .dependsOn(root)
+  .dependsOn(root, zioCliJVM)
   .enablePlugins(WebsitePlugin)
 
 lazy val sbtZioCli = project
