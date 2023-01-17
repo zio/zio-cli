@@ -6,6 +6,112 @@
 
 Rapidly build powerful command-line applications powered by ZIO
 
+[![Experimental](https://img.shields.io/badge/Project%20Stage-Experimental-yellowgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-cli/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-cli_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-cli_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-cli_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-cli_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-cli-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-cli-docs_2.13) [![ZIO CLI](https://img.shields.io/github/stars/zio/zio-cli?style=social)](https://github.com/zio/zio-cli)
+
+## Installation
+
+To use ZIO CLI, we need to add the following to our `build.sbt` file:
+
+```scala
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.3.0-M02"
+```
+
+## Example
+
+```scala
+import zio.Console.printLine
+import zio.cli.HelpDoc.Span.text
+import zio.cli._
+
+import java.nio.file.{Path => JPath}
+
+object GitExample extends ZIOCliDefault {
+  import java.nio.file.Path
+
+  sealed trait Subcommand extends Product with Serializable
+  object Subcommand {
+    final case class Add(modified: Boolean, directory: JPath) extends Subcommand
+    final case class Remote(verbose: Boolean)                 extends Subcommand
+    object Remote {
+      sealed trait RemoteSubcommand extends Subcommand
+      final case class Add(name: String, url: String) extends RemoteSubcommand
+      final case class Remove(name: String)           extends RemoteSubcommand
+    }
+  }
+
+  val modifiedFlag: Options[Boolean] = Options.boolean("m")
+
+  val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
+  val add =
+    Command("add", modifiedFlag, Args.directory("directory")).withHelp(addHelp).map { case (modified, directory) =>
+      Subcommand.Add(modified, directory)
+    }
+
+  val verboseFlag: Options[Boolean] = Options.boolean("verbose").alias("v")
+  val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
+
+  val remoteAdd = {
+    val remoteAddHelp: HelpDoc = HelpDoc.p("Add remote subcommand description")
+    Command("add", Options.text("name") ++ Options.text("url")).withHelp(remoteAddHelp).map { case (name, url) =>
+      Subcommand.Remote.Add(name, url)
+    }
+  }
+
+  val remoteRemove = {
+    val remoteRemoveHelp: HelpDoc = HelpDoc.p("Remove remote subcommand description")
+    Command("remove", Args.text("name")).withHelp(remoteRemoveHelp).map(Subcommand.Remote.Remove)
+  }
+
+  val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
+  val remote = {
+    Command("remote", verboseFlag)
+      .withHelp(remoteHelp)
+      .map(Subcommand.Remote(_))
+      .subcommands(remoteAdd, remoteRemove)
+      .map(_._2)
+  }
+
+  val git: Command[Subcommand] =
+    Command("git", Options.none, Args.none).subcommands(add, remote)
+
+  val cliApp = CliApp.make(
+    name = "Git Version Control",
+    version = "0.9.2",
+    summary = text("a client for the git dvcs protocol"),
+    command = git
+  ) {
+    case Subcommand.Add(modified, directory) =>
+      printLine(s"Executing `git add $directory` with modified flag set to $modified")
+    case Subcommand.Remote.Add(name, url) =>
+      printLine(s"Executing `git remote add $name $url`")
+    case Subcommand.Remote.Remove(name) =>
+      printLine(s"Executing `git remote remove $name`")
+    case Subcommand.Remote(verbose) =>
+      printLine(s"Executing `git remote` with verbose flag set to $verbose")
+
+  }
+}
+
+object Example2 extends scala.App {
+  println(GitExample.git.helpDoc.toPlaintext())
+}
+```
+
+Output:
+
+```scala
+ COMMANDS
+
+  - add [-m] <directory>      Add subcommand description
+  - remote [(-v, --verbose)]  Remote subcommand description
+```
+
+## References
+
+- [10 Minute Command-Line Apps With ZIO CLI](https://www.youtube.com/watch?v=UeR8YUN4Tws) by Aiswarya Prakasan
+- [Hacking on ZIO-CLI](https://www.youtube.com/watch?v=HxPCXfnbg3U) by Adam Fraser and Kit Langton
+- [Behold! The Happy Path To Captivate Your Users With Stunning CLI Apps!](https://www.youtube.com/watch?v=0c3zbUq4lQo) by Jorge Vasquez
+
 ## Documentation
 
 Learn more on the [ZIO CLI homepage](https://zio.dev/zio-cli/)!
