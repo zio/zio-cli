@@ -1,8 +1,15 @@
 const sidebars = {
   sidebar: [
-    "index",
-    "bash-and-zsh-completion",
-    "sbt-plugin"
+    {
+      type: "category",
+      label: "ZIO CLI",
+      collapsed: false,
+      link: { type: "doc", id: "index" },
+      items: [ 
+        "bash-and-zsh-completion",
+        "sbt-plugin"
+      ]
+    }
   ]
 };
 

@@ -59,7 +59,6 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .enablePlugins(ScalaUnidocPlugin)
 
 lazy val zioCliJVM = zioCli.jvm
   .settings(dottySettings)
@@ -96,7 +95,7 @@ lazy val docs = project
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm),
     projectName := "ZIO CLI",
     mainModuleName := (zioCliJVM / moduleName).value,
-    projectStage := ProjectStage.Development,
+    projectStage := ProjectStage.Experimental,
     docsPublishBranch := "master",
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM, sbtZioCli)
   )
