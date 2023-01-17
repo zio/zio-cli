@@ -97,7 +97,7 @@ lazy val docs = project
     mainModuleName := (zioCliJVM / moduleName).value,
     projectStage := ProjectStage.Experimental,
     docsPublishBranch := "master",
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM, sbtZioCli)
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM)
   )
   .dependsOn(zioCliJVM)
   .enablePlugins(WebsitePlugin)
