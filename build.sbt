@@ -40,7 +40,8 @@ lazy val root = project
     zioCliJVM,
     zioCliJS,
     examplesJVM,
-    examplesJS
+    examplesJS,
+    docs
   )
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
@@ -58,6 +59,7 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .enablePlugins(ScalaUnidocPlugin)
 
 lazy val zioCliJVM = zioCli.jvm
   .settings(dottySettings)
@@ -87,15 +89,18 @@ lazy val examples = crossProject(JSPlatform, JVMPlatform)
 lazy val docs = project
   .in(file("zio-cli-docs"))
   .settings(
-    skip / publish := true,
     moduleName := "zio-cli-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % zioVersion
-    )
+    libraryDependencies ++= Seq("dev.zio" %% "zio" % zioVersion),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm),
+    projectName := "ZIO CLI",
+    mainModuleName := (zioCliJVM / moduleName).value,
+    projectStage := ProjectStage.Development,
+    docsPublishBranch := "master",
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM, sbtZioCli)
   )
-  .dependsOn(root)
+  .dependsOn(zioCliJVM)
   .enablePlugins(WebsitePlugin)
 
 lazy val sbtZioCli = project
