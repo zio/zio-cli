@@ -116,12 +116,12 @@ object CliApp {
       self.command
         .parse(prefix(self.command) ++ args, self.config)
         .foldZIO(
-          e => printDocs(e.error),
+          e => printDocs(e.error) *> ZIO.fail(e),
           {
             case CommandDirective.UserDefined(_, value) => self.execute(value)
             case CommandDirective.BuiltIn(x) =>
               executeBuiltIn(x).catchSome { case e: ValidationError =>
-                printDocs(e.error)
+                printDocs(e.error) *> ZIO.fail(e)
               }
           }
         )
