@@ -19,7 +19,7 @@ version="VERSION"
 downloadUrl="DOWNLOAD_URL"
 
 shouldEnsureNativeImage="${ENSURE_NATIVE_IMAGE}"
-graalvmVersion="${GRAALVM_VERSION:-22.3.0}"
+graalvmVersion="${GRAALVM_VERSION:-22.3.1}"
 javaVersion="${GRAALVM_JAVA_VERSION:-java8}"
 
 xdgUsrHome="${XDG_DATA_HOME:-"$HOME/.local/share"}"
