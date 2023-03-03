@@ -52,7 +52,7 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-process"  % "0.7.1",
+      "dev.zio" %% "zio-process"  % "0.7.2",
       "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt" % zioVersion % Test
