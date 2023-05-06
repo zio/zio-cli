@@ -109,7 +109,7 @@ lazy val sbtZioCli = project
     organization := "zio.cli.sbt",
     scalaVersion := "2.12.17",
     version := "0.0.0-SNAPSHOT",
-    addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.3.2")
+    addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.3.4")
   )
   .enablePlugins(SbtPlugin)
 
