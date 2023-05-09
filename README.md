@@ -13,7 +13,7 @@ Rapidly build powerful command-line applications powered by ZIO
 To use ZIO CLI, we need to add the following to our `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-cli" % "0.3.0-M02"
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.4.0"
 ```
 
 ## Example
