@@ -118,7 +118,7 @@ Learn more on the [ZIO CLI homepage](https://zio.dev/zio-cli/)!
 
 ## Contributing
 
-For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).
+For the general guidelines, see ZIO [contributor's guide](https://zio.dev/contributor-guidelines).
 
 ## Code of Conduct
 
