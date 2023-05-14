@@ -112,6 +112,8 @@ object Completion {
       case Options.KeyValueMap(argumentOption) =>
         val optionGrammar = toRegularLanguage(argumentOption)
         Permutation(optionGrammar)
+      case o: Options.OAuth2Options =>
+        toRegularLanguage(o.auxiliaryOptions)
     }
 
   /**
