@@ -8,7 +8,7 @@ import zio.json.{jsonMemberNames, DeriveJsonDecoder, JsonDecoder, SnakeCase}
  * Response to access token request informing about progress of device
  * authorization. The response can be either
  * [[AccessTokenResponse.AccessToken]] in case of successful termination or
- * [[AccessTokenRespnse.Error]] when any error occurrs.
+ * [[AccessTokenResponse.Error]] when any error occurrs.
  *
  * @see
  *   https://datatracker.ietf.org/doc/html/rfc6749#section-5

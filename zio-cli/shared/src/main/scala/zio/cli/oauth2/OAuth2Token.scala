@@ -3,8 +3,7 @@ package cli
 package oauth2
 
 /**
- * Access point to OAuth2 access token. An instance can be obtained
- * by using [[Options.oauth2]].
+ * Access point to OAuth2 access token.
  *
  * Normal lifecycle of the access token is handled automatically when calling
  * [[accessToken]], i. e. when token has normally expired, it will be

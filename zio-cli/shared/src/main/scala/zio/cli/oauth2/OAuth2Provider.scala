@@ -219,7 +219,7 @@ object OAuth2Provider {
         )
 
     override def decodeAccessTokenResponse(body: String): Either[String, AccessTokenResponse] = {
-      val decodeSuccess =
+      val decodeSuccess: Either[String, AccessTokenResponse] =
         Facebook.fbAccessTokenResponse
           .decodeJson(body)
           .map(fb =>
@@ -227,7 +227,7 @@ object OAuth2Provider {
               .AccessToken(fb.accessToken, TokenType.Bearer, Some(Duration.fromSeconds(fb.expiresIn)), None, List.empty)
           )
 
-      val decodeError =
+      val decodeError: Either[String, AccessTokenResponse] =
         Facebook.fbAccessTokenError
           .decodeJson(body)
           .map { fb =>
@@ -243,7 +243,11 @@ object OAuth2Provider {
               .Error(kind, Some(fb.error.errorUserMsg), None, None)
           }
 
-      decodeError.orElse(decodeSuccess)
+      // 2.12-friendly decodeError.orElse(decodeSuccess)
+      decodeError match {
+        case r @ Right(_) => r
+        case _            => decodeSuccess
+      }
     }
   }
 
