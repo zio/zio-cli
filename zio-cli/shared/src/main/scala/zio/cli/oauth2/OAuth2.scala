@@ -7,7 +7,7 @@ import java.nio.file.Path
 
 import zio.json._
 
-class OAuth2(provider: OAuth2Provider, file: Path, scope: List[String]) {
+private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[String]) {
   val client = HttpClient.newBuilder().build()
 
   /**

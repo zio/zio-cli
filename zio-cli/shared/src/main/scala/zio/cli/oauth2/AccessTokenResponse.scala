@@ -78,17 +78,17 @@ object AccessTokenResponse {
     sealed trait Kind extends Serializable with Product
 
     object Kind {
-      final case object InvalidRequest       extends Kind
-      final case object InvalidClient        extends Kind
-      final case object InvalidGrant         extends Kind
-      final case object UnauthorizedClient   extends Kind
-      final case object UnsupportedGrantType extends Kind
-      final case object InvalidScope         extends Kind
-      final case object AuthorizationPending extends Kind
-      final case object SlowDown             extends Kind
-      final case object AccessDenied         extends Kind
-      final case object ExpiredToken         extends Kind
-      final case class Other(code: String)   extends Kind
+      case object InvalidRequest           extends Kind
+      case object InvalidClient            extends Kind
+      case object InvalidGrant             extends Kind
+      case object UnauthorizedClient       extends Kind
+      case object UnsupportedGrantType     extends Kind
+      case object InvalidScope             extends Kind
+      case object AuthorizationPending     extends Kind
+      case object SlowDown                 extends Kind
+      case object AccessDenied             extends Kind
+      case object ExpiredToken             extends Kind
+      final case class Other(code: String) extends Kind
 
       implicit val kindJsonDecoder: JsonDecoder[Kind] =
         JsonDecoder.string.map {

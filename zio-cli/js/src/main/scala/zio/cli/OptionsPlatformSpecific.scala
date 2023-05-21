@@ -1,4 +1,4 @@
 package zio
 package cli
 
-trait OptionsPlatformSpecific { self: Options.type => }
+private[cli] trait OptionsPlatformSpecific { self: Options.type => }

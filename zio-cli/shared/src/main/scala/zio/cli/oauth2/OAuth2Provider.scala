@@ -10,7 +10,19 @@ import zio.json._
 /**
  * Provider of OAuth2 authorization.
  */
-sealed trait OAuth2Provider extends Serializable with Product {
+trait OAuth2Provider {
+
+  /**
+   * Name of the provider.
+   */
+  def name: String
+
+  /**
+   * Public client identifier as provided after registration on authorization
+   * server. It is used for generating default file name, which holds
+   * access token.
+   */
+  def clientIdentifier: String
 
   /**
    * Generates HTTP request for authorization request.
@@ -60,6 +72,9 @@ sealed trait OAuth2Provider extends Serializable with Product {
 object OAuth2Provider {
 
   final case class Github(clientId: String) extends OAuth2Provider {
+    override val name = "Github"
+
+    override val clientIdentifier = clientId
 
     override def authorizationRequest(scope: List[String]): HttpRequest =
       HttpRequest
@@ -85,6 +100,9 @@ object OAuth2Provider {
   }
 
   final case class Google(clientId: String, clientSecret: String) extends OAuth2Provider {
+    override val name = "Google"
+
+    override val clientIdentifier = clientId
 
     override def authorizationRequest(scope: List[String]): HttpRequest =
       HttpRequest
@@ -156,6 +174,10 @@ object OAuth2Provider {
   }
 
   final case class Facebook(appId: String, clientToken: String) extends OAuth2Provider {
+    override val name = "Facebook"
+
+    override val clientIdentifier = appId
+
     val fbAccessToken = s"$appId%7C$clientToken"
 
     override def authorizationRequest(scope: List[String]): HttpRequest =

@@ -2,12 +2,21 @@ package zio
 package cli
 package oauth2
 
-object OAuth2PlatformSpecific {
+import com.github.ghik.silencer.silent
+
+@silent("never used")
+private[cli] object OAuth2PlatformSpecific {
   def validate(
     provider: OAuth2Provider,
     scope: List[String],
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions],
     args: List[String],
     conf: CliConfig
-  ): IO[ValidationError, (List[String], OAuth2Token)] = ???
+  ): IO[ValidationError, (List[String], OAuth2Token)] =
+    ZIO.dieMessage(
+      "OAuth2 support is not currently implemented for Scala.js. If you are interested in adding support, please open a pull request at https://github.com/zio/zio-cli."
+    )
+
+  def oauth2HelpSection(options: Options[Any]): HelpDoc =
+    HelpDoc.empty
 }

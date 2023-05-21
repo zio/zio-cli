@@ -13,9 +13,8 @@ object OAuth2 extends ZIOCliDefault {
     Command(
       "oauth2",
       (
-        Options.oauth2(OAuth2Provider.Github("client_id"), Nil) ++ Options.boolean("v").alias("verbose")
-      ).map { case (t, v) => Cmd(t, v) },
-      Args.none
+        Options.oauth2(OAuth2Provider.Github("1234567890"), Nil) ++ Options.boolean("v").alias("verbose")
+      ).map { case (t, v) => Cmd(t, v) }
     )
 
   val cliApp = CliApp.make(
