@@ -2,6 +2,7 @@ package zio.cli
 
 import zio.cli.HelpDoc.h1
 import zio.cli.ValidationErrorType.CommandMismatch
+import zio.cli.oauth2.OAuth2PlatformSpecific
 import zio.{IO, UIO, ZIO}
 
 /**
@@ -102,7 +103,9 @@ object Command {
         else h1("options") + opts
       }
 
-      helpHeader + argumentsSection + optionsSection
+      val oauth2Section = OAuth2PlatformSpecific.oauth2HelpSection(options)
+
+      helpHeader + argumentsSection + optionsSection + oauth2Section
     }
 
     lazy val names: Set[String] = Set(self.name)

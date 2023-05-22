@@ -3,6 +3,7 @@ package zio.cli
 import zio.cli.HelpDoc.Span._
 import zio.cli.HelpDoc.p
 import zio.{Console, IO, UIO, ZIO, Zippable}
+import zio.cli.oauth2._
 
 import java.nio.file.{Path => JPath}
 import java.time.{
@@ -189,7 +190,7 @@ trait SingleModifier {
   def apply[A](single: Options.Single[A]): Options.Single[A]
 }
 
-object Options {
+object Options extends OptionsPlatformSpecific {
   case object Empty extends Options[Unit] { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
@@ -483,6 +484,21 @@ object Options {
     override def generateArgs: UIO[List[String]] =
       (Console.print(s"${self.uid.getOrElse("")} (key=value pairs): ") *> Console.readLine).orDie
         .map(input => self.uid.getOrElse("") :: input.split(" ").toList)
+  }
+
+  final case class OAuth2Options(
+    provider: OAuth2Provider,
+    scope: List[String],
+    auxiliaryOptions: Options[OAuth2AuxiliaryOptions]
+  ) extends Options[OAuth2Token] {
+    override def helpDoc: HelpDoc                = auxiliaryOptions.helpDoc
+    override def generateArgs: UIO[List[String]] = auxiliaryOptions.generateArgs
+    override def synopsis: UsageSynopsis         = auxiliaryOptions.synopsis
+    override def uid: Option[String]             = auxiliaryOptions.uid
+    override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], OAuth2Token)] =
+      OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
+    override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
+      OAuth2Options(provider, scope, auxiliaryOptions.modifySingle(f))
   }
 
   /**
