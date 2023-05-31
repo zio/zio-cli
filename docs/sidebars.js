@@ -5,9 +5,16 @@ const sidebars = {
       label: "ZIO CLI",
       collapsed: false,
       link: { type: "doc", id: "index" },
-      items: [ 
+      items: [
+        "args-and-options",
+        "commands",
+        "helpdoc",
+        "built-in-commands",
+        "cli-config",
+        "auth",
         "bash-and-zsh-completion",
-        "sbt-plugin"
+        "sbt-plugin",
+        "examples"
       ]
     }
   ]

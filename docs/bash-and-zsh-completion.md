@@ -5,8 +5,8 @@ title: "Bash and Zsh Completion"
 
 ## Overview
 
-`zio-cli` supports a mechanism for performing tab completion of command line
-options and arguments in bash and zsh. The approach that `zio-cli` uses to
+**ZIO CLI** supports a mechanism for performing tab completion of command line
+options and arguments in bash and zsh. The approach that **ZIO CLI** uses to
 communicate with the shell tooling for performing tab completion is heavily
 inspired by the excellent Haskell
 [optparse-applicative](https://github.com/pcapriotti/optparse-applicative#bash-zsh-and-fish-completions)
@@ -15,7 +15,7 @@ providing tab completions to shell environments.
 
 In what follows, pretend that your CLI application (called `my-cli-app`) has been
 installed into a stable location in your path (such as the `~/.local/bin`
-directory favored by the `zio-cli` installer script).
+directory favored by the **ZIO CLI** installer script).
 
 ## Generating a completion shell script
 The `--shell-completion-script` and `--shell-type` built-in options produce a

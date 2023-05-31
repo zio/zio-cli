@@ -10,101 +10,46 @@ Rapidly build powerful command-line applications powered by ZIO
 
 ## Installation
 
-To use ZIO CLI, we need to add the following to our `build.sbt` file:
+To use **ZIO CLI**, we need to add the following to our `build.sbt` file:
 
 ```scala
 libraryDependencies += "dev.zio" %% "zio-cli" % "@VERSION@"
 ```
+## Getting Started
+**ZIO CLI** allows to easily construct a CLI application. This is done defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. 
 
-## Example
-
-```scala mdoc:compile-only
-import zio.Console.printLine
-import zio.cli.HelpDoc.Span.text
+```scala mdoc
 import zio.cli._
 
-import java.nio.file.{Path => JPath}
+// object of your app must extend ZIOCliDefault
+object Sample extends ZIOCliDefault {
 
-object GitExample extends ZIOCliDefault {
-  import java.nio.file.Path
-
-  sealed trait Subcommand extends Product with Serializable
-  object Subcommand {
-    final case class Add(modified: Boolean, directory: JPath) extends Subcommand
-    final case class Remote(verbose: Boolean)                 extends Subcommand
-    object Remote {
-      sealed trait RemoteSubcommand extends Subcommand
-      final case class Add(name: String, url: String) extends RemoteSubcommand
-      final case class Remove(name: String)           extends RemoteSubcommand
-    }
-  }
-
-  val modifiedFlag: Options[Boolean] = Options.boolean("m")
-
-  val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
-  val add =
-    Command("add", modifiedFlag, Args.directory("directory")).withHelp(addHelp).map { case (modified, directory) =>
-      Subcommand.Add(modified, directory)
-    }
-
-  val verboseFlag: Options[Boolean] = Options.boolean("verbose").alias("v")
-  val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
-
-  val remoteAdd = {
-    val remoteAddHelp: HelpDoc = HelpDoc.p("Add remote subcommand description")
-    Command("add", Options.text("name") ++ Options.text("url")).withHelp(remoteAddHelp).map { case (name, url) =>
-      Subcommand.Remote.Add(name, url)
-    }
-  }
-
-  val remoteRemove = {
-    val remoteRemoveHelp: HelpDoc = HelpDoc.p("Remove remote subcommand description")
-    Command("remove", Args.text("name")).withHelp(remoteRemoveHelp).map(Subcommand.Remote.Remove)
-  }
-
-  val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = {
-    Command("remote", verboseFlag)
-      .withHelp(remoteHelp)
-      .map(Subcommand.Remote(_))
-      .subcommands(remoteAdd, remoteRemove)
-      .map(_._2)
-  }
-
-  val git: Command[Subcommand] =
-    Command("git", Options.none, Args.none).subcommands(add, remote)
-
+  /**
+   * First we define the commands of the Cli. To do that we need:
+   *    - Create command options
+   *    - Create command arguments
+   *    - Create help (HelpDoc) 
+   */
+  val options: Options[String] = Options.text("textOption")
+  val arguments: Args[BigInteger] = Args.integer("intArguments")
+  val help: HelpDoc = HelpDoc.p("cli help")
+  
+  val command: Command[(String, BigInteger)] = Command("command", options, arguments).withHelp(help)
+  
+  // Define val cliApp using CliApp.make
   val cliApp = CliApp.make(
-    name = "Git Version Control",
-    version = "0.9.2",
-    summary = text("a client for the git dvcs protocol"),
-    command = git
+    name = "Sample",
+    version = "1.1.0",
+    summary = text("Sample cli"),
+    command = command
   ) {
-    case Subcommand.Add(modified, directory) =>
-      printLine(s"Executing `git add $directory` with modified flag set to $modified")
-    case Subcommand.Remote.Add(name, url) =>
-      printLine(s"Executing `git remote add $name $url`")
-    case Subcommand.Remote.Remove(name) =>
-      printLine(s"Executing `git remote remove $name`")
-    case Subcommand.Remote(verbose) =>
-      printLine(s"Executing `git remote` with verbose flag set to $verbose")
-
+    // Implement logic of CliApp
+    case (string, bigInteger) => ???
   }
 }
-
-object Example2 extends scala.App {
-  println(GitExample.git.helpDoc.toPlaintext())
-}
 ```
 
-Output:
-
-```scala
- COMMANDS
-
-  - add [-m] <directory>      Add subcommand description
-  - remote [(-v, --verbose)]  Remote subcommand description
-```
+If there is a `CliApp`, you can run a command using its method `run` and passing parameters in a `List[String]`.
 
 ## References
 
