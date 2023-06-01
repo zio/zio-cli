@@ -9,7 +9,9 @@ sidebar_label: "OAuth2"
 import zio.cli._
 import zio.cli.oauth2.OAuth2Provider
 
-val provider: OAuth2Provider = OAuth2Provider.Github("clientID")
+val clientId = "clientId"
+
+val provider: OAuth2Provider = OAuth2Provider.Github(clientId)
 val scope: List[String] = List("repo")
 val oauth2 = Options.oauth2(provider, scope)
 ```
@@ -17,6 +19,11 @@ val oauth2 = Options.oauth2(provider, scope)
 ## Construction
 Currently the supported OAuth2 providers are GitHub, Google and Facebook.
 ```scala mdoc:silent
+
+val clientSecret = "clientSecret"
+val appId = "appId"
+val clientToken = "clientToken"
+
 val githubOAuth = Options.oauth2(OAuth2Provider.Github(clientId), List("repo"))
 
 val googleOAuth = Options.oauth2(OAuth2Provider.Google(clientId, clientSecret), Nil)
@@ -32,18 +39,19 @@ This example shows how to integrate OAuth2 in a ZIO `CliApp`. We are going to ma
 
 ```scala mdoc:silent
 import zio.Console.printLine
+import zio.cli.HelpDoc.Span.text
 
 object OurCli extends ZIOCliDefault {
   // Construct options
-  options1 = Options.file("path") ++ Options.text("text")
-  options2 = Options.file("path") ++ githubOAuth(clientId)
-  options = options1 orElseEither options2
+  val options1 = Options.file("path") ++ Options.text("text")
+  val options2 = Options.file("path") ++ githubOAuth
+  val options = options1 orElseEither options2
 
   // Construct command
-  command = Command("sample", options)
+  val command = Command("sample", options)
 
   // Construct CLI
-  cliApp = CliApp(
+  val cliApp = CliApp.make(
     name = "OAuth2 Example",
     version = "0.0.1",
     summary = text("Example of CliApp with OAuth2"),

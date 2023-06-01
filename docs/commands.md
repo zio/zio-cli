@@ -11,11 +11,13 @@ It's possible to create a `Command` using the `apply` method. You must always sp
 in the CLI, but you can also specify options and/or arguments:
 
 ```scala mdoc:silent
+import zio.cli._
+
 object Command {
-  def apply[OptionsType, ArgsType](name: String)
-  def apply[OptionsType, ArgsType](name: String, args: Args[ArgsType])
-  def apply[OptionsType, ArgsType](name: String, options: Options[OptionsType],)
-  def apply[OptionsType, ArgsType](name: String, options: Options[OptionsType], args: Args[ArgsType])
+  def apply(name: String) = ???
+  def apply[ArgsType](name: String, args: Args[ArgsType]) = ???
+  def apply[OptionsType](name: String, options: Options[OptionsType]) = ???
+  def apply[OptionsType, ArgsType](name: String, options: Options[OptionsType], args: Args[ArgsType]) = ???
 }
 ```
 ## Combining commands and transformations
@@ -35,9 +37,11 @@ trait Command[+A] {
 ```
 ### Example
 In the following example, we are going to construct a command using some of the methods above
-```scala mdoc:silent
+```scala mdoc:silent:reset
+import zio.cli._
+
 // Construction of basic commands and HelpDoc
-val parentCommand: Command[Int] = Command("pC", Options.integer("int"))
+val parentCommand: Command[BigInt] = Command("pC", Options.integer("int"))
 val childCommand1: Command[String] = Command("cC1", Options.text("text1"))
 val childCommand2: Command[String] = Command("cC2", Options.text("text2"))
 val help = "This is a command with parent and children"
@@ -53,7 +57,7 @@ val finalCommandWithHelp = finalCommand.withHelp(help)
 ## Customizing the type parameter 
 `Command[_]` is a generic class. We can apply `map` to construct commands returning any custom type that helps us implement business logic. 
 ```scala mdoc:silent
-case class CustomType(int: Int, text: String)
+case class CustomType(int: BigInt, text: String)
 
 val customCommand: Command[CustomType] =
   finalCommandWithHelp.map {
@@ -63,19 +67,21 @@ val customCommand: Command[CustomType] =
 
 Now we can construct a `Command[CustomType]` so we can implement the business logic of our app using directly `CustomType` instead of a tuple. This can be of great use if we have employed various (`orElseEither`):
 ```scala mdoc:silent
+import java.time.{ LocalDate => JLocalDate }
+
 sealed trait Value
 case class TextV(text: String) extends Value
-case class IntV(int: Int) extends Value
-case class DateV(date: LocalDate) extends Value
+case class IntV(int: BigInt) extends Value
+case class DateV(date: JLocalDate) extends Value
 
-val options: Options[Either[Either[String, Int], LocalDate]] = Options.text("opt1") orElseEither Options.integer("opt2") orElseEither Options.localDate("opt3")
-val command: Command[Either[Either[String, Int], LocalDate]] = Command("command", options)
+val options: Options[Either[Either[String, BigInt], JLocalDate]] = Options.text("opt1") orElseEither Options.integer("opt2") orElseEither Options.localDate("opt3")
+val command: Command[Either[Either[String, BigInt], JLocalDate]] = Command("command", options)
 val prettyCommand: Command[Value] = command.map {
   case Left(Left(x)) => TextV(x)
   case Left(Right(x)) => IntV(x)
   case Right(x) => DateV(x)
 }
 ```
-In this example, we have transformed a rather cumbersome `Command[Either[Either[String, Int], LocalDate]]` into a `Command[Value]`.
+In this example, we have transformed a rather cumbersome `Command[Either[Either[String, BigInt], JLocalDate]]` into a `Command[Value]`.
 
 

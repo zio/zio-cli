@@ -20,6 +20,7 @@ libraryDependencies += "dev.zio" %% "zio-cli" % "@VERSION@"
 
 ```scala mdoc
 import zio.cli._
+import zio.cli.HelpDoc.Span.text
 
 // object of your app must extend ZIOCliDefault
 object Sample extends ZIOCliDefault {
@@ -31,10 +32,10 @@ object Sample extends ZIOCliDefault {
    *    - Create help (HelpDoc) 
    */
   val options: Options[String] = Options.text("textOption")
-  val arguments: Args[BigInteger] = Args.integer("intArguments")
+  val arguments: Args[BigInt] = Args.integer("intArguments")
   val help: HelpDoc = HelpDoc.p("cli help")
   
-  val command: Command[(String, BigInteger)] = Command("command", options, arguments).withHelp(help)
+  val command: Command[(String, BigInt)] = Command("command", options, arguments).withHelp(help)
   
   // Define val cliApp using CliApp.make
   val cliApp = CliApp.make(

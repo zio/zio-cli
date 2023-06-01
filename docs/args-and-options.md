@@ -8,11 +8,14 @@ They can be used to construct a `Command[(ArgsType, OptionsType)]` using one of 
 ```scala mdoc:silent
 import zio.cli._
 
+val name = "name"
+val optionsNone = Options.none
+val argsNone = Args.none
+
 Command(name)
-Command(name, options)
-Command(name, args)
-Command(name, options, args)
-Command(name, helpDoc, options, args)
+Command(name, optionsNone)
+Command(name, argsNone)
+Command(name, optionsNone, argsNone)
 ```
 
 ## Args
@@ -64,15 +67,16 @@ trait Args[A] {
 
 ### Example
 We are going to construct an `Args` that asks for a list of 12 decimals (one for each month) and a year. Then it creates a new `Args` that stored the year and the mean value.
-```scala mdoc:silent
+```scala mdoc:silent:reset
 import zio.cli._
+
 val data: Args[BigDecimal] = Args.decimal
-val args: Args[(BigDecimal, BigInt)] = data.between(12, 12) ++ Args.integer
+val args: Args[(List[BigDecimal], BigInt)] = data.between(12, 12) ++ Args.integer
 
 case class YearAndMean(year: BigInt, mean: BigDecimal)
 
 val mappedArgs: Args[YearAndMean] = args.map {
-  case (months, year) = YearAndMean(year, months.sum()/12)
+  case (months, year) => YearAndMean(year, months.sum/12)
 }
 ```
 
@@ -81,6 +85,8 @@ val mappedArgs: Args[YearAndMean] = args.map {
 
 The following methods construct an `Options` with a `name` that requires an input of the corresponding type from the user. Observe that for `Options` is necessary to specify the `name`.
 ```scala mdoc:silent
+val name = "name"
+
 Options.boolean(name)
 Options.file(name)
 Options.directory(name)
@@ -105,7 +111,7 @@ Options.zoneOffset(name)
 We can use the following methods to create more complex Options:
 ```scala mdoc:silent
 trait Options[A] {
-  def ++[A1 >: A, B](that: Options[B])
+  def ++[A1 >: A, B](that: Options[B]): Options[(A1, B)]
   def |[A1 >: A](that: Options[A1]): Options[A1]
   def orElse[A1 >: A](that: Options[A1]): Options[A1] // same as |
   def orElseEither[B](that: Options[B]): Options[Either[A, B]] 
@@ -122,22 +128,24 @@ trait Options[A] {
 
 ### Example
 As an example, we are going to construct an instance of `Options[Order]` that defines two commands: ask for the path of a file and a string or a number to search in the file.
-```scala mdoc:silent
+```scala mdoc:silent:reset
 import zio.cli._
+import java.nio.file.{Path => JPath}
+
 // Construction of basic options.
 val getFile: Options[JPath] = Options.file("file")
 val getText: Options[String] = Options.text("textToSearch")
-val getInt: Options[Int]   = Options.integer("intToSearch")
+val getInt: Options[BigInt]   = Options.integer("intToSearch")
 
 // First we construct a new Options[Either[String, Int]] that will allow to enter only one of the two possibilities in the CLI.
-val getTextOrInt: Options[Either[String, Int]] = getText orElseEither getInt
+val getTextOrInt: Options[Either[String, BigInt]] = getText orElseEither getInt
 
 // Then we are going to add some information that will appear if the user ask for help in the CLI App
 val doc: String = "String or Int to search in the specified file"
 val getTextOrIntWithDoc = getTextOrInt ?? doc
 
 // Finally we combine getFile with getTextOrInt 
-val options: Options[(JPath, Either[String, Int])] = getFile ++ getTextOrIntWithDoc
+val options: Options[(JPath, Either[String, BigInt])] = getFile ++ getTextOrIntWithDoc
 
 ```
 Note that we have not added any help to the `file` options or to `options` only to `getTextOrInt`.
@@ -147,13 +155,13 @@ Defining a sealed trait to describe the output of the `Options` we can construct
 ```scala mdoc:silent
 sealed trait Search
 case class StringSearch(file: JPath, text: String) extends Search
-case class IntSearch(file: JPath, int: Int) extends Search
+case class IntSearch(file: JPath, int: BigInt) extends Search
 
 // We need to specify a function `(JPath, Either[String, Int]) => Search`
-val betterOptions: Options[Search] = options.map { (file, either) =>
+val betterOptions: Options[Search] = options.map { case (file, either) =>
   either match {
-    case text: String => StringSearch(file, text)
-    case int: Int     => IntSearch(file, int)
+    case Left(text) => StringSearch(file, text)
+    case Right(int)     => IntSearch(file, int)
   }
 }
 ```
