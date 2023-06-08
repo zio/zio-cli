@@ -2,7 +2,7 @@
 id: options
 title: "Options"
 ---
-The `Options` data type models command-line options. Contrary to arguments, options are named, position-independent parameters passed to a command-line program that modify its behaviour. Note that the user must specify the name of the option just before its content. As an example, the Git CLI has a command named `git checkout` that allows to change between different development branches. It allows different options that modify the functionality of the command like option `quiet`. This option allows to suppress feedback messages. This option can be specified in the following manners:
+The `Options` data type models command-line options. Contrary to arguments, options are named, position-independent parameters passed to a command-line program that modify its behavior. Note that the user must specify the name of the option just before its content. As an example, the Git CLI has a command named `git checkout` that allows changing between different development branches. It allows different options that modify the functionality of the command like option `quiet`. This option allows suppressing feedback messages. This option can be specified in the following manners:
 ```
 git checkout --quiet
 git checkout -q
@@ -12,10 +12,10 @@ Both `--quiet` and `-q` refer to the same option. `-q` is the alias of `quiet`, 
 In **ZIO CLI**, Options are represented by instances of class `Options[_]`. `Options[A]` is a description of the process of constructing an instance of `A` from a valid input of the CLI. It is not yet a specified option for the CLI. In other words, an instance of `Options[A]` defines a collection of valid commands and a way to construct a value `A` from them.
 
 ## Construction of basic Options
-**ZIO CLI** offers a variety of methods to create basic `Options` that take a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be throwed.
+**ZIO CLI** offers a variety of methods to create basic `Options` that take a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be thrown.
 
 The following methods construct an `Options` with a `name` that requires an input of the corresponding type from the user. Observe that for `Options` it is mandatory to specify the `name`.
-## Boolean Options
+### Boolean Options
 Produces an `Options[Boolean]`. It accepts as input `true` or `false`, while other pieces of text are not valid.
 ```scala mdoc:silent
 import zio.cli._

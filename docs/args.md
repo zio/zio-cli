@@ -2,7 +2,7 @@
 id: args
 title: "Args"
 ---
-The `Args` data type models command-line arguments. Arguments are name-less, position-based parameters passed to a command-line program that modify its behaviour. For example, the Git CLI has a command named `git clone` that creates a copy of an existing repository. It has an argument called "repository" that represent the path of the existing repository. To clone the **ZIO CLI** repository, it can be called in this way:
+The `Args` data type models command-line arguments. Arguments are name-less, position-based parameters passed to a command-line program that modify its behavior. For example, the Git CLI has a command named `git clone` that creates a copy of an existing repository. It has an argument called "repository" that represents the existing repository's path. To clone the **ZIO CLI** repository, it can be called this way:
 ```
 git clone https://github.com/zio/zio-cli.git
 ```
@@ -12,7 +12,7 @@ In **ZIO CLI**, Arguments are represented by instances of class `Args[_]`. `Args
 
 
 ## Construction of basic Args
-**ZIO CLI** offers a variety of methods to create basic `Args` that take a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be throwed. Note that each type has its own validation function.
+**ZIO CLI** offers a variety of methods to create basic `Args` that takes a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be thrown. Note that each type has its own validation function.
 
 An `Args` instance of a basic type carries a name attribute. This can be specified when being created, but it can also be skipped. In this last case, the name will be that of the type. Example with Boolean type.
 ```scala mdoc:silent
@@ -26,7 +26,7 @@ Args.bool       // Boolean Args named "boolean"
 
 
 
-## Boolean Args
+### Boolean Args
 Produces an `Args[Boolean]`. It accepts as input `true` or `false`, while other pieces of text are not valid.
 ```scala mdoc:silent
 Args.bool(name)

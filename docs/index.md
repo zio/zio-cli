@@ -16,11 +16,11 @@ To use **ZIO CLI**, we need to add the following to our `build.sbt` file:
 libraryDependencies += "dev.zio" %% "zio-cli" % "@VERSION@"
 ```
 ## Getting Started
-**ZIO CLI** allows to easily construct a CLI application. A CLI or Command-Line Interface is an application that allows the user to give instructions by means of piece of texts called commands. A command has the following structure
+**ZIO CLI** allows to easily construct a CLI application. A CLI or Command-Line Interface is an application that allows the user to give instructions by means of pieces of text called commands. A command has the following structure
 ```
 command param1 param2 ... paramN
 ```
-where `command` is the name of the command and `param1`, `param2`, ..., `paramN` form a list of parameters depending on the command that determine the precise instruction to the CLI application.
+where `command` is the name of the command and `param1`, `param2`, ..., `paramN` form a list of parameters depending on the command that determines the precise instruction to the CLI application.
 
 Given the case, a command itself might contain subcommands. This allows a better design of the command-line application and a more comfortable user experience.
 
@@ -31,7 +31,7 @@ git clone https://github.com/zio/zio-cli.git
 ```
 
 
-- Options are named and position-independent parameters that are specified by writing the content after the name. The name is preceded by `--`. An option may have a shorter form called alias. When the alias is used instead of the full name, only `-` is needed. An option of command `git clone` is `local`. It is a boolean option, so it is not necessary to write true or false after it: it will be true only if it appears. It is used in the following manner:
+- Options are named and position-independent parameters that are specified by writing the content after the name. The name is preceded by `--`. An option may have a shorter form called an alias. When the alias is used instead of the full name, only `-` is needed. An option of command `git clone` is `local`. It is a boolean option, so it is not necessary to write true or false after it: it will be true only if it appears. It is used in the following manner:
 ```
 git clone --local
 ```
