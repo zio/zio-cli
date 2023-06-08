@@ -14,11 +14,11 @@ import zio.cli.HelpDoc.Span
 
 val t = "text"
 
-val element: HelpDoc  = HelpDoc.empty           // HelpDoc without content
-val header1: HelpDoc  = HelpDoc.h1("Level 1")  // Header of level 1
-val header2: HelpDoc  = HelpDoc.h2("Level 2")  // Header of level 2
-HelpDoc.h3(t: String): HelpDoc                  // Header of level 3
-HelpDoc.p(t: String): HelpDoc                   // Paragraph
+val element: HelpDoc  = HelpDoc.empty             // HelpDoc without content
+val header1: HelpDoc  = HelpDoc.h1("Level 1")     // Header of level 1
+val header2: HelpDoc  = HelpDoc.h2("Level 2")     // Header of level 2
+val header3 = HelpDoc.h3(t: String): HelpDoc      // Header of level 3
+val p = HelpDoc.p(t: String): HelpDoc             // Paragraph
 ```
 
 It is possible to construct more complex `HelpDoc` by combining them. We can use enumerations, description list and blocks. In each of the following methods, it is possible to use as many `HelpDoc` argument as desired.
@@ -117,16 +117,22 @@ trait HelpDoc {
 }
 ```
 - Method `+`
+
 It concatenates `HelpDoc`:
-```scala mdoc:silent
-header1 + p
+```scala mdoc:silent:reset
+import zio.cli._
+
+HelpDoc.h1("Header 1") + HelpDoc.p("paragraph content")
 ```
 It shows:
-```scala mdoc:silent
-header1 + p
+```
+Header 1
+
+  paragraph content
 ```
 
 - Method `|`
+
 It shows the second `HelpDoc` only if the first one is empty. It could be used to create a backup `HelpDoc`.
 
 

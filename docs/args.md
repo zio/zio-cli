@@ -160,26 +160,31 @@ COMMANDS
 ### Repeating Args
 If we need an argument a repeated number of times, we can use the following operators:
 - Method `*`
+
 It creates a new `Args` that accepts a list of arguments of the same type. There are no restrictions on length. The elements of the list Take into account that there is no limit, so if there are arguments or options after using this methods, the CLI app will not read them unless they are not valid!
 ```scala:mdoc:silence
 // Accepts a list, possibly empty, of texts.
 Args.text.*
 ```
 - Method `+`
+
 It works as method `*` but the list of arguments cannot be empty. Do not mistake with method `++`!
 
 - Method `between`
+
 It creates an argument accepting a list of arguments of the type before whose length must be between `min` and `max` parameters.
 ```scala:mdoc:silence
 Args.text.between(2,5) // Creates an arguments accepting a list of String of length between 2 and 5.
 ```
 - Method `atLeast`
+
 It creates an argument accepting a list of arguments of the type before whose length must be more than `min` parameter.
 ```scala:mdoc:silence
 Args.text.atLeast(2) // Creates an arguments accepting a list of String of length more than 2.
 ```
 
 - Method `atMost`
+
 It creates an argument accepting a list of arguments of the type before whose length must be less than `max`parameter
 ```scala:mdoc:silence
 Args.text.atMost(5) // Creates an arguments accepting a list of String of length less than 5.
@@ -202,6 +207,7 @@ val mappedArgs: Args[YearAndMean] = args.map {
 
 ### Adding help
 Method `??` allows to add information about an arguments. The string is added after the current `HelpDoc` of the `Args`. We are going to create the `<repository>` argument of `git clone` to observe the effect of using `??`.
+
 ```scala:mdoc:silence
 val repository = Args.text("repository")
   

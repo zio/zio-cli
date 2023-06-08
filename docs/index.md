@@ -54,11 +54,12 @@ Furthermore, a command-line application will represent them in different ways. A
 
 ### First ZIO CLI example
 
- This is done by defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. 
+ This is done by defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. As a sample we are going to create a commang of Git. We are going to implement only command `git clone` with argument `repository` and option `local`.
 
 ```scala mdoc
 import zio.cli._
 import zio.cli.HelpDoc.Span.text
+import zio.Console.printLine
 
 // object of your app must extend ZIOCliDefault
 object Sample extends ZIOCliDefault {
@@ -69,23 +70,43 @@ object Sample extends ZIOCliDefault {
    *    - Create command arguments
    *    - Create help (HelpDoc) 
    */
-  val options: Options[String] = Options.text("textOption")
-  val arguments: Args[BigInt] = Args.integer("intArguments")
-  val help: HelpDoc = HelpDoc.p("cli help")
+  val options: Options[Boolean] = Options.boolean("local").alias("l")
+  val arguments: Args[String] = Args.text("repository")
+  val help: HelpDoc = HelpDoc.p("Creates a copy of an existing repository")
   
-  val command: Command[(String, BigInt)] = Command("command", options, arguments).withHelp(help)
+  val command: Command[(Boolean, String)] = Command("clone").subcommands(Command("clone", options, arguments).withHelp(help))
   
   // Define val cliApp using CliApp.make
   val cliApp = CliApp.make(
-    name = "Sample",
+    name = "Sample Git",
     version = "1.1.0",
-    summary = text("Sample cli"),
+    summary = text("Sample implementation of git clone"),
     command = command
   ) {
     // Implement logic of CliApp
-    case (string, bigInteger) => ???
+    case _ => printLine("executing git clone")
   }
 }
+```
+The output will be
+```
+   _____@       @           @        @   __@     @       @  ______@   _ @  __ @
+  / ___/@ ____ _@  ____ ___ @   ____ @  / /@ ___ @       @ / ____/@  (_)@ / /_@
+  \__ \ @/ __ `/@ / __ `__ \@  / __ \@ / / @/ _ \@       @/ / __  @ / / @/ __/@
+ ___/ / / /_/ / @/ / / / / /@ / /_/ /@/ /  /  __/@       / /_/ /  @/ /  / /_  @
+/____/  \__,_/  /_/ /_/ /_/ @/ .___/ /_/   \___/ @       \____/   /_/   \__/  @
+        @       @           /_/      @     @     @       @        @     @     @
+
+
+Sample Git v1.1.0 -- Sample implementation of git clone
+
+USAGE
+
+  $ clone clone [(-l, --local)] <repository>
+
+COMMANDS
+
+  clone [(-l, --local)] <repository>  Creates a copy of an existing repository
 ```
 
 If there is a `CliApp`, you can run a command using its method `run` and passing parameters in a `List[String]`.

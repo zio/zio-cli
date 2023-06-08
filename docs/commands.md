@@ -47,6 +47,7 @@ trait Command[+A] {
 ### Choosing between commands
 If we have more than one command, we can create a new `Command` that allows to choose between two commands using methods `|`, `orElse` and `orElseEither` as with `Options`. The difference between these three methods lies in the type parameter of the new `Command`. The user will be able to enter only the commands that he wants, triggering the desired functionality.
 - Method `orElse`
+
 `|` is just an alias for `orElse`. In the Git CLI, it is possible to choose between different commands. This can be realized using `orElse`.
 ```scala mdoc:silent:reset
 import zio.cli._
@@ -59,6 +60,7 @@ val newCommand: Command[Any] = gitAdd orElse gitClone
 ```
 
 - Method `orElseEither`
+
 This method wraps the types in an `Either` class.
 
 ```scala mdoc:silent:reset
