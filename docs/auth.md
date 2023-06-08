@@ -4,7 +4,11 @@ title: "Authorization with OAuth2"
 sidebar_label: "OAuth2"
 ---
 
-**ZIO CLI** can perform interactions requiring OAuth2. OAuth2 is added to a CLI App as an `Options[OAuth2Token]`. The token can be stored and the user can specify the path, so it is not necessary to repeat authentication. We can create it as with other options:
+A command-line application interacting with an external API might require some form of authentication, so that access is restricted for unauthorized users. One widely employed authorization and authentication protocol is OAuth2. **ZIO CLI** can perform interactions with APIs requiring OAuth2. Although it is possible to construct a custom OAuth2 provider easily, there are already tailored OAuth2 providers for GitHub, Google and Facebook within **ZIO CLI**. We will see how we can add `OAuth2` to our CLI application and how we can construct a custom OAuth2 provider to interact with other APIs.
+
+## Using OAuth2
+
+ OAuth2 is added to a CLI App as an `Options[OAuth2Token]`. The token can be stored and the user can specify the path, so it is not necessary to repeat authentication. We can create it as with other options:
 ```scala mdoc:silent
 import zio.cli._
 import zio.cli.oauth2.OAuth2Provider
@@ -16,8 +20,14 @@ val scope: List[String] = List("repo")
 val oauth2 = Options.oauth2(provider, scope)
 ```
 
-## Construction
+## ZIO Sample providers
 Currently the supported OAuth2 providers are GitHub, Google and Facebook.
+
+### Github
+
+### Google
+
+### Facebook
 ```scala mdoc:silent
 
 val clientSecret = "clientSecret"
@@ -32,35 +42,121 @@ val facebookOAuth = Options.oauth2(OAuth2Provider.Facebook(appId, clientToken), 
 
 ```
 
-## Full example
-This example shows how to integrate OAuth2 in a ZIO `CliApp`. We are going to make a CLI App that interacts with Github and has two commands:
-- Save text in a path (This does not need OAuth2)
-- Upload a file to GitHub (This needs OAuth2)
+## Construction of custom OAuth2 provider
+To create a custom OAuth2 provider, it suffices to extend the trait `OAuth2Provider`.
+The methods that need to be overrided are the following:
+```scala:mdoc
+import zio.http._
 
-```scala mdoc:silent
+trait OAuth2Provider {
+  
+  def name: String
+
+  def clientIdentifier: String
+
+  def authorizationRequest(scope: List[String]): HttpRequest
+
+  def accessTokenRequest(authorization: AuthorizationResponse): HttpRequest
+
+  def refreshTokenRequest(refreshToken: String): Option[HttpRequest]
+}
+``` 
+Two other methods that might need to be overrided depending on the particular provider are 
+```scala:mdoc:reset
+import zio.http._
+import zio.cli.oauth2._
+
+trait OAuth2Provider {
+  
+  def decodeAuthorizationResponse(body: String): Either[String, AuthorizationResponse]
+
+  def decodeAccessTokenResponse(body: String): Either[String, AccessTokenResponse]
+
+}
+``` 
+### Description of methods
+- Method `name`
+It is the name of the provider.
+- Method `clientIdentifier`
+It is a public client identifier as provided after registration on authorization
+server. It is used for generating default file name, which holds access token.
+- Method `authorizationRequest`
+It generates the HTTP request for authorization request.
+- Method `accessTokenRequest`
+It generates the HTTP request for access token request.
+- Method `refreshTokenRequest`
+It generates the HTTP request for refresh token request. It must return `None` if this operation is not supported by the provider.
+- Method `decodeAuthorizationResponse`
+It converts textual response of authorization request into `AuthorizationResponse`. It defaults to decoding from standard JSON format.
+- Method `decodeAccessTokenResponse`
+It converts textual response of access token request into `AccessTokenResponse`.
+It defaults to decoding from standard JSON format.
+
+### Construction of GitHub OAuth2 provider
+The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the library **ZIO Http**. They represent a POST request to GitHub API.
+```scala:mdoc:silence
+import zio.cli.oauth2._
+import zio.http._
+
+final case class GithubExample(clientId: String) extends OAuth2Provider {
+    override val name = "Github"
+
+    override val clientIdentifier = clientId
+
+    // Core logic of Provider
+    override def authorizationRequest(scope: List[String]): HttpRequest =
+      HttpRequest
+        .newBuilder()
+        .uri(URI.create(s"https://github.com/login/device/code?client_id=$clientId&scope=${scope.mkString(",")}"))
+        .header("Accept", "application/json")
+        .POST(HttpRequest.BodyPublishers.noBody())
+        .build()
+
+    override def accessTokenRequest(authorization: AuthorizationResponse): HttpRequest =
+      HttpRequest
+        .newBuilder()
+        .uri(
+          URI.create(
+            s"https://github.com/login/oauth/access_token?client_id=$clientId&device_code=${authorization.deviceCode}&grant_type=urn:ietf:params:oauth:grant-type:device_code"
+          )
+        )
+        .header("Accept", "application/json")
+        .POST(HttpRequest.BodyPublishers.noBody())
+        .build()
+
+    override def refreshTokenRequest(refreshToken: String): Option[HttpRequest] = None
+  }
+```
+
+## Integrating OAuth2
+This example shows how to integrate OAuth2 in a ZIO `CliApp`. We are going to make a CLI App that interacts with Github and uploads a file to GitHub (This needs OAuth2).
+
+The first step is to define the `Options` that provides an `OAuth2Token
+```scala mdoc:silent:reset
 import zio.Console.printLine
 import zio.cli.HelpDoc.Span.text
+import zio.cli.oauth2.OAuth2Provider
+import zio.cli.oauth2._
+import zio.cli._
 
-object OurCli extends ZIOCliDefault {
-  // Construct options
-  val options1 = Options.file("path") ++ Options.text("text")
-  val options2 = Options.file("path") ++ githubOAuth
-  val options = options1 orElseEither options2
+val githubOAuth: Options[OAuth2Token] = Options.oauth2(OAuth2Provider.Github("sampleId"), List("repo"))
+```
+Then, we add the token to an `Options` providing the path of a file. We construct a command `upload` usign this `Options`.
 
-  // Construct command
-  val command = Command("sample", options)
-
-  // Construct CLI
-  val cliApp = CliApp.make(
+```scala mdoc:silent
+val options = Options.file("path") ++ githubOAuth
+val upload = Command("upload", options)
+```
+Finally, a `CliApp` is specified using `upload` command.
+```scala mdoc:silent
+val cliApp = CliApp.make(
     name = "OAuth2 Example",
     version = "0.0.1",
     summary = text("Example of CliApp with OAuth2"),
-    command = command) {
+    command = upload) {
     // Implement logic of CliApp
-      case Left((path, text)) => printLine("Save text in a path")
-      case Right((path, oauth2)) => printLine("Upload a file to GitHub")
+      case file => printLine("Upload file to GitHub")
     }
-}
 ```
 
 

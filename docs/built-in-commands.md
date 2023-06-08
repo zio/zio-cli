@@ -28,3 +28,67 @@ cliApp.run(List("-h"))
 cliApp.run(List("subcommand", "-h"))
 
 ```
+
+## Examples
+```scala mdoc:silent:reset
+import zio.cli._
+import java.nio.file.Path
+
+// Construction of basic commands and HelpDoc
+val helpGit = "This is command git."
+val helpGitAdd = "Stages changes in the working repository."
+val helpGitClone = "Creates a copy of an existing repository."
+
+val git: Command[Unit] = Command("git").withHelp(helpGit)
+val gitAdd: Command[Unit] = Command("add").withHelp(helpGitAdd)
+val gitClone: Command[Path] = Command("clone", Options.directory("directory")).withHelp(helpGitClone)
+
+// Adds subcommands add and clone to command git
+val finalCommand: Command[Any] = git.subcommands(gitAdd, gitClone)
+
+```
+### Help
+The output produced by command `--help` or `-h` is
+```
+USAGE
+
+  $ git <command>
+
+DESCRIPTION
+
+  This is command git.
+
+COMMANDS
+
+  - add                          Stages changes in the working repository.
+  - clone --directory directory  Creates a copy of an existing repository.
+```
+If we desire to consult the help of a subcommand, like `clone`, we would get the following.
+```
+USAGE
+
+  $ git clone --directory directory
+
+DESCRIPTION
+
+  Creates a copy of an existing repository.
+
+OPTIONS
+
+  --directory directory
+    A directory.
+```
+
+### Wizard
+Wizard mode allows to construct a command by choosing between parameters offered by the application. The output would be the following.
+```
+Command(add|clone): 
+```
+If we input `clone`, we will get:
+```
+--directory (directory): 
+```
+
+
+
+

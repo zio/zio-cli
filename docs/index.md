@@ -16,7 +16,45 @@ To use **ZIO CLI**, we need to add the following to our `build.sbt` file:
 libraryDependencies += "dev.zio" %% "zio-cli" % "@VERSION@"
 ```
 ## Getting Started
-**ZIO CLI** allows to easily construct a CLI application. This is done defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. 
+**ZIO CLI** allows to easily construct a CLI application. A CLI or Command-Line Interface is an application that allows the user to give instructions by means of piece of texts called commands. A command has the following structure
+```
+command param1 param2 ... paramN
+```
+where `command` is the name of the command and `param1`, `param2`, ..., `paramN` form a list of parameters depending on the command that determine the precise instruction to the CLI application.
+
+Given the case, a command itself might contain subcommands. This allows a better design of the command-line application and a more comfortable user experience.
+
+A command might include arguments and options.
+- Arguments are name-less and position-based parameters that the user specifies just by the position in the command. As an example, we can consider the widely used command-line application Git. One subcommand is `clone`. It creates a copy of an existing repository. An argument of `git clone` is `repository`. If the repository name is `https://github.com/zio/zio-cli.git`, we will use it in the following manner:
+```
+git clone https://github.com/zio/zio-cli.git
+```
+
+
+- Options are named and position-independent parameters that are specified by writing the content after the name. The name is preceded by `--`. An option may have a shorter form called alias. When the alias is used instead of the full name, only `-` is needed. An option of command `git clone` is `local`. It is a boolean option, so it is not necessary to write true or false after it: it will be true only if it appears. It is used in the following manner:
+```
+git clone --local
+```
+It also has an alias `-l`:
+```
+git clone -l
+```
+
+The description of the command `git clone`, taking only into account option `local` and argument `repository` will be
+```
+git clone [-l] <repository>
+```
+where `[]` implies that the option is optional and `<>` indicates an argument.
+
+
+### Difference between Args and Options
+Arguments and options are different due to the way the user specifies them. Arguments are not specified using its name, only by the position inside the command. On the other hand, options must be preceded by its name and `--` indicating that it is the name of an option. 
+
+Furthermore, a command-line application will represent them in different ways. Argument's name will be between `<>` while the an option will be preceded by `--`. In case that the option has a short form or alias, this will be preceded by `-`.
+
+### First ZIO CLI example
+
+ This is done by defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. 
 
 ```scala mdoc
 import zio.cli._

@@ -1,12 +1,12 @@
 ---
 id: helpdoc
 title: "Help Documentation"
-sidebar_label: "Help Documentation"
 ---
 `HelpDoc` is a description of the documentation of a CLI App. They can be added to any `Command`, `Options` or `Args`.
 `HelpDoc` is composed of a list of `HelpDoc` items that can be headers, paragraphs, description lists, sequences and enumerations.
 
 ## Building blocks
+The most basic forms of `HelpDoc` are headers and paragraphs. Method `HelpDoc.p` can create paragraphs from text, while methods `HelpDoc.h1`, `HelpDoc.h2` and `HelpDoc.h3` create headers of different levels.
 
 ```scala mdoc:silent
 import zio.cli._
@@ -15,25 +15,67 @@ import zio.cli.HelpDoc.Span
 val t = "text"
 
 val element: HelpDoc  = HelpDoc.empty           // HelpDoc without content
-val element1: HelpDoc  = HelpDoc.h1(t: String)  // Header of level 1
-val element2: HelpDoc  = HelpDoc.h2(t: String)  // Header of level 2
+val header1: HelpDoc  = HelpDoc.h1("Level 1")  // Header of level 1
+val header2: HelpDoc  = HelpDoc.h2("Level 2")  // Header of level 2
 HelpDoc.h3(t: String): HelpDoc                  // Header of level 3
 HelpDoc.p(t: String): HelpDoc                   // Paragraph
-  
+```
+
+It is possible to construct more complex `HelpDoc` by combining them. We can use enumerations, description list and blocks. In each of the following methods, it is possible to use as many `HelpDoc` argument as desired.
+- Enumeration
+```scala mdoc:silent
 // Enumeration of HelpDocs
 HelpDoc.enumeration(element: HelpDoc): HelpDoc
-HelpDoc.enumeration(element1: HelpDoc, element2: HelpDoc)
+HelpDoc.enumeration(header1 + p, header2 + p)
+
+```
+The output of `HelpDoc.enumeration(header1 + p, header2 + p)` is:
+```
+- 
+LEVEL 1
+
+  text
+  -
+LEVEL 2
+
+  text
+```
+
+- Description List
+```scala mdoc:silent
   
 // Creates a list with Span as header
-val definition1 = (Span.text("span1"), element1)
-val definition2 = (Span.text("span2"), element2)
+val definition1 = (Span.text("Span1"), HelpDoc.p("Description 1"))
+val definition2 = (Span.text("Span2"), HelpDoc.p("Description 12"))
 HelpDoc.descriptionList(definition1: (Span, HelpDoc)): HelpDoc
 HelpDoc.descriptionList(definition1: (Span, HelpDoc), definition2: (Span, HelpDoc))
-  
+
+```
+The output of `HelpDoc.descriptionList(definition1: (Span, HelpDoc), definition2: (Span, HelpDoc))` is:
+```
+Span1
+  Description 1
+
+Span2
+  Description 2
+```
+
+- Blocks
+```scala mdoc:silent
 // Stacks HelpDocs
 HelpDoc.blocks(element: HelpDoc): HelpDoc
-HelpDoc.blocks(element1: HelpDoc, element2: HelpDoc)
+HelpDoc.blocks(header1 + p, header2 + p)
 
+```
+The output of `HelpDoc.blocks(header1 + p, header2 + p)` is:
+```
+LEVEL 1
+
+  text
+
+LEVEL 2
+
+  text
 ```
 
 ### Span
@@ -67,13 +109,26 @@ trait HelpDoc {
 ```
 
 ## Combination methods
+The following methods allows to combine `HelpDoc`:
 ```scala mdoc:silent:reset
 trait HelpDoc {
   def +(that: HelpDoc): HelpDoc     // Concatenate HelpDocs in successive levels
   def |(that: HelpDoc): HelpDoc
 }
 ```
-To combine HelpDocs, we can use `HelpDoc.DescriptionList`, `HelpDoc.Enumeration`, and `HelpDoc.Sequence`.
+- Method `+`
+It concatenates `HelpDoc`:
+```scala mdoc:silent
+header1 + p
+```
+It shows:
+```scala mdoc:silent
+header1 + p
+```
+
+- Method `|`
+It shows the second `HelpDoc` only if the first one is empty. It could be used to create a backup `HelpDoc`.
+
 
 ## Examples
 The more common use case is through the operators `??` and `withHelp`.

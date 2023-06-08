@@ -6,7 +6,8 @@ const sidebars = {
       collapsed: false,
       link: { type: "doc", id: "index" },
       items: [
-        "args-and-options",
+        "args",
+        "options",
         "commands",
         "helpdoc",
         "built-in-commands",
