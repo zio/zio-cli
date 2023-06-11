@@ -2,10 +2,10 @@
 id: commands
 title: "Commands"
 ---
-A command is a piece of text representing a directive for a CLI application. This allows the user to communicate easily which task must perform the application. A popular CLI app is the Version Control System called Git. Commonly used commands of Git are among the following
+A command is a piece of text representing a directive for a CLI application. This allows the user to communicate easily which task must perform the application. A popular CLI app is the Version Control System called Git. Commonly used commands of Git are among the following.
 ```
 git clone // Creates a copy of a repository
-git add // Adds modified or new files that will be committed after using git commit
+git add   // Adds modified or new files that will be committed after using git commit
 ```
 **ZIO CLI** uses class `Command[Model]` as a description of a CLI command. When using `CliApp.make`, it is needed to specify a `Command[Model]` instance. This parameter is parsed by `CliApp` to produce a collection of possible commands and transform a valid input from a user into an instance of type `Model`. Then you can implement the functionality of the CLI App using pattern matching on instances of `Model`.
 
@@ -29,7 +29,7 @@ object Command {
 }
 ```
 ## Combining commands and transformations
-**ZIO CLI** also allows to combine different commands in a functional manner. This can be used for a cleaner design of a CLI app.
+**ZIO CLI** also allows to combine different commands in a functional manner. This can be used for a cleaner design of the commands of a CLI app.
 
 ```scala mdoc:silent
 trait Command[+A] {
@@ -45,7 +45,7 @@ trait Command[+A] {
 ```
 
 ### Choosing between commands
-If we have more than one command, we can create a new `Command` that allows to choose between two commands using methods `|`, `orElse` and `orElseEither` as with `Options`. The difference between these three methods lies in the type parameter of the new `Command`. The user will be able to enter only the commands that he wants, triggering the desired functionality.
+If we have more than one command, we can create a new `Command` that allows to choose between two commands using methods `|`, `orElse` and `orElseEither` as with `Options`. The difference between these three methods lies in the type parameter of the new `Command`. The user will be able to enter only the command that he wants, triggering the desired functionality.
 - Method `orElse`
 
 `|` is just an alias for `orElse`. In the Git CLI, it is possible to choose between different commands. This can be realized using `orElse`.
@@ -107,38 +107,19 @@ Method `subcommands` returns a new command with a new set of child commands.
 
 ```scala mdoc:silent
 // Adds subcommands add and clone to command git
-val finalCommand: Command[Any] = git.subcommands(gitAdd, gitClone)
+val git: Command[Any] = git.subcommands(gitAdd, gitClone)
 ```
 
-### Example
-In the following example, we are going to construct a command using some of the methods above
-```scala mdoc:silent:reset
-import zio.cli._
-import java.nio.file.Path
-
-// Construction of basic commands and HelpDoc
-val helpGit = "This is command git."
-val helpGitAdd = "Stages changes in the working repository."
-val helpGitClone = "Creates a copy of an existing repository."
-
-val git: Command[Unit] = Command("git").withHelp(helpGit)
-val gitAdd: Command[Unit] = Command("add").withHelp(helpGitAdd)
-val gitClone: Command[Path] = Command("clone", Options.directory("text2")).withHelp(helpGitClone)
-
-// Adds subcommands add and clone to command git
-val fullCommand: Command[Any] = git.subcommands(gitAdd, gitClone)
-
-```
 
 ### Changing the type parameter
-`Command[_]` is a generic class. We can apply `map` to construct commands returning any custom type that helps us implement business logic. In this way, we can avoid using types as `Unit`, `Path`, `Any` or `Either` that are not very informative.
+`Command[_]` is a generic class. We can apply `map` to construct commands returning any custom type that helps us implement business logic. In this way, we can avoid using types as `Unit`, `Path`, `Any` or `Either` that are not very informative. For example, we can modify the type parameter of `git` to the trait `Git`. 
 ```scala mdoc:silent
 sealed trait Git
 case class Add() extends Git
 case class Clone(directory: Path) extends Git
 
 val customCommand: Command[Git] =
-  fullCommand.map {
+  git.map {
     case () => Add()
     case directory: Path => Clone(directory)
   }
@@ -157,7 +138,7 @@ val customEitherCommand: Command[Git] =
   eitherCommand.map {
     case Left(Left(_)) => Add()
     case Left(Right(directory)) => Clone(directory)
-    case Right(branchName) => Clone(branchName)
+    case Right(branchName) => Branch(branchName)
   }
 ```
 In this example, we have transformed a rather cumbersome `Command[Either[Either[Unit, Path], String]]` into a `Command[Git]`.
