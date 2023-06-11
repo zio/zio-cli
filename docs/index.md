@@ -50,7 +50,7 @@ where `[]` implies that the option is optional and `<>` indicates an argument.
 ### Difference between Args and Options
 Arguments and options are different due to the way the user specifies them. Arguments are not specified using its name, only by the position inside the command. On the other hand, options must be preceded by its name and `--` indicating that it is the name of an option. 
 
-Furthermore, a command-line application will represent them in different ways. Argument's name will be between `<>` while the an option will be preceded by `--`. In case that the option has a short form or alias, this will be preceded by `-`.
+Furthermore, a command-line application will represent them in different ways. Argument's name will be inside `<>` while an option will be preceded by `--`. In case that the option has a short form or alias, this will be preceded by `-`.
 
 ### First ZIO CLI example
 
