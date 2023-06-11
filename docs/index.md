@@ -54,7 +54,7 @@ Furthermore, a command-line application will represent them in different ways. A
 
 ### First ZIO CLI example
 
- This is done by defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. As a sample we are going to create a commang of Git. We are going to implement only command `git clone` with argument `repository` and option `local`.
+ This is done by defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. As a sample we are going to create a command of Git. We are going to implement only command `git clone` with argument `repository` and option `local`.
 
 ```scala mdoc
 import zio.cli._
