@@ -2,12 +2,12 @@
 id: options
 title: "Options"
 ---
-The `Options` data type models command-line options. Contrary to arguments, options are named, position-independent parameters passed to a command-line program that modify its behavior. Note that the user must specify the name of the option just before its content. As an example, the Git CLI has a command named `git checkout` that allows changing between different development branches. It allows different options that modify the functionality of the command like option `quiet`. This option allows suppressing feedback messages. This option can be specified in the following manners:
+The `Options` data type models command-line options. Contrary to arguments, options are named, position-independent parameters passed to a command-line program that modify its behavior. Note that the user must specify the name of the option just before its content. As an example, the Git CLI has a command named `git checkout` that allows changing between different development branches. It has different options that modify the functionality of the command like option `quiet`. This option allows suppressing feedback messages. It can be specified in the following manners:
 ```
 git checkout --quiet
 git checkout -q
 ```
-Both `--quiet` and `-q` refer to the same option. `-q` is the alias of `quiet`, a shorter form of the option.
+Both `--quiet` and `-q` refer to the same option. `-q` is the alias of `quiet`, a shorter form of the option. Note that the alias is preceded only by `-`.
 
 In **ZIO CLI**, Options are represented by instances of class `Options[_]`. `Options[A]` is a description of the process of constructing an instance of `A` from a valid input of the CLI. It is not yet a specified option for the CLI. In other words, an instance of `Options[A]` defines a collection of valid commands and a way to construct a value `A` from them.
 
@@ -25,7 +25,7 @@ val name = "name"
 Options.boolean(name)
 ```
 ### Enumeration Options
-If we desire to allow the user to choose between different options, we can use `enumeration` method. It must specify a name and tuples `(String, A)` to create an instance of `Options[A]`. A valid input from the user is a key of a tuple and it will produce the corresponding value. We can use this method if there are different ways to execute a command. As an example, command `git commit` allows to choose between options `--all`, `--interactive` and `--patch` that control how the user specifies the changes to be commited. One way to implement this would using `enumeration`
+If we desire to allow the user to choose between different options, we can use the `enumeration` method. It must specify a name and tuples `(String, A)` to create an instance of `Options[A]`. A valid input from the user is a key of a tuple and it will produce the corresponding value. We can use this method if there are different ways to execute a command. As an example, the command `git commit` allows choosing between options `--all`, `--interactive` and `--patch` that control how the user specifies the changes to be committed. One way to implement this would use `enumeration`:
 ```scala mdoc:silent
 sealed trait Mode
 case class All() extends Mode
@@ -52,7 +52,7 @@ Options.file(name) // Used for a file
 ```scala mdoc:silent
 Options.directory(name) // Used for a directory
 ```
-By default, the `CliApp` accepts paths pointing to files or directories that might or not exist. If you need to work with one of them exclusively you can use the type ` `:
+By default, the `CliApp` accepts paths pointing to files or directories that might or not exist. If you need to work with one of them exclusively you can use the type `Exists`:
 ```scala mdoc:silent
 // Path can point to both existing or non-existing files or directories
 Options.file(name, exists = Exists.Either)
@@ -67,7 +67,7 @@ Options.file(name, exists = Exists.Yes)
 Options.directory(name, exists = Exists.Yes)
 ```
 ### Text Options
-Produces an `Options[String]`. It accepts any string without spaces, as spaces are used to differentiate the parameters in a command in a CLI application.
+Produces an `Options[String]`.
 ```scala mdoc:silent
 Options.text(name)
 ```
@@ -158,8 +158,8 @@ trait Options[A] {
 ```
 
 ### Adding Options
-Operator `++` can be used to zip two options. It can be use to chain two options in a tuple. For example, `git checkout` command has options `--quiet` and `--force`. The options for this command can be created in the following manner:
-```scala:mdoc:silence
+Operator `++` can be used to zip two options. It can be used to chain two options in a tuple. For example, `git checkout` command has options `--quiet` and `--force`. The options for this command can be created in the following manner:
+```scala mdoc:silence
 val checkoutOptions = Options.boolean("quiet") ++ Options.boolean("force")
 ```
 
@@ -173,6 +173,7 @@ COMMANDS
 ### Choosing between Options
 If we have more than one option and we need only one, we can create a new `Options` that allows to choose between two options using methods `|`, `orElse` and `orElseEither`. The difference between these three methods lies in the type parameter of the new `Options`. The user will be able to enter only the `Options` that he wants, triggering the desired functionality.
 - Method `orElse`
+
 `|` is just an alias for `orElse`. In the Git CLI, it is possible to choose between different options. This can be realized using `orElse`.
 ```scala mdoc:silent:reset
 import zio.cli._
@@ -186,6 +187,7 @@ val orElseOption: Options[Boolean] = all | interactive | patch
 ```
 
 - Method `orElseEither`
+
 This method wraps the types in an `Either` class. This will be preferred if the types are very different.
 
 ```scala mdoc:silent
@@ -195,7 +197,8 @@ This is another way to implement the `[--all | --interactive | --patch]` option 
 
 
 ### Transforming Options
-- Method `map` 
+- Method `map`
+
 It allows to transform the type parameter of `Options[A]`. It takes a function `f: A => B` as parameter that is applied when processing the input of a user in a CLI app. This makes easier to implement the business logic of a CLI app. This allows to implement `[--all | --interactive | --patch]` option of command `git commit` using `orElse`. This is not possible without method `map`, because the result of using `orElse` is an option that returns true if some of the options are employed.
 ```scala mdoc:silent:reset
 import zio.cli._
@@ -213,8 +216,9 @@ val alternative: Options[Mode] = all | interactive | patch
 ```
 
 - Method `optional`
+
 It wraps the option in an `Option` class. The resulting `Options` is now optional, so the user can choose to specify it or not. If it is specified, it will be wrapped in `Some()`. Without input from the user, it will produce `None`. For example, if we are designing a command-line application to manage databases, we might desire to retrieve data from a particular database. The user could specify an additional backup database. If there were an error connecting with the main database, the CLI app would try to retrieve data from the backup database.
-```scala:mdoc:silence
+```scala mdoc:silence
 val database = Options.file("database")
 val backup = Options.file("backup").optional
 val retrieve = Command("retrieve", database ++ backupDatabase)
@@ -228,8 +232,9 @@ COMMANDS
 The `[]` denotes that the parameter is optional.
 
 - Method `withDefault`
+
 It creates an option that will have a default parameter in case that the user does not input the option. It can be used, for example, to specify a default directory in which a CLI application may perform some task if the user does not specify another one.
-```scala:mdoc:silence
+```scala mdoc:silence
 val directory = Options.directory("directory").withDefault("C:\\Users\\YourUser\\Documents")
 ```
 The output produced by the HelpDoc is
@@ -244,7 +249,7 @@ OPTIONS
 
 ### Making an alias
 Using method `alias` it is possible to give a shorter form of the name of the `Options`. This is used to make easier the input of options for the user. We will make an alias for option `--directory`. 
-```scala:mdoc:silence
+```scala mdoc:silence
 val directoryWithAlias = directory.alias("d")
 ```
 The output produced by the HelpDoc in this case is
@@ -259,7 +264,7 @@ OPTIONS
 
 ### Adding help
 Method `??` allows to add information about an options. The string is added after the current `HelpDoc` of the `Options`. We are going to recreate the `--quiet` option of `git checkout` to observe the effect of using `??`.
-```scala:mdoc:silence
+```scala mdoc:silence
 val quiet = Options.boolean("quiet")
   
 /* HelpDoc of quiet:
@@ -273,7 +278,7 @@ val quiet = Options.boolean("quiet")
 ```
 Now we add a description of the option:
 
-```scala:mdoc:silence
+```scala mdoc:silence
 val quietWithHelp = quiet ?? "Suppress feedback messages."
 
 /* HelpDoc of quietWithHelp:
@@ -290,7 +295,7 @@ val quietWithHelp = quiet ?? "Suppress feedback messages."
 
 
 ### Example
-As an example, we are going to construct an instance of `Options[Git]` that describes the options of command `git commit`. We are goint to implement only an option `--msg` that includes a commit message and alternatives between `-a`, `--interactive` and `--patch`. First, we create the basic options. Observe how we add an alias to `all`and `msg.
+As an example, we are going to construct an instance of `Options[Git]` that describes the options of the command `git commit`. We are going to implement only an option `--msg` that includes a commit message and alternatives between `-a`, `--interactive` and `--patch`. First, we create the basic options. Observe how we add an alias to `all`and `msg`.
 ```scala mdoc:silent:reset
 import zio.cli._
 
@@ -301,7 +306,7 @@ val patch = Options.boolean("patch")
 val msg = Options.text("msg").alias("m")
 ```
 Then we combine options:
-- using `orElse` to combine `all`, `interactive` and `patch,
+- using `orElse` to combine `all`, `interactive` and `patch`,
 - adding it to `msg`.
 
 ```scala mdoc:silent
