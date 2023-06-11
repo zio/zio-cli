@@ -85,7 +85,7 @@ val helpGitAdd = "Stages changes in the working repository."
 val helpGitClone = "Creates a copy of an existing repository."
 
 // Adding HelpDoc to Commands
-val git: Command[Unit] = Command("git").withHelp(helpGit)
+val gitCommand: Command[Unit] = Command("git").withHelp(helpGit)
 val gitAdd: Command[Unit] = Command("add").withHelp(helpGitAdd)
 val gitClone: Command[Path] = Command("clone", Options.directory("directory")).withHelp(helpGitClone)
 ```
@@ -107,7 +107,7 @@ Method `subcommands` returns a new command with a new set of child commands.
 
 ```scala mdoc:silent
 // Adds subcommands add and clone to command git
-val git: Command[Any] = git.subcommands(gitAdd, gitClone)
+val git: Command[Any] = gitCommand.subcommands(gitAdd, gitClone)
 ```
 
 
@@ -128,12 +128,12 @@ val customCommand: Command[Git] =
 This makes possible to implement the business logic of our CLI app using directly a custom type. This can be of great use if we have employed various (`orElseEither`). We are going to implement another subcommand of Git using `orElseEither`.
 ```scala mdoc:silent
 // new Git subcommand
-val gitBranch = Command("branch", Args.directory("branch-name"))
+val gitBranch = Command("branch", Args.text("branch-name"))
 
 // new Git subclass
 case class Branch(branchName: String) extends Git
 
-val eitherCommand: Command[Either[Either[Unit, Path], Path]] = gitAdd orElseEither gitClone orElseEither gitBranch
+val eitherCommand: Command[Either[Either[Unit, Path], String]] = gitAdd orElseEither gitClone orElseEither gitBranch
 val customEitherCommand: Command[Git] =
   eitherCommand.map {
     case Left(Left(_)) => Add()

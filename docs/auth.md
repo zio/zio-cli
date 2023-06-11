@@ -12,6 +12,7 @@ A command-line application interacting with an external API might require some f
 ```scala mdoc:silent
 import zio.cli._
 import zio.cli.oauth2.OAuth2Provider
+import zio.cli.oauth2.OAuth2Provider._
 
 val clientId = "clientId"
 
@@ -53,8 +54,9 @@ val facebookOAuth = Options.oauth2(OAuth2Provider.Facebook(appId, clientToken), 
 ## Construction of custom OAuth2 provider
 To create a custom OAuth2 provider, it suffices to extend the trait `OAuth2Provider`.
 The methods that need to be overrided are the following:
-```scala mdoc
-import zio.http._
+```scala mdoc:reset
+import zio.cli.oauth2.AuthorizationResponse
+import java.net.http.HttpRequest
 
 trait OAuth2Provider {
   
@@ -71,7 +73,7 @@ trait OAuth2Provider {
 ``` 
 Two other methods that might need to be overrided depending on the particular provider are 
 ```scala mdoc:reset
-import zio.http._
+import java.net.http.HttpRequest
 import zio.cli.oauth2._
 
 trait OAuth2Provider {
@@ -115,9 +117,10 @@ It defaults to decoding from standard JSON format.
 ### Construction of GitHub OAuth2 provider
 The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the library **ZIO Http**. They represent a POST request to GitHub API.
 
-```scala mdoc:silent
+```scala mdoc:silent:reset
 import zio.cli.oauth2._
-import zio.http._
+import java.net.http.HttpRequest
+import java.net.URI
 
 final case class GithubExample(clientId: String) extends OAuth2Provider {
     override val name = "Github"

@@ -221,7 +221,7 @@ It wraps the option in an `Option` class. The resulting `Options` is now optiona
 ```scala mdoc:silent
 val database = Options.file("database")
 val backup = Options.file("backup").optional
-val retrieve = Command("retrieve", database ++ backupDatabase)
+val retrieve = Command("retrieve", database ++ backup)
 ```
 The HelpDoc of `optionsDatabase` will be 
 ```
