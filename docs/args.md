@@ -14,7 +14,7 @@ In **ZIO CLI**, Arguments are represented by instances of class `Args[_]`. `Args
 ## Construction of basic Args
 **ZIO CLI** offers a variety of methods to create basic `Args` that takes a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be thrown. Note that each type has its own validation function.
 
-An `Args` instance of a basic type carries a name attribute. This can be specified when being created, but it can also be skipped. In this last case, the name will be that of the type. Example with Boolean type.
+An `Args` instance of a basic type carries a name attribute. This can be specified when being created, but it can also be skipped. In this last case, the name will be that of the type. An example with Boolean type:
 ```scala mdoc:silent
 import zio.cli._
 
@@ -41,7 +41,7 @@ Args.file(name) // Used for a file
 ```scala mdoc:silent
 Args.directory(name) // Used for a directory
 ```
-By default, the `CliApp` accepts paths pointing to files or directories that might or not exist. If you need to work with one of them exclusively you can use the type ` `:
+By default, the `CliApp` accepts paths pointing to files or directories that might or not exist. If you need to work with one of them exclusively you can use the trait `Exists`:
 ```scala mdoc:silent
 // Path can point to both existing or non-existing files or directories
 Args.file(name, exists = Exists.Either)
@@ -56,7 +56,7 @@ Args.file(name, exists = Exists.Yes)
 Args.directory(name, exists = Exists.Yes)
 ```
 ### Text Args
-Produces an `Args[String]`. It accepts any string without spaces, as spaces are used to differentiate the parameters in a command in a CLI application.
+Produces an `Args[String]`.
 ```scala mdoc:silent
 Args.text(name)
 ```
@@ -132,8 +132,6 @@ When constructing a command, you can specify only one argument. Thus, to create 
 ```scala mdoc:silent
 trait Args[A] {
   def ++[B](that: Args[B]): Args[(A, B)]              // Zip two args
-
-  //
   def +[A1 >: A]: Args[::[A1]]                        // Requires a non-empty list of Args of type A1
   def * : Args[List[A]]                               // Requires a list of Args of same type
   def atLeast(min: Int): Args[List[A]]                // Requires a list of Args with at least min elements
@@ -146,7 +144,7 @@ trait Args[A] {
 
 ### Adding Args
 Operator `++` can be used to zip two arguments. It can be use to chain two arguments in a tuple. For example, `git clone` command has arguments `<repository>` and `<directory>`. The argument of this command can be created in the following manner:
-```scala:mdoc:silence
+```scala mdoc:silence
 val cloneArgs = Args.text("repository") ++ Args.text("directory")
 ```
 
@@ -161,8 +159,8 @@ COMMANDS
 If we need an argument a repeated number of times, we can use the following operators:
 - Method `*`
 
-It creates a new `Args` that accepts a list of arguments of the same type. There are no restrictions on length. The elements of the list Take into account that there is no limit, so if there are arguments or options after using this methods, the CLI app will not read them unless they are not valid!
-```scala:mdoc:silence
+It creates a new `Args` that accepts a list of arguments of the same type. There are no restrictions on length. Take into account that there is no limit, so if there are arguments or options after using this methods, the CLI app will not read them unless they are not valid!
+```scala mdoc:silence
 // Accepts a list, possibly empty, of texts.
 Args.text.*
 ```
@@ -173,25 +171,25 @@ It works as method `*` but the list of arguments cannot be empty. Do not mistake
 - Method `between`
 
 It creates an argument accepting a list of arguments of the type before whose length must be between `min` and `max` parameters.
-```scala:mdoc:silence
+```scala mdoc:silence
 Args.text.between(2,5) // Creates an arguments accepting a list of String of length between 2 and 5.
 ```
 - Method `atLeast`
 
 It creates an argument accepting a list of arguments of the type before whose length must be more than `min` parameter.
-```scala:mdoc:silence
+```scala mdoc:silence
 Args.text.atLeast(2) // Creates an arguments accepting a list of String of length more than 2.
 ```
 
 - Method `atMost`
 
 It creates an argument accepting a list of arguments of the type before whose length must be less than `max`parameter
-```scala:mdoc:silence
+```scala mdoc:silence
 Args.text.atMost(5) // Creates an arguments accepting a list of String of length less than 5.
 ```
 
 ### Transforming Args
-Method `map` allows to transform the type parameter of `Args[A]`. It takes a function `f: A => B` as parameter that is applied when processing the input of a user in a CLI app. This makes easier to implement the business logic of a CLI app. As an example, we are going to construct an `Args` that asks for a list of 12 decimals (one for each month) and a year. Then, it will create a new `Args` that store the year and the mean value in a custom type.
+Method `map` allows to transform the type parameter of `Args[A]`. It takes a function `f: A => B` as parameter that is applied when processing a user's input in a CLI app and returns `Args[B]`. This makes it easier to implement the business logic of a CLI app. For example, we will construct an `Args` that asks for a list of 12 decimals (one for each month) and a year. Then, it will create a new `Args` that store the year and the mean value in a custom type.
 ```scala mdoc:silent:reset
 import zio.cli._
 
@@ -206,9 +204,9 @@ val mappedArgs: Args[YearAndMean] = args.map {
 ```
 
 ### Adding help
-Method `??` allows to add information about an arguments. The string is added after the current `HelpDoc` of the `Args`. We are going to create the `<repository>` argument of `git clone` to observe the effect of using `??`.
+Method `??` allows adding information about an argument. The string is added after the current `HelpDoc` of the `Args`. We are going to create the `<repository>` argument of `git clone` to observe the effect of using `??`.
 
-```scala:mdoc:silence
+```scala mdoc:silence
 val repository = Args.text("repository")
   
 /* HelpDoc of repository:
@@ -221,15 +219,15 @@ val repository = Args.text("repository")
 ```
 Now we add a description of the argument:
 
-```scala:mdoc:silence
-val repositoryWithHelp = repository ?? "Path of repository to be cloned."
+```scala mdoc:silence
+val repositoryWithHelp = repository ?? "Path of the repository to be cloned."
 
 /* HelpDoc of repositoryWithHelp:
  *
  * <repository>
  *   A user-defined piece of text.
  * 
- *   Path of repository to be cloned.
+ *   Path of the repository to be cloned.
  */
 ```
 
