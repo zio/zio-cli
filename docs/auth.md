@@ -53,7 +53,7 @@ val facebookOAuth = Options.oauth2(OAuth2Provider.Facebook(appId, clientToken), 
 ## Construction of custom OAuth2 provider
 To create a custom OAuth2 provider, it suffices to extend the trait `OAuth2Provider`.
 The methods that need to be overrided are the following:
-```scala:mdoc
+```scala mdoc
 import zio.http._
 
 trait OAuth2Provider {
@@ -70,7 +70,7 @@ trait OAuth2Provider {
 }
 ``` 
 Two other methods that might need to be overrided depending on the particular provider are 
-```scala:mdoc:reset
+```scala mdoc:reset
 import zio.http._
 import zio.cli.oauth2._
 
@@ -115,7 +115,7 @@ It defaults to decoding from standard JSON format.
 ### Construction of GitHub OAuth2 provider
 The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the library **ZIO Http**. They represent a POST request to GitHub API.
 
-```scala:mdoc:silence
+```scala mdoc:silence
 import zio.cli.oauth2._
 import zio.http._
 
