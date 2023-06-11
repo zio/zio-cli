@@ -159,7 +159,7 @@ trait Options[A] {
 
 ### Adding Options
 Operator `++` can be used to zip two options. It can be used to chain two options in a tuple. For example, `git checkout` command has options `--quiet` and `--force`. The options for this command can be created in the following manner:
-```scala mdoc:silence
+```scala mdoc:silent
 val checkoutOptions = Options.boolean("quiet") ++ Options.boolean("force")
 ```
 
@@ -218,7 +218,7 @@ val alternative: Options[Mode] = all | interactive | patch
 - Method `optional`
 
 It wraps the option in an `Option` class. The resulting `Options` is now optional, so the user can choose to specify it or not. If it is specified, it will be wrapped in `Some()`. Without input from the user, it will produce `None`. For example, if we are designing a command-line application to manage databases, we might desire to retrieve data from a particular database. The user could specify an additional backup database. If there were an error connecting with the main database, the CLI app would try to retrieve data from the backup database.
-```scala mdoc:silence
+```scala mdoc:silent
 val database = Options.file("database")
 val backup = Options.file("backup").optional
 val retrieve = Command("retrieve", database ++ backupDatabase)
@@ -234,7 +234,7 @@ The `[]` denotes that the parameter is optional.
 - Method `withDefault`
 
 It creates an option that will have a default parameter in case that the user does not input the option. It can be used, for example, to specify a default directory in which a CLI application may perform some task if the user does not specify another one.
-```scala mdoc:silence
+```scala mdoc:silent
 val directory = Options.directory("directory").withDefault("C:\\Users\\YourUser\\Documents")
 ```
 The output produced by the HelpDoc is
@@ -249,7 +249,7 @@ OPTIONS
 
 ### Making an alias
 Using method `alias` it is possible to give a shorter form of the name of the `Options`. This is used to make easier the input of options for the user. We will make an alias for option `--directory`. 
-```scala mdoc:silence
+```scala mdoc:silent
 val directoryWithAlias = directory.alias("d")
 ```
 The output produced by the HelpDoc in this case is
@@ -264,7 +264,7 @@ OPTIONS
 
 ### Adding help
 Method `??` allows to add information about an options. The string is added after the current `HelpDoc` of the `Options`. We are going to recreate the `--quiet` option of `git checkout` to observe the effect of using `??`.
-```scala mdoc:silence
+```scala mdoc:silent
 val quiet = Options.boolean("quiet")
   
 /* HelpDoc of quiet:
@@ -278,7 +278,7 @@ val quiet = Options.boolean("quiet")
 ```
 Now we add a description of the option:
 
-```scala mdoc:silence
+```scala mdoc:silent
 val quietWithHelp = quiet ?? "Suppress feedback messages."
 
 /* HelpDoc of quietWithHelp:
