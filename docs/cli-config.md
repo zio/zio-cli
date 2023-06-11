@@ -2,7 +2,7 @@
 id: cli-config
 title: "Cli Configuration"
 ---
-It is possible to tweak the behaviour of our `CliApp` specifying a custom `CliConfig` in the parameter `cliConfig` of method `CliApp.make`. By default, `CliApp.make` uses `CliConfig.default`. `CliConfig` specify how a `CliApp`
+It is possible to tweak the behavior of our `CliApp` specifying a custom `CliConfig` in the parameter `cliConfig` of method `CliApp.make`. By default, `CliApp.make` uses `CliConfig.default`. `CliConfig` specifies how a `CliApp`
 determines the valid commands from the `command: Command[Model]` parameter.
 
 ## Parameters
@@ -15,9 +15,9 @@ final case class CliConfig(
 )
 ```
 
-There are two parameters controlled by `CliConfig`.
+There are two parameters controlled by `CliConfig`: case sensitivity and autocorrection behaviour.
 ### Case sensitivity
-It is controlled by field `caseSensitive`. If it is `true`, then a `CliApp` will determine as distinct uppercase and lowercase version of a letter in a command. On the other hand, `caseSensitive = false` implies that the `CliApp` will treat uppercase and lowercase letters as the same. In the Git example, we would have:
+It is controlled by field `caseSensitive`. If it is `true`, then a `CliApp` will determine as distinct uppercase and lowercase versions of a letter in a command. On the other hand, `caseSensitive = false` implies that the `CliApp` will treat uppercase and lowercase letters as the same. In the Git example, we would have:
 
 - `caseSensitive = true`
 ```
@@ -34,7 +34,7 @@ GIT cloNE   // Detected by CLI as "git clone" command
 Both commands will be detected as the `git clone` command.
 
 ### Autocorrection
-It is controlled by field `autoCorrectLimit`. It is an number that specifies the mistakes that can be corrected when parsing the name of an option introduced by a user. If the CLI detects that the user has written an incorrect name for the option and the number of mistakes is less, it will suggest the correct option. If `autoCorrectLimit=2` and the user inputs 
+It is controlled by the field `autoCorrectLimit`. It is the number of mistakes that can be corrected when parsing the name of an option introduced by a user. If the CLI detects that the user has written an incorrect name for the option and the number of mistakes is less, it will suggest the correct option. If `autoCorrectLimit=2` and the user inputs 
 `git status --bran nameOfBranch` instead of `git status --branch nameOfBranch`, the output produced by the CLI app will be 
 ```
 The flag "--bran" is not recognized. Did you mean --branch?
@@ -54,6 +54,6 @@ object CliConfig {
 }
 ```
 This means that a `CliApp` that does not specify any `CliConfig` and uses `CliConfig.default` will:
-- ignore if the letters of a command are written with uppercase or lowercase and
-- correct automatically up to two mistakes done when writting the name of an option in a command of `CliApp`.
+- ignore if the letters of a command are written in uppercase or lowercase and
+- correct automatically up to two mistakes when writing the name of an option in a command of `CliApp`.
 
