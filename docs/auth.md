@@ -115,7 +115,7 @@ It defaults to decoding from standard JSON format.
 ### Construction of GitHub OAuth2 provider
 The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the library **ZIO Http**. They represent a POST request to GitHub API.
 
-```scala mdoc:silence
+```scala mdoc:silent
 import zio.cli.oauth2._
 import zio.http._
 
