@@ -17,11 +17,11 @@ val t = "text"
 val element: HelpDoc  = HelpDoc.empty             // HelpDoc without content
 val header1: HelpDoc  = HelpDoc.h1("Level 1")     // Header of level 1
 val header2: HelpDoc  = HelpDoc.h2("Level 2")     // Header of level 2
-val header3 = HelpDoc.h3(t: String): HelpDoc      // Header of level 3
-val p = HelpDoc.p(t: String): HelpDoc             // Paragraph
+val header3: HelpDoc  = HelpDoc.h3(t: String)     // Header of level 3
+val p: HelpDoc        = HelpDoc.p(t: String)      // Paragraph
 ```
 
-It is possible to construct more complex `HelpDoc` by combining them. We can use enumerations, description list and blocks. In each of the following methods, it is possible to use as many `HelpDoc` argument as desired.
+It is possible to construct a more complex `HelpDoc` by combining them. We can use enumerations, description lists and blocks. In each of the following methods, it is possible to use as many `HelpDoc` arguments as desired.
 - Enumeration
 ```scala mdoc:silent
 // Enumeration of HelpDocs
@@ -109,7 +109,7 @@ trait HelpDoc {
 ```
 
 ## Combination methods
-The following methods allows to combine `HelpDoc`:
+The following methods allow to combine `HelpDoc`:
 ```scala mdoc:silent:reset
 trait HelpDoc {
   def +(that: HelpDoc): HelpDoc     // Concatenate HelpDocs in successive levels
@@ -133,7 +133,7 @@ Header 1
 
 - Method `|`
 
-It shows the second `HelpDoc` only if the first one is empty. It could be used to create a backup `HelpDoc`.
+It shows the second `HelpDoc` only if the first one is empty. It could be used to show a backup `HelpDoc`.
 
 
 ## Examples
