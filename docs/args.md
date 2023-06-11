@@ -144,7 +144,7 @@ trait Args[A] {
 
 ### Adding Args
 Operator `++` can be used to zip two arguments. It can be use to chain two arguments in a tuple. For example, `git clone` command has arguments `<repository>` and `<directory>`. The argument of this command can be created in the following manner:
-```scala mdoc:silence
+```scala mdoc:silent
 val cloneArgs = Args.text("repository") ++ Args.text("directory")
 ```
 
@@ -160,7 +160,7 @@ If we need an argument a repeated number of times, we can use the following oper
 - Method `*`
 
 It creates a new `Args` that accepts a list of arguments of the same type. There are no restrictions on length. Take into account that there is no limit, so if there are arguments or options after using this methods, the CLI app will not read them unless they are not valid!
-```scala mdoc:silence
+```scala mdoc:silent
 // Accepts a list, possibly empty, of texts.
 Args.text.*
 ```
@@ -171,20 +171,20 @@ It works as method `*` but the list of arguments cannot be empty. Do not mistake
 - Method `between`
 
 It creates an argument accepting a list of arguments of the type before whose length must be between `min` and `max` parameters.
-```scala mdoc:silence
+```scala mdoc:silent
 Args.text.between(2,5) // Creates an arguments accepting a list of String of length between 2 and 5.
 ```
 - Method `atLeast`
 
 It creates an argument accepting a list of arguments of the type before whose length must be more than `min` parameter.
-```scala mdoc:silence
+```scala mdoc:silent
 Args.text.atLeast(2) // Creates an arguments accepting a list of String of length more than 2.
 ```
 
 - Method `atMost`
 
 It creates an argument accepting a list of arguments of the type before whose length must be less than `max`parameter
-```scala mdoc:silence
+```scala mdoc:silent
 Args.text.atMost(5) // Creates an arguments accepting a list of String of length less than 5.
 ```
 
@@ -206,7 +206,7 @@ val mappedArgs: Args[YearAndMean] = args.map {
 ### Adding help
 Method `??` allows adding information about an argument. The string is added after the current `HelpDoc` of the `Args`. We are going to create the `<repository>` argument of `git clone` to observe the effect of using `??`.
 
-```scala mdoc:silence
+```scala mdoc:silent
 val repository = Args.text("repository")
   
 /* HelpDoc of repository:
@@ -219,7 +219,7 @@ val repository = Args.text("repository")
 ```
 Now we add a description of the argument:
 
-```scala mdoc:silence
+```scala mdoc:silent
 val repositoryWithHelp = repository ?? "Path of the repository to be cloned."
 
 /* HelpDoc of repositoryWithHelp:
