@@ -15,7 +15,7 @@ object BuildHelper {
   private val Scala213 = "2.13.10"
   val Scala3           = "3.2.2"
 
-  val SilencerVersion = "1.7.12"
+  val SilencerVersion = "1.7.13"
 
   def buildInfoSettings(packageName: String) =
     Seq(
