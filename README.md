@@ -10,101 +10,110 @@ Rapidly build powerful command-line applications powered by ZIO
 
 ## Installation
 
-To use ZIO CLI, we need to add the following to our `build.sbt` file:
+To use **ZIO CLI**, we need to add the following to our `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-cli" % "0.5.0"
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.5.0
+"
+```
+## Getting Started
+**ZIO CLI** allows to easily construct a CLI application. A CLI or Command-Line Interface is an application that allows the user to give instructions by means of pieces of text called commands. A command has the following structure
+```
+command param1 param2 ... paramN
+```
+where `command` is the name of the command and `param1`, `param2`, ..., `paramN` form a list of parameters depending on the command that determines the precise instruction to the CLI application.
+
+Given the case, a command itself might contain subcommands. This allows a better design of the command-line application and a more comfortable user experience.
+
+A command might include arguments and options.
+- Arguments are name-less and position-based parameters that the user specifies just by the position in the command. As an example, we can consider the widely used command-line application Git. One subcommand is `clone`. It creates a copy of an existing repository. An argument of `git clone` is `repository`. If the repository name is `https://github.com/zio/zio-cli.git`, we will use it in the following manner:
+```
+git clone https://github.com/zio/zio-cli.git
 ```
 
-## Example
+
+- Options are named and position-independent parameters that are specified by writing the content after the name. The name is preceded by `--`. An option may have a shorter form called an alias. When the alias is used instead of the full name, only `-` is needed. An option of command `git clone` is `local`. It is a boolean option, so it is not necessary to write true or false after it: it will be true only if it appears. It is used in the following manner:
+```
+git clone --local
+```
+It also has an alias `-l`:
+```
+git clone -l
+```
+
+The description of the command `git clone`, taking only into account option `local` and argument `repository` will be
+```
+git clone [-l] <repository>
+```
+where `[]` implies that the option is optional and `<>` indicates an argument.
+
+
+### Difference between Args and Options
+Arguments and options are different due to the way the user specifies them. Arguments are not specified using its name, only by the position inside the command. On the other hand, options must be preceded by its name and `--` indicating that it is the name of an option. 
+
+Furthermore, a command-line application will represent them in different ways. Argument's name will be inside `<>` while an option will be preceded by `--`. In case that the option has a short form or alias, this will be preceded by `-`.
+
+### First ZIO CLI example
+
+ This is done by defining `cliApp` value from `ZIOCliDefault` using `CliApp.make` and specifying a `Command` as parameter. A `Command[Model]` is a description of the commands of a CLI application that allows to specify which commands are valid and how to transform the input into an instance of `Model`. Then it is possible to implement the logic of the CLI application in terms of `Model`. As a sample we are going to create a command of Git. We are going to implement only command `git clone` with argument `repository` and option `local`.
 
 ```scala
-import zio.Console.printLine
-import zio.cli.HelpDoc.Span.text
 import zio.cli._
 
-import java.nio.file.{Path => JPath}
+import zio.cli.HelpDoc.Span.text
 
-object GitExample extends ZIOCliDefault {
-  import java.nio.file.Path
+import zio.Console.printLine
 
-  sealed trait Subcommand extends Product with Serializable
-  object Subcommand {
-    final case class Add(modified: Boolean, directory: JPath) extends Subcommand
-    final case class Remote(verbose: Boolean)                 extends Subcommand
-    object Remote {
-      sealed trait RemoteSubcommand extends Subcommand
-      final case class Add(name: String, url: String) extends RemoteSubcommand
-      final case class Remove(name: String)           extends RemoteSubcommand
-    }
-  }
 
-  val modifiedFlag: Options[Boolean] = Options.boolean("m")
+// object of your app must extend ZIOCliDefault
+object Sample extends ZIOCliDefault {
 
-  val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
-  val add =
-    Command("add", modifiedFlag, Args.directory("directory")).withHelp(addHelp).map { case (modified, directory) =>
-      Subcommand.Add(modified, directory)
-    }
-
-  val verboseFlag: Options[Boolean] = Options.boolean("verbose").alias("v")
-  val configPath: Options[Path]     = Options.directory("c", Exists.Yes)
-
-  val remoteAdd = {
-    val remoteAddHelp: HelpDoc = HelpDoc.p("Add remote subcommand description")
-    Command("add", Options.text("name") ++ Options.text("url")).withHelp(remoteAddHelp).map { case (name, url) =>
-      Subcommand.Remote.Add(name, url)
-    }
-  }
-
-  val remoteRemove = {
-    val remoteRemoveHelp: HelpDoc = HelpDoc.p("Remove remote subcommand description")
-    Command("remove", Args.text("name")).withHelp(remoteRemoveHelp).map(Subcommand.Remote.Remove)
-  }
-
-  val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = {
-    Command("remote", verboseFlag)
-      .withHelp(remoteHelp)
-      .map(Subcommand.Remote(_))
-      .subcommands(remoteAdd, remoteRemove)
-      .map(_._2)
-  }
-
-  val git: Command[Subcommand] =
-    Command("git", Options.none, Args.none).subcommands(add, remote)
-
+  /**
+   * First we define the commands of the Cli. To do that we need:
+   *    - Create command options
+   *    - Create command arguments
+   *    - Create help (HelpDoc) 
+   */
+  val options: Options[Boolean] = Options.boolean("local").alias("l")
+  val arguments: Args[String] = Args.text("repository")
+  val help: HelpDoc = HelpDoc.p("Creates a copy of an existing repository")
+  
+  val command: Command[(Boolean, String)] = Command("clone").subcommands(Command("clone", options, arguments).withHelp(help))
+  
+  // Define val cliApp using CliApp.make
   val cliApp = CliApp.make(
-    name = "Git Version Control",
-    version = "0.9.2",
-    summary = text("a client for the git dvcs protocol"),
-    command = git
+    name = "Sample Git",
+    version = "1.1.0",
+    summary = text("Sample implementation of git clone"),
+    command = command
   ) {
-    case Subcommand.Add(modified, directory) =>
-      printLine(s"Executing `git add $directory` with modified flag set to $modified")
-    case Subcommand.Remote.Add(name, url) =>
-      printLine(s"Executing `git remote add $name $url`")
-    case Subcommand.Remote.Remove(name) =>
-      printLine(s"Executing `git remote remove $name`")
-    case Subcommand.Remote(verbose) =>
-      printLine(s"Executing `git remote` with verbose flag set to $verbose")
-
+    // Implement logic of CliApp
+    case _ => printLine("executing git clone")
   }
 }
+```
+The output will be
+```
+   _____@       @           @        @   __@     @       @  ______@   _ @  __ @
+  / ___/@ ____ _@  ____ ___ @   ____ @  / /@ ___ @       @ / ____/@  (_)@ / /_@
+  \__ \ @/ __ `/@ / __ `__ \@  / __ \@ / / @/ _ \@       @/ / __  @ / / @/ __/@
+ ___/ / / /_/ / @/ / / / / /@ / /_/ /@/ /  /  __/@       / /_/ /  @/ /  / /_  @
+/____/  \__,_/  /_/ /_/ /_/ @/ .___/ /_/   \___/ @       \____/   /_/   \__/  @
+        @       @           /_/      @     @     @       @        @     @     @
 
-object Example2 extends scala.App {
-  println(GitExample.git.helpDoc.toPlaintext())
-}
+
+Sample Git v1.1.0 -- Sample implementation of git clone
+
+USAGE
+
+  $ clone clone [(-l, --local)] <repository>
+
+COMMANDS
+
+  clone [(-l, --local)] <repository>  Creates a copy of an existing repository
 ```
 
-Output:
-
-```scala
- COMMANDS
-
-  - add [-m] <directory>      Add subcommand description
-  - remote [(-v, --verbose)]  Remote subcommand description
-```
+If there is a `CliApp`, you can run a command using its method `run` and passing parameters in a `List[String]`.
 
 ## References
 
