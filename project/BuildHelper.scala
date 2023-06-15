@@ -13,7 +13,7 @@ object BuildHelper {
 
   private val Scala212 = "2.12.17"
   private val Scala213 = "2.13.10"
-  val Scala3           = "3.2.2"
+  val Scala3           = "3.3.0"
 
   val SilencerVersion = "1.7.13"
 
@@ -188,7 +188,7 @@ object BuildHelper {
     ThisBuild / scalaVersion := Scala213,
     scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
-      if (scalaVersion.value == Scala3)
+      if (scalaVersion.value.take(1) == "3")
         Seq(
           "com.github.ghik" % s"silencer-lib_$Scala213" % SilencerVersion % Provided
         )
