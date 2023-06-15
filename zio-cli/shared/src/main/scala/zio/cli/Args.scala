@@ -244,8 +244,10 @@ object Args {
   /**
    * Creates a boolean argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Boolean argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Boolean argument
    */
   def bool(name: String): Args[Boolean] = Single(Some(name), PrimType.Bool(None))
 
@@ -257,9 +259,12 @@ object Args {
   /**
    * Creates a enumeration argument with a custom argument name
    *
-   * @param name Argument name
-   * @param cases Enum cases
-   * @return Enumeration argument
+   * @param name
+   *   Argument name
+   * @param cases
+   *   Enum cases
+   * @return
+   *   Enumeration argument
    */
   def enumeration[A](name: String)(cases: (String, A)*): Args[A] =
     Single(Some(name), PrimType.Enumeration(cases: _*))
@@ -267,8 +272,10 @@ object Args {
   /**
    * Creates a enumeration argument with 'choice' as argument name
    *
-   * @param cases Enum cases
-   * @return Enumeration argument
+   * @param cases
+   *   Enum cases
+   * @return
+   *   Enumeration argument
    */
   def enumeration[A](cases: (String, A)*): Args[A] =
     Single(None, PrimType.Enumeration(cases: _*))
@@ -276,9 +283,12 @@ object Args {
   /**
    * Creates a file argument with a custom argument name
    *
-   * @param name Argument name
-   * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
-   * @return File argument
+   * @param name
+   *   Argument name
+   * @param exists
+   *   Yes if path is expected to exists, No otherwise or Either is both are acceptable.
+   * @return
+   *   File argument
    */
   def file(name: String, exists: Exists = Exists.Either): Args[JPath] =
     Single(Some(name), PrimType.Path(PathType.File, exists))
@@ -286,8 +296,10 @@ object Args {
   /**
    * Creates a file argument with 'file' as argument name
    *
-   * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
-   * @return File argument
+   * @param exists
+   *   Yes if path is expected to exists, No otherwise or Either is both are acceptable.
+   * @return
+   *   File argument
    */
   def file(exists: Exists): Args[JPath] =
     Single(None, PrimType.Path(PathType.File, exists))
@@ -300,9 +312,12 @@ object Args {
   /**
    * Creates a directory argument with a custom argument name
    *
-   * @param name Argument name
-   * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
-   * @return Directory argument
+   * @param name
+   *   Argument name
+   * @param exists
+   *   Yes if path is expected to exists, No otherwise or Either is both are acceptable.
+   * @return
+   *   Directory argument
    */
   def directory(name: String, exists: Exists = Exists.Either): Args[JPath] =
     Single(Some(name), PrimType.Path(PathType.Directory, exists))
@@ -310,8 +325,10 @@ object Args {
   /**
    * Creates a directory argument with 'directory' as argument name
    *
-   * @param exists Yes if path is expected to exists, No otherwise or Either is both are acceptable.
-   * @return Directory argument
+   * @param exists
+   *   Yes if path is expected to exists, No otherwise or Either is both are acceptable.
+   * @return
+   *   Directory argument
    */
   def directory(exists: Exists): Args[JPath] =
     Single(None, PrimType.Path(PathType.Directory, exists))
@@ -324,8 +341,10 @@ object Args {
   /**
    * Creates a text argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Text argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Text argument
    */
   def text(name: String): Args[String] =
     Single(Some(name), PrimType.Text)
@@ -339,8 +358,10 @@ object Args {
   /**
    * Creates a decimal argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Decimal argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Decimal argument
    */
   def decimal(name: String): Args[BigDecimal] =
     Single(Some(name), PrimType.Decimal)
@@ -360,8 +381,10 @@ object Args {
   /**
    * Creates a instant argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Instant argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Instant argument
    */
   def instant(name: String): Args[JInstant] =
     Single(Some(name), PrimType.Instant)
@@ -375,8 +398,10 @@ object Args {
   /**
    * Creates a localDate argument with a custom argument name
    *
-   * @param name Argument name
-   * @return LocalDate argument
+   * @param name
+   *   Argument name
+   * @return
+   *   LocalDate argument
    */
   def localDate(name: String): Args[JLocalDate] =
     Single(Some(name), PrimType.LocalDate)
@@ -384,8 +409,10 @@ object Args {
   /**
    * Creates a localDateTime argument with a custom argument name
    *
-   * @param name Argument name
-   * @return LocalDateTime argument
+   * @param name
+   *   Argument name
+   * @return
+   *   LocalDateTime argument
    */
   def localDateTime(name: String): Args[JLocalDateTime] =
     Single(Some(name), PrimType.LocalDateTime)
@@ -399,14 +426,16 @@ object Args {
   /**
    * Creates a localTime argument with a custom argument name
    *
-   * @param name Argument name
-   * @return LocalTime argument
+   * @param name
+   *   Argument name
+   * @return
+   *   LocalTime argument
    */
   def localTime(name: String): Args[JLocalTime] =
     Single(Some(name), PrimType.LocalTime)
 
   /**
-   *  Creates a localTime argument with 'local-time' as argument name
+   * Creates a localTime argument with 'local-time' as argument name
    */
   val localTime: Args[JLocalTime] =
     Single(None, PrimType.LocalTime)
@@ -414,34 +443,38 @@ object Args {
   /**
    * Creates a monthDay argument with a custom argument name
    *
-   * @param name Argument name
-   * @return MonthDay argument
+   * @param name
+   *   Argument name
+   * @return
+   *   MonthDay argument
    */
   def monthDay(name: String): Args[JMonthDay] =
     Single(Some(name), PrimType.MonthDay)
 
   /**
-   *  Creates a monthDay argument with 'month-day' as argument name
+   * Creates a monthDay argument with 'month-day' as argument name
    */
   val monthDay: Args[JMonthDay] =
     Single(None, PrimType.MonthDay)
 
   /**
-   *  Creates a empty argument
+   * Creates a empty argument
    */
   val none: Args[Unit] = Empty
 
   /**
    * Creates a offsetDateTime argument with a custom argument name
    *
-   * @param name Argument name
-   * @return OffsetDateTime argument
+   * @param name
+   *   Argument name
+   * @return
+   *   OffsetDateTime argument
    */
   def offsetDateTime(name: String): Args[JOffsetDateTime] =
     Single(Some(name), PrimType.OffsetDateTime)
 
   /**
-   *  Creates a offsetDateTime argument with 'offset-date-time' as argument name
+   * Creates a offsetDateTime argument with 'offset-date-time' as argument name
    */
   val offsetDateTime: Args[JOffsetDateTime] =
     Single(None, PrimType.OffsetDateTime)
@@ -449,14 +482,16 @@ object Args {
   /**
    * Creates a offsetTime argument with a custom argument name
    *
-   * @param name Argument name
-   * @return OffsetTime argument
+   * @param name
+   *   Argument name
+   * @return
+   *   OffsetTime argument
    */
   def offsetTime(name: String): Args[JOffsetTime] =
     Single(Some(name), PrimType.OffsetTime)
 
   /**
-   *  Creates a offsetTime argument with 'offset-time' as argument name
+   * Creates a offsetTime argument with 'offset-time' as argument name
    */
   val offsetTime: Args[JOffsetTime] =
     Single(None, PrimType.OffsetTime)
@@ -464,14 +499,16 @@ object Args {
   /**
    * Creates a path argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Path argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Path argument
    */
   def path(name: String): Args[JPath] =
     Single(Some(name), PrimType.Path(PathType.Either, Exists.Either))
 
   /**
-   *  Creates a path argument with 'path' as argument name
+   * Creates a path argument with 'path' as argument name
    */
   val path: Args[JPath] =
     Single(None, PrimType.Path(PathType.Either, Exists.Either))
@@ -479,14 +516,16 @@ object Args {
   /**
    * Creates a period argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Period argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Period argument
    */
   def period(name: String): Args[JPeriod] =
     Single(Some(name), PrimType.Period)
 
   /**
-   *  Creates a period argument with 'period' as argument name
+   * Creates a period argument with 'period' as argument name
    */
   val period: Args[JPeriod] =
     Single(None, PrimType.Period)
@@ -494,14 +533,16 @@ object Args {
   /**
    * Creates a year argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Year argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Year argument
    */
   def year(name: String): Args[JYear] =
     Single(Some(name), PrimType.Year)
 
   /**
-   *  Creates a year argument with 'year' as argument name
+   * Creates a year argument with 'year' as argument name
    */
   val year: Args[JYear] =
     Single(None, PrimType.Year)
@@ -509,14 +550,16 @@ object Args {
   /**
    * Creates a yearMonth argument with a custom argument name
    *
-   * @param name Argument name
-   * @return YearMonth argument
+   * @param name
+   *   Argument name
+   * @return
+   *   YearMonth argument
    */
   def yearMonth(name: String): Args[JYearMonth] =
     Single(Some(name), PrimType.YearMonth)
 
   /**
-   *  Creates a yearMonth argument with 'year-month' as argument name
+   * Creates a yearMonth argument with 'year-month' as argument name
    */
   val yearMonth: Args[JYearMonth] =
     Single(None, PrimType.YearMonth)
@@ -524,14 +567,16 @@ object Args {
   /**
    * Creates a zonedDateTime argument with a custom argument name
    *
-   * @param name Argument name
-   * @return ZonedDateTime argument
+   * @param name
+   *   Argument name
+   * @return
+   *   ZonedDateTime argument
    */
   def zonedDateTime(name: String): Args[JZonedDateTime] =
     Single(Some(name), PrimType.ZonedDateTime)
 
   /**
-   *  Creates a zonedDateTime argument with 'zoned-date-time' as argument name
+   * Creates a zonedDateTime argument with 'zoned-date-time' as argument name
    */
   val zonedDateTime: Args[JZonedDateTime] =
     Single(None, PrimType.ZonedDateTime)
@@ -539,14 +584,16 @@ object Args {
   /**
    * Creates a zoneId argument with a custom argument name
    *
-   * @param name Argument name
-   * @return ZoneId argument
+   * @param name
+   *   Argument name
+   * @return
+   *   ZoneId argument
    */
   def zoneId(name: String): Args[JZoneId] =
     Single(Some(name), PrimType.ZoneId)
 
   /**
-   *  Creates a zoneId argument with 'zone-id' as argument name
+   * Creates a zoneId argument with 'zone-id' as argument name
    */
   val zoneId: Args[JZoneId] =
     Single(None, PrimType.ZoneId)
@@ -554,14 +601,16 @@ object Args {
   /**
    * Creates a zoneOffset argument with a custom argument name
    *
-   * @param name Argument name
-   * @return ZoneOffset argument
+   * @param name
+   *   Argument name
+   * @return
+   *   ZoneOffset argument
    */
   def zoneOffset(name: String): Args[JZoneOffset] =
     Single(Some(name), PrimType.ZoneOffset)
 
   /**
-   *  Creates a zoneOffset argument with 'zone-offset' as argument name
+   * Creates a zoneOffset argument with 'zone-offset' as argument name
    */
   val zoneOffset: Args[JZoneOffset] =
     Single(None, PrimType.ZoneOffset)

@@ -7,7 +7,8 @@ import zio.json.JsonCodec
 /**
  * Access token type informing user about how to use access token.
  *
- *  @see https://datatracker.ietf.org/doc/html/rfc6749#section-7.1
+ * @see
+ *   https://datatracker.ietf.org/doc/html/rfc6749#section-7.1
  */
 sealed trait TokenType extends Product with Serializable
 object TokenType {

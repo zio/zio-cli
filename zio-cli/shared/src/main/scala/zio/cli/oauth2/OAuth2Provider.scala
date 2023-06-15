@@ -18,9 +18,8 @@ trait OAuth2Provider {
   def name: String
 
   /**
-   * Public client identifier as provided after registration on authorization
-   * server. It is used for generating default file name, which holds
-   * access token.
+   * Public client identifier as provided after registration on authorization server. It is used for generating default
+   * file name, which holds access token.
    */
   def clientIdentifier: String
 
@@ -35,35 +34,41 @@ trait OAuth2Provider {
   def accessTokenRequest(authorization: AuthorizationResponse): HttpRequest
 
   /**
-   * Generates HTTP request for refresh token request. Returns `None` if this
-   * operation is not supported by the provider.
+   * Generates HTTP request for refresh token request. Returns `None` if this operation is not supported by the
+   * provider.
    */
   def refreshTokenRequest(refreshToken: String): Option[HttpRequest]
 
   /**
-   * Converts textual response of authorization request into [[AuthorizationResponse]].
-   * Defaults to decoding from standard JSON format, can be overridden if OAuth2 server does
-   * not adhere to this standard.
+   * Converts textual response of authorization request into [[AuthorizationResponse]]. Defaults to decoding from
+   * standard JSON format, can be overridden if OAuth2 server does not adhere to this standard.
    *
-   * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.2
+   * @see
+   *   https://datatracker.ietf.org/doc/html/rfc8628#section-3.2
    *
-   * @param body response body
-   * @return decoded authorization response
+   * @param body
+   *   response body
+   * @return
+   *   decoded authorization response
    */
   def decodeAuthorizationResponse(body: String): Either[String, AuthorizationResponse] =
     AuthorizationResponse.authorizationResponseJsonDecoder.decodeJson(body)
 
   /**
-   * Converts textual response of access token request into [[AccessTokenResponse]].
-   * Defaults to decoding from standard JSON format, can be overriden if OAuth2 server
-   * does not adhere to this standard.
+   * Converts textual response of access token request into [[AccessTokenResponse]]. Defaults to decoding from standard
+   * JSON format, can be overriden if OAuth2 server does not adhere to this standard.
    *
-   * @see https://datatracker.ietf.org/doc/html/rfc6749#section-5.1
-   * @see https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
-   * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.5
+   * @see
+   *   https://datatracker.ietf.org/doc/html/rfc6749#section-5.1
+   * @see
+   *   https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+   * @see
+   *   https://datatracker.ietf.org/doc/html/rfc8628#section-3.5
    *
-   * @param body response body
-   * @return decoded access token response
+   * @param body
+   *   response body
+   * @return
+   *   decoded access token response
    */
   def decodeAccessTokenResponse(body: String): Either[String, AccessTokenResponse] =
     AccessTokenResponse.accessTokenResponseJsonDecoder.decodeJson(body)

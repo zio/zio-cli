@@ -46,9 +46,12 @@ object PrimType {
 
   /**
    * Type representing file system path.
-   * @param pathType Type of expected path: Directory, File or Either if both are acceptable.
-   * @param shouldExist Yes if path is expected to exists, No otherwise or Either is both are acceptable.
-   * @param fileSystem Implementation of FileSystem trait.
+   * @param pathType
+   *   Type of expected path: Directory, File or Either if both are acceptable.
+   * @param shouldExist
+   *   Yes if path is expected to exists, No otherwise or Either is both are acceptable.
+   * @param fileSystem
+   *   Implementation of FileSystem trait.
    */
   final case class Path(pathType: PathType, shouldExist: Exists, fileSystem: FileSystem = FileSystem.live)
       extends PrimType[JPath] { self =>
@@ -105,7 +108,8 @@ object PrimType {
 
   /**
    * Type representing a value selected from set of allowed values.
-   * @param cases lists of allowed parameter-value pairs
+   * @param cases
+   *   lists of allowed parameter-value pairs
    */
   final case class Enumeration[A](cases: (String, A)*) extends PrimType[A] { self =>
     lazy val helpDoc: HelpDoc.Span = text("One of the following cases: " + self.cases.map(_._1).mkString(", ") + ".")
@@ -174,10 +178,10 @@ object PrimType {
   }
 
   /**
-   * Type representing a boolean value.
-   * True value can be passed as "true", "1", "y", "yes" or "on".
-   * False value can be passed as "false", "o", "n", "no" or "off".
-   * @param defaultValue Default value used then param is not provided
+   * Type representing a boolean value. True value can be passed as "true", "1", "y", "yes" or "on". False value can be
+   * passed as "false", "o", "n", "no" or "off".
+   * @param defaultValue
+   *   Default value used then param is not provided
    */
   final case class Bool(defaultValue: Option[Boolean]) extends PrimType[Boolean] { self =>
     lazy val isBool: Boolean = true
@@ -284,7 +288,8 @@ object PrimType {
   }
 
   /**
-   * Type representing a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.
+   * Type representing a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as
+   * 2007-12-03T10:15:30+01:00.
    */
   case object OffsetDateTime extends PrimType[JOffsetDateTime] { self =>
     lazy val isBool: Boolean = false
@@ -375,7 +380,8 @@ object PrimType {
   }
 
   /**
-   * Type representing a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.
+   * Type representing a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00
+   * Europe/Paris.
    */
   case object ZonedDateTime extends PrimType[JZonedDateTime] { self =>
     lazy val isBool: Boolean = false

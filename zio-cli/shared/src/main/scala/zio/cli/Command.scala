@@ -6,9 +6,8 @@ import zio.cli.oauth2.OAuth2PlatformSpecific
 import zio.{IO, UIO, ZIO}
 
 /**
- * A `Command` represents a command in a command-line application. Every command-line application
- * will have at least one command: the application itself. Other command-line applications may
- * support multiple commands.
+ * A `Command` represents a command in a command-line application. Every command-line application will have at least one
+ * command: the application itself. Other command-line applications may support multiple commands.
  */
 sealed trait Command[+A] { self =>
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.OrElse(self, that)
