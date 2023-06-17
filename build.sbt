@@ -33,7 +33,7 @@ val zioVersion = "2.0.15"
 lazy val root = project
   .in(file("."))
   .settings(
-    skip / publish := true,
+    publish / skip := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
   .aggregate(
@@ -41,7 +41,8 @@ lazy val root = project
     zioCliJS,
     examplesJVM,
     examplesJS,
-    docs
+    docs,
+    sbtZioCli,
   )
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
