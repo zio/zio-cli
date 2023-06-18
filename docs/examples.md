@@ -1,5 +1,5 @@
 ---
-id: example
+id: examples
 title: "Advanced example"
 ---
 This example implements some git commands. The workflow is the one used before:
