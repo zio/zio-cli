@@ -50,7 +50,7 @@ sealed trait Options[+A] { self =>
       override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases ++ (name +: names))
     })
 
-  //TODO : spend time to understand usage of implicit here
+  // TODO : spend time to understand usage of implicit here
 
   final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< (B, C)): Options[Z] =
     self.map(ev).map { case (b, c) => f(b, c) }
@@ -502,15 +502,14 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * Creates a boolean flag with the specified name, which, if present, will
-   * produce the specified constant boolean value.
+   * Creates a boolean flag with the specified name, which, if present, will produce the specified constant boolean
+   * value.
    */
   def boolean(name: String, ifPresent: Boolean = true): Options[Boolean] = makeBoolean(name, ifPresent, Nil)
 
   /**
-   * Creates a boolean flag with the specified name, which, if present, will
-   * produce the specified constant boolean value.
-   * Negation names may be specified to explicitly invert the boolean value of this option.
+   * Creates a boolean flag with the specified name, which, if present, will produce the specified constant boolean
+   * value. Negation names may be specified to explicitly invert the boolean value of this option.
    */
   def boolean(name: String, ifPresent: Boolean, negationName: String, negationNames: String*): Options[Boolean] =
     makeBoolean(name, ifPresent, negationName :: negationNames.toList)
@@ -597,19 +596,21 @@ object Options extends OptionsPlatformSpecific {
   val none: Options[Unit] = Empty
 
   /**
-   * Creates a parameter excepting a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.
+   * Creates a parameter excepting a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as
+   * 2007-12-03T10:15:30+01:00.
    */
   def offsetDateTime(name: String): Options[JOffsetDateTime] =
     Single(name, Vector.empty, PrimType.OffsetDateTime)
 
   /**
-   * Creates a parameter excepting a time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00.
+   * Creates a parameter excepting a time with an offset from UTC/Greenwich in the ISO-8601 format, such as
+   * 10:15:30+01:00.
    */
   def offsetTime(name: String): Options[JOffsetTime] =
     Single(name, Vector.empty, PrimType.OffsetTime)
 
   /**
-   * Creates a parameter excepting  a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
+   * Creates a parameter excepting a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
    */
   def period(name: String): Options[JPeriod] =
     Single(name, Vector.empty, PrimType.Period)
@@ -645,9 +646,8 @@ object Options extends OptionsPlatformSpecific {
     Single(name, Vector.empty, PrimType.ZoneOffset)
 
   /**
-   * Creates a property flag with the specified name.
-   * Property arguments may be repeated several times (-D key1=value -D key2=value)
-   * or specifying all key/values in one argument (-D key1=value key2=value).
+   * Creates a property flag with the specified name. Property arguments may be repeated several times (-D key1=value -D
+   * key2=value) or specifying all key/values in one argument (-D key1=value key2=value).
    */
   def keyValueMap(name: String): Options[Predef.Map[String, String]] =
     keyValueMap(Options.Single(name, Vector.empty, PrimType.Text))

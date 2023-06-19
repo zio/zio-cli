@@ -3,11 +3,9 @@ package zio.cli
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
  *
- * `HelpDoc` is composed of optional header and footers, and in-between, a
- * list of HelpDoc-level content items.
+ * `HelpDoc` is composed of optional header and footers, and in-between, a list of HelpDoc-level content items.
  *
- * HelpDoc-level content items, in turn, can be headers, paragraphs, description
- * lists, and enumerations.
+ * HelpDoc-level content items, in turn, can be headers, paragraphs, description lists, and enumerations.
  *
  * A `HelpDoc` can be converted into plaintext, JSON, and HTML.
  */

@@ -6,8 +6,8 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 inThisBuild(
   List(
     organization := "dev.zio",
-    homepage := Some(url("https://zio.dev/zio-cli/")),
-    licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    homepage     := Some(url("https://zio.dev/zio-cli/")),
+    licenses     := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     developers := List(
       Developer(
         "jdegoes",
@@ -94,10 +94,10 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq("dev.zio" %% "zio" % zioVersion),
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm),
-    projectName := "ZIO CLI",
-    mainModuleName := (zioCliJVM / moduleName).value,
-    projectStage := ProjectStage.Experimental,
-    docsPublishBranch := "master",
+    projectName                                := "ZIO CLI",
+    mainModuleName                             := (zioCliJVM / moduleName).value,
+    projectStage                               := ProjectStage.Experimental,
+    docsPublishBranch                          := "master",
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM)
   )
   .dependsOn(zioCliJVM)
@@ -106,10 +106,10 @@ lazy val docs = project
 lazy val sbtZioCli = project
   .in(file("sbt-zio-cli"))
   .settings(
-    name := "sbt-zio-cli",
+    name         := "sbt-zio-cli",
     organization := "zio.cli.sbt",
     scalaVersion := "2.12.17",
-    version := "0.0.0-SNAPSHOT",
+    version      := "0.0.0-SNAPSHOT",
     addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.3.2")
   )
   .enablePlugins(SbtPlugin)

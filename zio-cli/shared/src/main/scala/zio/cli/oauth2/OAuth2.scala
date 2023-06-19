@@ -11,8 +11,7 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
   val client = HttpClient.newBuilder().build()
 
   /**
-   * Returns [[OAuth2Token]] either loaded from file (if available)
-   * or by authorizing on `provider`s server.
+   * Returns [[OAuth2Token]] either loaded from file (if available) or by authorizing on `provider`s server.
    */
   def loadOrAuthorize: Task[OAuth2Token] =
     Clock.currentDateTime.flatMap { time =>
@@ -27,24 +26,24 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
     }
 
   /**
-   * Performs OAuth2 authorization, returns access token as received from
-   * the authorization server.
+   * Performs OAuth2 authorization, returns access token as received from the authorization server.
    */
   def authorize: Task[AccessToken] =
     requestAuthorization.tap(informUser).flatMap(waitForAccessToken)
 
   /**
-   * Attempts to load recent access token from file; returns `None` if
-   * the file could not be found, could not be decrypted or could not be decoded.
+   * Attempts to load recent access token from file; returns `None` if the file could not be found, could not be
+   * decrypted or could not be decoded.
    */
   def loadFromFile: Task[Option[AccessToken]] =
     ZIO.readFile(file).option.map(_.flatMap(_.fromJson[AccessToken].toOption))
 
   /**
-   * Creates [[OAuth2Token]] object from original access token (either
-   * loaded from file or freshly obtained from authorization server).
+   * Creates [[OAuth2Token]] object from original access token (either loaded from file or freshly obtained from
+   * authorization server).
    *
-   * @param initialToken original access token
+   * @param initialToken
+   *   original access token
    */
   def makeOAuth2Token(initialToken: AccessToken): UIO[OAuth2Token] =
     Ref.Synchronized
@@ -67,10 +66,10 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
       )
 
   /**
-   * Refreshes access token, either by re-authorizing or by
-   * using refresh token, if available.
+   * Refreshes access token, either by re-authorizing or by using refresh token, if available.
    *
-   * @param accessToken original access token
+   * @param accessToken
+   *   original access token
    */
   def refreshAccessToken(accessToken: AccessToken): Task[AccessToken] =
     accessToken.refreshToken.fold(authorize)(requestRefreshToken)
@@ -118,19 +117,23 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
       .flatMap(res => processResponse(res, None))
 
   /**
-   * Creates ZIO Schedule for regular polling of authentication server
-   * until the response indicates success, failure or time has expired.
+   * Creates ZIO Schedule for regular polling of authentication server until the response indicates success, failure or
+   * time has expired.
    *
-   * Initial interval is `interval`. This interval can increase by
-   * `slow_down` requests from server. The schedule will terminate when
-   * `expiresIn` has elapsed.
+   * Initial interval is `interval`. This interval can increase by `slow_down` requests from server. The schedule will
+   * terminate when `expiresIn` has elapsed.
    *
-   * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.3
-   * @see https://datatracker.ietf.org/doc/html/rfc8628#section-3.5
+   * @see
+   *   https://datatracker.ietf.org/doc/html/rfc8628#section-3.3
+   * @see
+   *   https://datatracker.ietf.org/doc/html/rfc8628#section-3.5
    *
-   * @param interval initial polling interval
-   * @param expiresIn maximum period
-   * @return the last response received before terminating
+   * @param interval
+   *   initial polling interval
+   * @param expiresIn
+   *   maximum period
+   * @return
+   *   the last response received before terminating
    */
   def pollingSchedule(
     interval: Duration,
@@ -170,8 +173,7 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
   }
 
   /**
-   * Sends to an authorization server request to refresh access token
-   * using a refresh token.
+   * Sends to an authorization server request to refresh access token using a refresh token.
    */
   def requestRefreshToken(refreshToken: String): Task[AccessToken] =
     ZIO
@@ -199,8 +201,8 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
       .flatMap(res => processResponse(res, Some(refreshToken)))
 
   /**
-   * Converts standard access token response into [[AccessToken]] and saves it to file.
-   * If response contained an error, it will be
+   * Converts standard access token response into [[AccessToken]] and saves it to file. If response contained an error,
+   * it will be
    */
   def processResponse(response: AccessTokenResponse, refreshToken: Option[String]): Task[AccessToken] =
     response match {
@@ -224,8 +226,7 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
     }
 
   /**
-   * Prints an information box with instructions how to confirm
-   * authorization request.
+   * Prints an information box with instructions how to confirm authorization request.
    */
   def informUser(response: AuthorizationResponse): UIO[Unit] =
     Clock.localDateTime.map { time =>

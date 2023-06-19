@@ -5,8 +5,7 @@ import zio.process._
 import java.io.File
 
 /**
- * `Compgen` simplifies the process of calling Bash's built-in `compgen`
- * command.
+ * `Compgen` simplifies the process of calling Bash's built-in `compgen` command.
  */
 trait Compgen {
   def completeFileNames(word: String): ZIO[Any, CommandError, List[String]]

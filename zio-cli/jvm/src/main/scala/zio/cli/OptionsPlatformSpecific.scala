@@ -8,8 +8,8 @@ import java.nio.file.{Path => JPath, Paths => JPaths}
 private[cli] trait OptionsPlatformSpecific { self: Options.type =>
 
   /**
-   * Adds into the application OAuth2 authorization with the specified `provider` for permissions
-   * defined by `scope`. The resulting [[zio.cli.oauth2.OAuth2Token]] will provide access token.
+   * Adds into the application OAuth2 authorization with the specified `provider` for permissions defined by `scope`.
+   * The resulting [[zio.cli.oauth2.OAuth2Token]] will provide access token.
    */
   def oauth2(provider: OAuth2Provider, scope: List[String]): Options[OAuth2Token] = {
     val providerSegment = s"${provider.name.toLowerCase()}_${provider.clientIdentifier}"
