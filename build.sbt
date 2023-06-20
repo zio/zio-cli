@@ -33,15 +33,17 @@ val zioVersion = "2.0.15"
 lazy val root = project
   .in(file("."))
   .settings(
-    skip / publish := true,
-    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+    publish / skip := true,
+    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library"),
+    crossScalaVersions := Nil
   )
   .aggregate(
     zioCliJVM,
     zioCliJS,
     examplesJVM,
     examplesJS,
-    docs
+    docs,
+    sbtZioCli
   )
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
@@ -106,10 +108,11 @@ lazy val docs = project
 lazy val sbtZioCli = project
   .in(file("sbt-zio-cli"))
   .settings(
-    name         := "sbt-zio-cli",
-    organization := "zio.cli.sbt",
-    scalaVersion := "2.12.17",
-    version      := "0.0.0-SNAPSHOT",
+    name               := "sbt-zio-cli",
+    organization       := "zio.cli.sbt",
+    scalaVersion       := Scala212,
+    crossScalaVersions := Seq(Scala212),
+    version            := "0.0.0-SNAPSHOT",
     addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.3.2")
   )
   .enablePlugins(SbtPlugin)
