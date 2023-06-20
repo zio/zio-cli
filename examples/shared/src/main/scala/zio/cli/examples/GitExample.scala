@@ -15,7 +15,7 @@ object GitExample extends ZIOCliDefault {
     final case class Remote(verbose: Boolean)                 extends Subcommand
     object Remote {
       sealed trait RemoteSubcommand extends Subcommand
-      //final case class Root(Version: Boolean) extends RemoteSubcommand
+      // final case class Root(Version: Boolean) extends RemoteSubcommand
       final case class Add(name: String, url: String) extends RemoteSubcommand
       final case class Remove(name: String)           extends RemoteSubcommand
 
@@ -46,7 +46,7 @@ object GitExample extends ZIOCliDefault {
   }
 
   val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote = {
+  val remote =
     // val gitRemote       = Command("remote", verboseFlag).withHelp(remoteHelp).map(Subcommand.Remote(_))
     // val gitRemoteAdd    = Command("remote").withHelp(remoteHelp).subcommands(remoteAdd)
     // val gitRemoteRemove = Command("remote").withHelp(remoteHelp).subcommands(remoteRemove)
@@ -55,9 +55,7 @@ object GitExample extends ZIOCliDefault {
       .withHelp(remoteHelp)
       .map(Subcommand.Remote(_))
       .subcommands(remoteAdd, remoteRemove)
-      .map(_._2) //TODO: We shouldn't have to discard the standalone remote command
-
-  }
+      .map(_._2) // TODO: We shouldn't have to discard the standalone remote command
 
   val git: Command[Subcommand] =
     Command("git", Options.none, Args.none).subcommands(add, remote)

@@ -64,8 +64,8 @@ object Completion {
   }
 
   /**
-   * Returns a `RegularLanguage` whose accepted language is equivalent to the
-   * language accepted by the provided `Command`.
+   * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided
+   * `Command`.
    */
   def toRegularLanguage(command: Command[Any], allowAlias: Boolean): RegularLanguage = command match {
     case Command.Single(name, _, options, args) =>
@@ -80,8 +80,8 @@ object Completion {
   }
 
   /**
-   * Returns a `RegularLanguage` whose accepted language is equivalent to the
-   * language accepted by the provided `Options`.
+   * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided
+   * `Options`.
    */
   def toRegularLanguage(options: Options[Any]): RegularLanguage =
     options match {
@@ -117,8 +117,7 @@ object Completion {
     }
 
   /**
-   * Returns a `RegularLanguage` whose accepted language is equivalent to the
-   * language accepted by the provided `Args`.
+   * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided `Args`.
    */
   def toRegularLanguage(args: Args[Any]): RegularLanguage = args match {
     case Args.Empty =>

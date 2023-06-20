@@ -3,11 +3,12 @@ package zio.cli
 import zio.{URIO, ZIO}
 
 /**
- * A `CliConfig` describes how arguments from the command-line are to
- * be parsed by ZIO CLI.
+ * A `CliConfig` describes how arguments from the command-line are to be parsed by ZIO CLI.
  *
- * @param caseSensitive     Whether or not to be case sensitive.
- * @param autoCorrectLimit  Threshold for when to show auto correct suggestions
+ * @param caseSensitive
+ *   Whether or not to be case sensitive.
+ * @param autoCorrectLimit
+ *   Threshold for when to show auto correct suggestions
  */
 final case class CliConfig(
   caseSensitive: Boolean,

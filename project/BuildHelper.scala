@@ -11,17 +11,18 @@ import scalafix.sbt.ScalafixPlugin.autoImport._
 
 object BuildHelper {
 
-  private val Scala212 = "2.12.17"
-  private val Scala213 = "2.13.10"
-  val Scala3           = "3.3.0"
+
+  val Scala212 = "2.12.17"
+  val Scala213 = "2.13.10"
+  val Scala3   = "3.3.0"
 
   val SilencerVersion = "1.17.13"
 
   def buildInfoSettings(packageName: String) =
     Seq(
-      buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
       buildInfoPackage := packageName,
-      buildInfoObject := "BuildInfo"
+      buildInfoObject  := "BuildInfo"
     )
 
   private val stdOptions = Seq(
@@ -183,8 +184,8 @@ object BuildHelper {
   )
 
   def stdSettings(prjName: String) = Seq(
-    name := s"$prjName",
-    crossScalaVersions := Seq(Scala212, Scala213),
+    name                     := s"$prjName",
+    crossScalaVersions       := Seq(Scala212, Scala213),
     ThisBuild / scalaVersion := Scala213,
     scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
@@ -200,7 +201,7 @@ object BuildHelper {
     },
     semanticdbEnabled := scalaVersion.value != Scala3, // enable SemanticDB
     semanticdbOptions += "-P:semanticdb:synthetics:on",
-    semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
+    semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
     ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
     ThisBuild / scalafixDependencies ++= List(
       "com.github.liancheng" %% "organize-imports" % "0.5.0",

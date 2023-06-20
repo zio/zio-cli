@@ -5,10 +5,9 @@ package oauth2
 import zio.json.{jsonMemberNames, DeriveJsonDecoder, JsonDecoder, SnakeCase}
 
 /**
- * Response to access token request informing about progress of device
- * authorization. The response can be either
- * [[AccessTokenResponse.AccessToken]] in case of successful termination or
- * [[AccessTokenResponse.Error]] when any error occurrs.
+ * Response to access token request informing about progress of device authorization. The response can be either
+ * [[AccessTokenResponse.AccessToken]] in case of successful termination or [[AccessTokenResponse.Error]] when any error
+ * occurrs.
  *
  * @see
  *   https://datatracker.ietf.org/doc/html/rfc6749#section-5
@@ -18,8 +17,7 @@ sealed trait AccessTokenResponse extends Serializable with Product
 object AccessTokenResponse {
 
   /**
-   * Result of successful authorization process providing access token issued
-   * by the authorization server.
+   * Result of successful authorization process providing access token issued by the authorization server.
    *
    * @see
    *   https://datatracker.ietf.org/doc/html/rfc6749#section-5.1

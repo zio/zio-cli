@@ -5,8 +5,7 @@ package oauth2
 import zio.json.{jsonMemberNames, DeriveJsonDecoder, JsonDecoder, SnakeCase}
 
 /**
- * Response to device authorization request providing end-user verification
- * code.
+ * Response to device authorization request providing end-user verification code.
  *
  * @see
  *   https://datatracker.ietf.org/doc/html/rfc8628#section-3.2

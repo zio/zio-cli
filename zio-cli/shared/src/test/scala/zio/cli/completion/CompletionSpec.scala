@@ -13,9 +13,8 @@ import scala.language.postfixOps
 object CompletionSpec extends ZIOSpecDefault {
 
   /**
-   * A micro potpourri of functions borrowed (in simplified form) from `zio-nio`.
-   * TODO: Use `zio-nio` as a dependency when it has been upgraded to use
-   * zio >= 2.0.0-RC3.
+   * A micro potpourri of functions borrowed (in simplified form) from `zio-nio`. TODO: Use `zio-nio` as a dependency
+   * when it has been upgraded to use zio >= 2.0.0-RC3.
    */
   object Files {
     def createTempDirectoryScoped()(implicit trace: Trace): ZIO[Scope, IOException, JPath] =

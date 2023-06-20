@@ -7,19 +7,17 @@ object ZIOCLIPlugin extends AutoPlugin with ZIOCLIPluginKeys {
   override def requires = NativeImagePlugin
 
   override def projectSettings: Seq[Def.Setting[_]] = Seq(
-    zioCliNativeImageReady := {
-      () => {
-        println("ZIO CLI App Native Image Ready!")
-      }
+    zioCliNativeImageReady := { () =>
+      println("ZIO CLI App Native Image Ready!")
     },
     zioCliNativeImageOptions := List(
       "--allow-incomplete-classpath",
       "--report-unsupported-elements-at-runtime",
       "--initialize-at-build-time",
-      "--no-fallback",
+      "--no-fallback"
     ),
-    zioCliMainClass := None,
-    requires.autoImport.nativeImageReady := zioCliNativeImageReady.value,
+    zioCliMainClass                        := None,
+    requires.autoImport.nativeImageReady   := zioCliNativeImageReady.value,
     requires.autoImport.nativeImageOptions := zioCliNativeImageOptions.value,
     zioCliBuildNative := {
       Compile / mainClass := {
@@ -36,7 +34,6 @@ object ZIOCLIPlugin extends AutoPlugin with ZIOCLIPluginKeys {
     zioCliGenerateZshCompletion := {
       println("TODO: Not Implemented!")
     }
-
   )
 
 }
