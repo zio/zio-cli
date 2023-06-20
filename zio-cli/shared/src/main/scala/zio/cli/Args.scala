@@ -375,8 +375,10 @@ object Args {
   /**
    * Creates an integer argument with a custom argument name
    *
-   * @param name Argument name
-   * @return Integer argument
+   * @param name
+   *   Argument name
+   * @return
+   *   Integer argument
    */
   def integer(name: String): Args[BigInt] =
     Single(Some(name), PrimType.Integer)
