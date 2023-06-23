@@ -373,6 +373,17 @@ object Args {
     Single(None, PrimType.Decimal)
 
   /**
+   * Creates an integer argument with a custom argument name
+   *
+   * @param name
+   *   Argument name
+   * @return
+   *   Integer argument
+   */
+  def integer(name: String): Args[BigInt] =
+    Single(Some(name), PrimType.Integer)
+
+  /**
    * Creates an integer argument with 'integer' as argument name
    */
   val integer: Args[BigInt] =
