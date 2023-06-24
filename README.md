@@ -13,7 +13,7 @@ Rapidly build powerful command-line applications powered by ZIO
 To use **ZIO CLI**, we need to add the following to our `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-cli" % "0.5.0"
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.6.0"
 ```
 ## Getting Started
 **ZIO CLI** allows to easily construct a CLI application. A CLI or Command-Line Interface is an application that allows the user to give instructions by means of pieces of text called commands. A command has the following structure

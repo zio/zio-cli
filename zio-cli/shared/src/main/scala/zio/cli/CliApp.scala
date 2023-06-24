@@ -62,7 +62,7 @@ object CliApp {
           case ShowHelp(synopsis, helpDoc) =>
             val fancyName = p(code(self.figFont.render(self.name)))
 
-            val header = p(text(self.name) + text(" v") + text(self.version) + text(" -- ") + self.summary)
+            val header = p(text(self.name) + text(self.version) + text(" -- ") + self.summary)
 
             val synopsisHelpDoc = h1("usage") + HelpDoc.p(text("$ ") + synopsis.helpDoc.getSpan)
 
