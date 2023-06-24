@@ -305,7 +305,7 @@ sealed trait HelpDoc { self =>
           resetStyle()
 
         case Span.Weak(value) =>
-          setStyle(Console.BOLD)
+          setStyle(Console.GRAY)
           renderSpan(value)
           resetStyle()
 
