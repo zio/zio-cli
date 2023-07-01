@@ -48,3 +48,8 @@ object StringUtil extends ZIOCliDefault {
       Console.printLine(strings.mkString(separator))
   }
 }
+
+object T extends ZIOAppDefault {
+  override val run = StringUtil.cliApp.run(List("--wizard"))
+
+}

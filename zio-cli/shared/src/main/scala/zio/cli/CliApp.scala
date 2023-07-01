@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.Console.{print, printLine, readLine}
+import zio.Console.{printLine}
 import zio.System.envs
 import zio._
 import zio.cli.BuiltInOption._
@@ -87,20 +87,7 @@ object CliApp {
                 }
             }
           case Wizard(command) =>
-            val subcommands = command.getSubcommands
-
-            for {
-              subcommandName <- if (subcommands.size == 1) ZIO.succeed(subcommands.keys.head)
-                                else
-                                  (print("Command" + subcommands.keys.mkString("(", "|", "): ")) *> readLine).orDie
-              subcommand <-
-                ZIO
-                  .fromOption(subcommands.get(subcommandName))
-                  .orElseFail(ValidationError(ValidationErrorType.InvalidValue, HelpDoc.p("Invalid subcommand")))
-              args   <- subcommand.generateArgs
-              _      <- Console.printLine(s"Executing command: ${(prefix(self.command) ++ args).mkString(" ")}")
-              result <- self.run(args)
-            } yield result
+            Wizardd(command).generateParams(command)
         }
 
       // prepend a first argument in case the CliApp's command is expected to consume it
