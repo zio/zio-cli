@@ -25,7 +25,7 @@ import java.time.{
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
-sealed trait Options[+A] { self =>
+sealed trait Options[+A] extends Parameter { self =>
 
   import Options.Single
 
@@ -191,7 +191,7 @@ trait SingleModifier {
 }
 
 object Options extends OptionsPlatformSpecific {
-  case object Empty extends Options[Unit] { self =>
+  case object Empty extends Options[Unit] with Lista { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Unit)] =
@@ -204,9 +204,11 @@ object Options extends OptionsPlatformSpecific {
     override lazy val uid: Option[String] = None
 
     override def generateArgs: UIO[List[String]] = ZIO.succeed(List.empty)
+
+    override def lista = ("", List())
   }
 
-  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] { self =>
+  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Validable { self =>
     lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
@@ -245,6 +247,16 @@ object Options extends OptionsPlatformSpecific {
         } yield result
       }
     }
+
+    override val wizardInfo = helpDoc
+
+    override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
+      ZIO.succeed(
+                    if (options.isBool) {
+                        if (PrimType.Bool.TrueValues.contains(input)) List(options.uid.getOrElse("")) else List.empty
+                    } else {
+                        if (input.isEmpty) List.empty else List(options.uid.getOrElse(""), input)
+                    })
   }
 
   final case class Single[+A](
@@ -252,7 +264,7 @@ object Options extends OptionsPlatformSpecific {
     aliases: Vector[String],
     primType: PrimType[A],
     description: HelpDoc = HelpDoc.Empty
-  ) extends Options[A] { self =>
+  ) extends Options[A] with Validable { self =>
 
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
@@ -328,9 +340,15 @@ object Options extends OptionsPlatformSpecific {
     override def generateArgs: UIO[List[String]] =
       (Console.print(s"${self.uid.getOrElse("")} (${self.primType.typeName}): ") *> Console.readLine).orDie
         .map(List(self.names.head, _))
+
+    override val wizardInfo = HelpDoc.p(s"${self.uid.getOrElse("")} (${self.primType.typeName})")
+
+    override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
+      _ <- validate(List(self.names.head, input), conf)
+    } yield List(self.names.head, input)
   }
 
-  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] { self =>
+  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Sub { self =>
     override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
       OrElse(left.modifySingle(f), self.right.modifySingle(f))
 
@@ -387,9 +405,11 @@ object Options extends OptionsPlatformSpecific {
                else if (option == self.right.uid.getOrElse("")) right.generateArgs
                else Console.printLine("Invalid option").orDie *> self.generateArgs
       } yield res
+
+    override val alternatives = List(left, right)
   }
 
-  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] { self =>
+  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Lista { self =>
     override def modifySingle(f: SingleModifier): Options[(A, B)] =
       Both(self.left.modifySingle(f), self.right.modifySingle(f))
 
@@ -420,9 +440,12 @@ object Options extends OptionsPlatformSpecific {
     }
 
     override def generateArgs: UIO[List[String]] = self.left.generateArgs.zipWith(self.right.generateArgs)(_ ++ _)
+  
+    override def lista = ("", List(self.left, self.right))
+  
   }
 
-  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] { self =>
+  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] with Lista with Wrap { self =>
     override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
@@ -435,9 +458,13 @@ object Options extends OptionsPlatformSpecific {
     override lazy val helpDoc: HelpDoc = self.value.helpDoc
 
     override def generateArgs: UIO[List[String]] = self.value.generateArgs
+
+    override def lista = ("", List(value))
+
+    override val wrapped = value
   }
 
-  final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] {
+  final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] with Validable {
     self =>
     override def helpDoc: HelpDoc = self.argumentOption.helpDoc
 
@@ -484,6 +511,13 @@ object Options extends OptionsPlatformSpecific {
     override def generateArgs: UIO[List[String]] =
       (Console.print(s"${self.uid.getOrElse("")} (key=value pairs): ") *> Console.readLine).orDie
         .map(input => self.uid.getOrElse("") :: input.split(" ").toList)
+
+    override val wizardInfo = HelpDoc.p(s"${self.uid.getOrElse("")} (key=value pairs)")
+
+    override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
+      for {
+        _ <- validate(uid.getOrElse("") :: input.split(" ").toList, conf)
+      } yield uid.getOrElse("") :: input.split(" ").toList
   }
 
   final case class OAuth2Options(

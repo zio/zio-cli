@@ -8,7 +8,7 @@ object BuiltInOption {
   final case class ShowHelp(synopsis: UsageSynopsis, helpDoc: HelpDoc)                 extends BuiltInOption
   final case class ShowCompletionScript(pathToExecutable: JPath, shellType: ShellType) extends BuiltInOption
   final case class ShowCompletions(index: Int, shellType: ShellType)                   extends BuiltInOption
-  final case class Wizard(command: Command[_])                                         extends BuiltInOption
+  final case class ShowWizard(command: Command[_])                                     extends BuiltInOption
 
   final case class BuiltIn(
     help: Boolean,
@@ -33,7 +33,7 @@ object BuiltInOption {
 
     options.map {
       case BuiltIn(true, _, _, _, _)                      => Some(ShowHelp(usageSynopsis, helpDoc))
-      case BuiltIn(_, _, _, _, true)                      => Some(Wizard(command))
+      case BuiltIn(_, _, _, _, true)                      => Some(ShowWizard(command))
       case BuiltIn(_, Some(path), Some(shellType), _, _)  => Some(ShowCompletionScript(path, shellType))
       case BuiltIn(_, _, Some(shellType), Some(index), _) => Some(ShowCompletions(index, shellType))
       case _                                              => None
