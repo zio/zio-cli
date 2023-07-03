@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.cli.HelpDoc.Span._
 import zio.cli.HelpDoc.p
-import zio.{Console, IO, UIO, ZIO, Zippable}
+import zio.{IO, ZIO, Zippable}
 import zio.cli.oauth2._
 
 import java.nio.file.{Path => JPath}
@@ -172,8 +172,6 @@ sealed trait Options[+A] extends Parameter { self =>
       case _                         => None
     }
 
-  def generateArgs: UIO[List[String]]
-
   def synopsis: UsageSynopsis
 
   def uid: Option[String]
@@ -191,7 +189,7 @@ trait SingleModifier {
 }
 
 object Options extends OptionsPlatformSpecific {
-  case object Empty extends Options[Unit] with Lista { self =>
+  case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Unit)] =
@@ -203,12 +201,10 @@ object Options extends OptionsPlatformSpecific {
 
     override lazy val uid: Option[String] = None
 
-    override def generateArgs: UIO[List[String]] = ZIO.succeed(List.empty)
-
-    override def lista = ("", List())
+    override def pipeline = ("", List())
   }
 
-  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Validable { self =>
+  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Input { self =>
     lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
@@ -228,35 +224,14 @@ object Options extends OptionsPlatformSpecific {
 
     override lazy val uid: Option[String] = self.options.uid
 
-    override def generateArgs: UIO[List[String]] = {
-      val typeInfo =
-        self.options.primitiveType match {
-          case Some(primType) => s"${primType.typeName}, default: $default"
-          case None           => s"default: $default"
-        }
-
-      if (self.options.isBool) {
-        for {
-          raw   <- (Console.print(s"${self.options.uid.getOrElse("")} ($typeInfo): ") *> Console.readLine).orDie
-          result = if (PrimType.Bool.TrueValues.contains(raw)) List(self.uid.getOrElse("")) else List.empty
-        } yield result
-      } else {
-        for {
-          value <- (Console.print(s"${self.options.uid.getOrElse("")} ($typeInfo): ") *> Console.readLine).orDie
-          result = if (value.isEmpty) List.empty else List(self.uid.getOrElse(""), value)
-        } yield result
-      }
-    }
-
-    override val wizardInfo = helpDoc
-
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       ZIO.succeed(
-                    if (options.isBool) {
-                        if (PrimType.Bool.TrueValues.contains(input)) List(options.uid.getOrElse("")) else List.empty
-                    } else {
-                        if (input.isEmpty) List.empty else List(options.uid.getOrElse(""), input)
-                    })
+        if (options.isBool) {
+          if (PrimType.Bool.TrueValues.contains(input)) List(options.uid.getOrElse("")) else List.empty
+        } else {
+          if (input.isEmpty) List.empty else List(options.uid.getOrElse(""), input)
+        }
+      )
   }
 
   final case class Single[+A](
@@ -264,7 +239,7 @@ object Options extends OptionsPlatformSpecific {
     aliases: Vector[String],
     primType: PrimType[A],
     description: HelpDoc = HelpDoc.Empty
-  ) extends Options[A] with Validable { self =>
+  ) extends Options[A] with Input { self =>
 
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
@@ -337,18 +312,12 @@ object Options extends OptionsPlatformSpecific {
     override lazy val helpDoc: HelpDoc =
       HelpDoc.DescriptionList(List(self.synopsis.helpDoc.getSpan -> (p(self.primType.helpDoc) + self.description)))
 
-    override def generateArgs: UIO[List[String]] =
-      (Console.print(s"${self.uid.getOrElse("")} (${self.primType.typeName}): ") *> Console.readLine).orDie
-        .map(List(self.names.head, _))
-
-    override val wizardInfo = HelpDoc.p(s"${self.uid.getOrElse("")} (${self.primType.typeName})")
-
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
       _ <- validate(List(self.names.head, input), conf)
     } yield List(self.names.head, input)
   }
 
-  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Sub { self =>
+  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives { self =>
     override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
       OrElse(left.modifySingle(f), self.right.modifySingle(f))
 
@@ -398,18 +367,10 @@ object Options extends OptionsPlatformSpecific {
       case list => Some(list.mkString(", "))
     }
 
-    override def generateArgs: UIO[List[String]] =
-      for {
-        option <- (Console.print(s"Choose one option ($uid): ") *> Console.readLine).orDie
-        res <- if (option == self.left.uid.getOrElse("")) left.generateArgs
-               else if (option == self.right.uid.getOrElse("")) right.generateArgs
-               else Console.printLine("Invalid option").orDie *> self.generateArgs
-      } yield res
-
     override val alternatives = List(left, right)
   }
 
-  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Lista { self =>
+  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Pipeline { self =>
     override def modifySingle(f: SingleModifier): Options[(A, B)] =
       Both(self.left.modifySingle(f), self.right.modifySingle(f))
 
@@ -438,14 +399,12 @@ object Options extends OptionsPlatformSpecific {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
-
-    override def generateArgs: UIO[List[String]] = self.left.generateArgs.zipWith(self.right.generateArgs)(_ ++ _)
   
-    override def lista = ("", List(self.left, self.right))
+    override def pipeline = ("", List(self.left, self.right))
   
   }
 
-  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] with Lista with Wrap { self =>
+  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] with Pipeline with Wrap { self =>
     override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
@@ -457,14 +416,12 @@ object Options extends OptionsPlatformSpecific {
 
     override lazy val helpDoc: HelpDoc = self.value.helpDoc
 
-    override def generateArgs: UIO[List[String]] = self.value.generateArgs
-
-    override def lista = ("", List(value))
+    override def pipeline = ("", List(value))
 
     override val wrapped = value
   }
 
-  final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] with Validable {
+  final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] with Input {
     self =>
     override def helpDoc: HelpDoc = self.argumentOption.helpDoc
 
@@ -508,12 +465,6 @@ object Options extends OptionsPlatformSpecific {
     override private[cli] def modifySingle(f: SingleModifier) =
       Options.keyValueMap(f(self.argumentOption))
 
-    override def generateArgs: UIO[List[String]] =
-      (Console.print(s"${self.uid.getOrElse("")} (key=value pairs): ") *> Console.readLine).orDie
-        .map(input => self.uid.getOrElse("") :: input.split(" ").toList)
-
-    override val wizardInfo = HelpDoc.p(s"${self.uid.getOrElse("")} (key=value pairs)")
-
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       for {
         _ <- validate(uid.getOrElse("") :: input.split(" ").toList, conf)
@@ -526,7 +477,6 @@ object Options extends OptionsPlatformSpecific {
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions]
   ) extends Options[OAuth2Token] {
     override def helpDoc: HelpDoc                = auxiliaryOptions.helpDoc
-    override def generateArgs: UIO[List[String]] = auxiliaryOptions.generateArgs
     override def synopsis: UsageSynopsis         = auxiliaryOptions.synopsis
     override def uid: Option[String]             = auxiliaryOptions.uid
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], OAuth2Token)] =

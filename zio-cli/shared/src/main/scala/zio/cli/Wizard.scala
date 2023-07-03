@@ -3,6 +3,10 @@ package zio.cli
 import zio._
 import zio.cli.HelpDoc._
 
+/**
+ * Wizard controls the representation of the Wizard Mode triggered by
+ * "--wizard" command.
+ */
 final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
 
     
@@ -12,9 +16,12 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     }
     val printHeader = Console.printLine(header.toPlaintext()).orDie
 
-    def printInvalid(invalidInput: String): UIO[Option[Unit]] =
-        ZIO.when(invalidInput != "") {
-            Console.printLine(s"$invalidInput was not a valid input. Try again.").orDie
+    def printInvalid(invalidInput: Option[String]): UIO[Unit] =
+        invalidInput match {
+            case Some(value) => 
+                if (value == "") Console.printLine("Please, enter a text line.").orDie
+                else Console.printLine(s""""$invalidInput" was not a valid input. Try again.""").orDie
+            case None => ZIO.unit
         }
 
     def mkColumns(columns: List[List[String]]): HelpDoc = {
@@ -42,7 +49,7 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
             columns.map(mk(_, lengths).mkString("")).map(p).foldLeft(HelpDoc.empty)(_ + _)
     }   
 
-    def getParam(map: Predef.Map[String, (String, Parameter)], invalidInput: String = ""): UIO[(List[String], Parameter)] = {
+    def chooseParam(map: Predef.Map[String, (String, Parameter)], invalidInput: Option[String] = None): UIO[(List[String], Parameter)] = {
         if(map.keys.size == 0)  ZIO.succeed((List.empty, Command("")))
         else if(map.keys.size == 1)  ZIO.succeed((map.keys.toList, map.values.head._2))
         else for {
@@ -64,61 +71,60 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
                     key <- ZIO.attempt(keysIndex(n - 1)._1)
                     res <- map.get(key) match {
                         case Some(command) => ZIO.succeed((List(command._1), command._2))
-                        case None => getParam(map, input)
+                        case None => chooseParam(map, Some(input))
                     }
                 } yield res }.catchAll {
-                    case _ => getParam(map, input)
+                    case _ => chooseParam(map, Some(input))
                 }
             }
         } yield res
     }
 
-    def ask(isValid: ((String, CliConfig) => IO[ValidationError, List[String]]), info: HelpDoc, invalidInput: String = ""): UIO[List[String]] =
+    def inputParam(isValid: ((String, CliConfig) => IO[ValidationError, List[String]]), info: HelpDoc, invalidInput: Option[String] = None): UIO[List[String]] =
         for {
-            _ <- printInvalid(invalidInput)
             _ <- printHeader
+            _ <- printInvalid(invalidInput)
             _ <- Console.printLine(info.toPlaintext()).orDie
             input <- Console.readLine(prompt).orDie
-            params <- isValid(input, conf).catchAll {
-                case _: ValidationError => ask(isValid, info, input)
+            params <-
+                if(input == "") inputParam(isValid, info, Some(input))
+                else isValid(input, conf).catchAll {
+                case _: ValidationError => inputParam(isValid, info, Some(input))
             }
         } yield params
 
 
     def generateParams(command: Parameter): UIO[List[String]] =
         command match {
-            case p: Sub => for {
-                pair <- getParam(p.getSubparameters)
+            case p: Alternatives => for {
+                pair <- chooseParam(p.getSubparameters)
                 tail <- generateParams(pair._2)
             } yield pair._1 ++ tail
-            case p: Validable => ask(p.isValid, p.wizardInfo)
-            case p: Lista => for {
-                lista <- ZIO.foreach(p.lista._2) {
+            case p: Input => inputParam(p.isValid, p.helpDoc)
+            case p: Pipeline => for {
+                pipeline <- ZIO.foreach(p.pipeline._2) {
                     case param => generateParams(param)
                 }
-            } yield lista.fold(Nil)(_ ++ _)
+            } yield pipeline.fold(List(p.pipeline._1))(_ ++ _)
             case _ => ZIO.succeed(List.empty)
         }
 
     def execute: UIO[List[String]] = for {
         parameters <- generateParams(command)
         _ <- printFinalCommand(parameters).orDie
-    } yield parameters
+    } yield parameters.filter(_ != "")
       
 
     def printFinalCommand(params: List[String]) = for {
         _ <- printHeader
         _ <- Console.printLine("You may bypass the wizard and execute your command directly with the following options and arguments:")
-        _ <- Console.printLine("  " + params.mkString(" "))
+        _ <- Console.printLine("  " + params.filter(_ != "").mkString(" "))
     } yield ()
             
 
 }
 
 object StringUtil extends ZIOCliDefault {
-    import zio.cli.HelpDoc.Span.text
-import zio.cli.HelpDoc.p
-
   sealed trait Subcommand
   object Subcommand {
     final case class Split(string: String, first: Boolean, separator: String) extends Subcommand
@@ -150,7 +156,7 @@ import zio.cli.HelpDoc.p
   val cliApp = CliApp.make(
     name = "String Util",
     version = "0.0.1",
-    summary = text("CLI to some string utilities"),
+    summary = Span.text("CLI to some string utilities"),
     footer = HelpDoc.p("©Copyright 2022"),
     command = stringUtil
   ) {
@@ -166,3 +172,4 @@ object T extends ZIOAppDefault {
   override val run = StringUtil.cliApp.run(List("--wizard"))
 
 }
+
