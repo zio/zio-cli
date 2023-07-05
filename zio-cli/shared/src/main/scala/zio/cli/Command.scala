@@ -199,6 +199,9 @@ object Command {
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline {
     self =>
+
+    override lazy val shortDesc = parent.shortDesc
+
     lazy val helpDoc = {
       def getMaxSynopsisLength[C](command: Command[C]): Int =
         command match {
@@ -233,8 +236,6 @@ object Command {
 
       self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child, getMaxSynopsisLength(self.child))
     }
-
-    override lazy val shortDesc = parent.shortDesc
 
     lazy val names: Set[String] = self.parent.names
 

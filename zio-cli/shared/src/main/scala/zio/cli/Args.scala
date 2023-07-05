@@ -168,6 +168,7 @@ object Args {
     self =>
 
     override lazy val shortDesc: String = helpDoc.toPlaintext()
+
     def ??(that: String): Args[List[A]] = Variadic(self.value ?? that, self.min, self.max)
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Repeated(self.value.synopsis)
@@ -222,7 +223,8 @@ object Args {
   final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] with Pipeline with Wrap {
     self =>
     override lazy val shortDesc: String = value.shortDesc
-    def ??(that: String): Args[B]       = Map(self.value ?? that, self.f)
+
+    def ??(that: String): Args[B] = Map(self.value ?? that, self.f)
 
     lazy val helpDoc: HelpDoc = self.value.helpDoc
 

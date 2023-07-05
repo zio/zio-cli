@@ -207,6 +207,9 @@ object Options extends OptionsPlatformSpecific {
   }
 
   final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Input { self =>
+
+    override lazy val shortDesc: String = options.shortDesc
+
     lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
@@ -234,8 +237,6 @@ object Options extends OptionsPlatformSpecific {
           if (input.isEmpty) List.empty else List(options.uid.getOrElse(""), input)
         }
       )
-
-    override lazy val shortDesc: String = options.shortDesc
   }
 
   final case class Single[+A](
@@ -417,7 +418,8 @@ object Options extends OptionsPlatformSpecific {
       with Pipeline
       with Wrap { self =>
 
-    override lazy val shortDesc                               = value.shortDesc
+    override lazy val shortDesc = value.shortDesc
+
     override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
@@ -440,7 +442,8 @@ object Options extends OptionsPlatformSpecific {
     self =>
 
     override lazy val shortDesc: String = argumentOption.shortDesc
-    override def helpDoc: HelpDoc       = self.argumentOption.helpDoc
+
+    override def helpDoc: HelpDoc = self.argumentOption.helpDoc
 
     override def synopsis: UsageSynopsis = self.argumentOption.synopsis
 
