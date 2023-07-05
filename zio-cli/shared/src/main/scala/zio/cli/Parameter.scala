@@ -7,9 +7,14 @@ import zio.IO
  * Wizard processes subtraits of Parameter in different manners.
  */
 private[cli] trait Parameter {
-    lazy val shortDesc: HelpDoc = HelpDoc.empty
+
+    def shortDesc: String = ""
 
     def helpDoc: HelpDoc
+
+    def tag: String
+
+
 }
 
 /**

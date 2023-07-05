@@ -66,6 +66,9 @@ sealed trait Args[+A] extends Parameter { self =>
   def uid: Option[String]
 
   def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
+
+  lazy val tag = "argument"
+
 }
 
 object Args {
@@ -73,6 +76,9 @@ object Args {
   final case class Single[+A](pseudoName: Option[String], primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
       extends Args[A] with Input {
     self =>
+
+    override lazy val shortDesc: String = s"Argument $name: ${description.getSpan.text}"
+
     def ??(that: String): Args[A] = copy(description = self.description + HelpDoc.p(that))
 
     lazy val helpDoc: HelpDoc =
@@ -158,6 +164,8 @@ object Args {
   }
 
   final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] with Input { self =>
+
+    override lazy val shortDesc: String = helpDoc.toPlaintext()
     def ??(that: String): Args[List[A]] = Variadic(self.value ?? that, self.min, self.max)
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Repeated(self.value.synopsis)
@@ -206,22 +214,12 @@ object Args {
         list <- ZIO.succeed(input.split(" ").toList)
         _ <- validate(list, conf)
       } yield list
-/*
-    override val wizardInfo = {
-      val repetitionsString = (min, max) match {
-          case (Some(min), Some(max)) => s"$min - $max repetitions"
-          case (Some(1), _)           => "1 repetition minimum"
-          case (Some(min), _)         => s"$min repetitions minimum"
-          case (_, Some(1))           => "1 repetition maximum"
-          case (_, Some(max))         => s"$max repetitions maximum"
-          case _                      => ""
-      }
 
-      HelpDoc.p(s"${self.uid.getOrElse("")} ($repetitionsString)")
-    }*/
+
   }
 
   final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] with Pipeline with Wrap { self =>
+    override lazy val shortDesc: String = value.shortDesc
     def ??(that: String): Args[B] = Map(self.value ?? that, self.f)
 
     lazy val helpDoc: HelpDoc = self.value.helpDoc

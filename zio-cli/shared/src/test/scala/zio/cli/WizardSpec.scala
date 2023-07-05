@@ -26,14 +26,14 @@ object WizardSpec extends ZIOSpecDefault {
         args match {
             case Args.Both(_, _) => "pipeline"
             case Args.Empty => "pipeline"
-            case Args.Map(_, _) => "wrap"
+            case Args.Map(_, _) => "pipeline"
             case Args.Single(_, _, _) => "input"
             case Variadic(_, _, _) => "input" 
         }
 
     def commandType(command: Command[_]) =
         command match {
-            case Command.Map(_, _) => "wrap"
+            case Command.Map(_, _) => "pipeline"
             case Command.OrElse(_, _) => "alternatives"
             case Command.Single(_, _, _, _) => "pipeline"
             case Command.Subcommands(_, _) => "pipeline"
@@ -43,12 +43,12 @@ object WizardSpec extends ZIOSpecDefault {
         options match {
             case Both(_, _) => "pipeline"
             case Empty => "pipeline"
-            case Options.Map(_, _) => "wrap"
+            case Options.Map(_, _) => "pipeline"
             case Options.OrElse(_, _) => "alternatives"
             case KeyValueMap(_) => "input"
             case Single(_, _, _, _) => "input"
             case WithDefault(_, _) => "input"
-            case OAuth2Options(_, _, _) => "input"
+            case OAuth2Options(_, _, _) => "wrap"
         }
     
     def parameterType(param: Parameter) =

@@ -182,6 +182,8 @@ sealed trait Options[+A] extends Parameter { self =>
     Options.WithDefault(self, value)
 
   private[cli] def modifySingle(f: SingleModifier): Options[A]
+
+  lazy val tag = "option"
 }
 
 trait SingleModifier {
@@ -232,6 +234,8 @@ object Options extends OptionsPlatformSpecific {
           if (input.isEmpty) List.empty else List(options.uid.getOrElse(""), input)
         }
       )
+
+    override lazy val shortDesc: String = options.shortDesc
   }
 
   final case class Single[+A](
@@ -240,6 +244,8 @@ object Options extends OptionsPlatformSpecific {
     primType: PrimType[A],
     description: HelpDoc = HelpDoc.Empty
   ) extends Options[A] with Input { self =>
+
+    override lazy val shortDesc: String = s"""Option "$name". ${description.getSpan.text}"""
 
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
@@ -405,6 +411,8 @@ object Options extends OptionsPlatformSpecific {
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] with Pipeline with Wrap { self =>
+
+    override lazy val shortDesc = value.shortDesc
     override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
@@ -423,6 +431,8 @@ object Options extends OptionsPlatformSpecific {
 
   final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] with Input {
     self =>
+
+    override lazy val shortDesc: String = argumentOption.shortDesc
     override def helpDoc: HelpDoc = self.argumentOption.helpDoc
 
     override def synopsis: UsageSynopsis = self.argumentOption.synopsis
@@ -475,7 +485,10 @@ object Options extends OptionsPlatformSpecific {
     provider: OAuth2Provider,
     scope: List[String],
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions]
-  ) extends Options[OAuth2Token] {
+  ) extends Options[OAuth2Token] with Wrap {
+    override lazy val shortDesc: String = auxiliaryOptions.shortDesc
+
+    override val wrapped = auxiliaryOptions
     override def helpDoc: HelpDoc                = auxiliaryOptions.helpDoc
     override def synopsis: UsageSynopsis         = auxiliaryOptions.synopsis
     override def uid: Option[String]             = auxiliaryOptions.uid

@@ -54,6 +54,8 @@ sealed trait Command[+A] extends Parameter with Named { self =>
     self.subcommands(cs.foldLeft(c1 | c2)(_ | _))(ev)
 
   def synopsis: UsageSynopsis
+
+  lazy val tag: String = "command"
 }
 
 object Command {
@@ -74,7 +76,7 @@ object Command {
     args: Args[ArgsType]
   ) extends Command[(OptionsType, ArgsType)] with Pipeline with Named { self =>
 
-    override lazy val shortDesc = help
+    override lazy val shortDesc = help.getSpan.text
 
     lazy val helpDoc: HelpDoc = {
       val helpHeader = {
@@ -191,6 +193,7 @@ object Command {
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Mixed
 
     override val alternatives = List(left, right)
+
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline { self =>
