@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.UIO
+import zio.{ZIO, UIO}
 import zio.test._
 import zio.test.TestConsole
 import zio.test.Gen
@@ -104,8 +104,10 @@ object WizardSpec extends ZIOSpecDefault {
   def testWizard(command: Command[_], parameters: List[String]): UIO[String] = {
     val wizard = Wizard(command, CliConfig.default, HelpDoc.empty)
     for {
-      _            <- TestConsole.feedLines(parameters: _*)
-      finalCommand <- wizard.execute
+      _ <- TestConsole.feedLines(parameters: _*)
+      finalCommand <- wizard.execute.catchAll { case Wizard.QuitException() =>
+                        ZIO.succeed(List("quitting..."))
+                      }
     } yield finalCommand.mkString(" ")
   }
 
@@ -130,6 +132,19 @@ object WizardSpec extends ZIOSpecDefault {
         for {
           res <- testWizard(single("command", options("opt")).map(_ => ""), List("sample"))
         } yield assertTrue(res == "--opt sample")
+      ),
+      test("Restart")(
+        for {
+          res <- testWizard(
+                   single("command1", options("opt1") ++ options("opt2")).map(_ => ""),
+                   List("sample", "restart", "secondtry", "sample")
+                 )
+        } yield assertTrue(res == "--opt1 secondtry --opt2 sample")
+      ),
+      test("Quit")(
+        for {
+          res <- testWizard(single("command", options("opt")).map(_ => ""), List("quit"))
+        } yield assertTrue(res == "quitting...")
       )
     )
 
