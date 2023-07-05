@@ -74,7 +74,9 @@ object Command {
     help: HelpDoc,
     options: Options[OptionsType],
     args: Args[ArgsType]
-  ) extends Command[(OptionsType, ArgsType)] with Pipeline with Named { self =>
+  ) extends Command[(OptionsType, ArgsType)]
+      with Pipeline
+      with Named { self =>
 
     override lazy val shortDesc = help.getSpan.text
 
@@ -154,15 +156,14 @@ object Command {
 
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
-  
+
     def pipeline = ("", List(options, args))
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] with Pipeline with Wrap { self =>
 
     override lazy val shortDesc = command.shortDesc
-    lazy val helpDoc = self.command.helpDoc
-
+    lazy val helpDoc            = self.command.helpDoc
 
     lazy val names: Set[String] = self.command.names
 
@@ -179,7 +180,7 @@ object Command {
     def pipeline = ("", List(command))
   }
 
-  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives{ self =>
+  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives { self =>
     lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
     lazy val names: Set[String] = self.left.names ++ self.right.names
@@ -196,7 +197,8 @@ object Command {
 
   }
 
-  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline { self =>
+  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline {
+    self =>
     lazy val helpDoc = {
       def getMaxSynopsisLength[C](command: Command[C]): Int =
         command match {

@@ -243,7 +243,8 @@ object Options extends OptionsPlatformSpecific {
     aliases: Vector[String],
     primType: PrimType[A],
     description: HelpDoc = HelpDoc.Empty
-  ) extends Options[A] with Input { self =>
+  ) extends Options[A]
+      with Input { self =>
 
     override lazy val shortDesc: String = s"""Option "$name". ${description.getSpan.text}"""
 
@@ -323,7 +324,8 @@ object Options extends OptionsPlatformSpecific {
     } yield List(self.names.head, input)
   }
 
-  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives { self =>
+  final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives {
+    self =>
     override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
       OrElse(left.modifySingle(f), self.right.modifySingle(f))
 
@@ -405,14 +407,17 @@ object Options extends OptionsPlatformSpecific {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
-  
+
     override def pipeline = ("", List(self.left, self.right))
-  
+
   }
 
-  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B]) extends Options[B] with Pipeline with Wrap { self =>
+  final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B])
+      extends Options[B]
+      with Pipeline
+      with Wrap { self =>
 
-    override lazy val shortDesc = value.shortDesc
+    override lazy val shortDesc                               = value.shortDesc
     override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
@@ -429,11 +434,13 @@ object Options extends OptionsPlatformSpecific {
     override val wrapped = value
   }
 
-  final case class KeyValueMap(argumentOption: Options.Single[String]) extends Options[Predef.Map[String, String]] with Input {
+  final case class KeyValueMap(argumentOption: Options.Single[String])
+      extends Options[Predef.Map[String, String]]
+      with Input {
     self =>
 
     override lazy val shortDesc: String = argumentOption.shortDesc
-    override def helpDoc: HelpDoc = self.argumentOption.helpDoc
+    override def helpDoc: HelpDoc       = self.argumentOption.helpDoc
 
     override def synopsis: UsageSynopsis = self.argumentOption.synopsis
 
@@ -485,13 +492,14 @@ object Options extends OptionsPlatformSpecific {
     provider: OAuth2Provider,
     scope: List[String],
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions]
-  ) extends Options[OAuth2Token] with Wrap {
+  ) extends Options[OAuth2Token]
+      with Wrap {
     override lazy val shortDesc: String = auxiliaryOptions.shortDesc
 
-    override val wrapped = auxiliaryOptions
-    override def helpDoc: HelpDoc                = auxiliaryOptions.helpDoc
-    override def synopsis: UsageSynopsis         = auxiliaryOptions.synopsis
-    override def uid: Option[String]             = auxiliaryOptions.uid
+    override val wrapped                 = auxiliaryOptions
+    override def helpDoc: HelpDoc        = auxiliaryOptions.helpDoc
+    override def synopsis: UsageSynopsis = auxiliaryOptions.synopsis
+    override def uid: Option[String]     = auxiliaryOptions.uid
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], OAuth2Token)] =
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =

@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.Console.{printLine}
+import zio.Console.printLine
 import zio.System.envs
 import zio._
 import zio.cli.BuiltInOption._
@@ -89,14 +89,14 @@ object CliApp {
           case ShowWizard(command) => {
             val fancyName = p(code(self.figFont.render(self.name)))
 
-            val header = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
+            val header      = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
             val explanation = p(s"Wizard mode assist you in constructing commands for $name$version")
             for {
               parameters <- Wizard(command, config, fancyName + header + explanation).execute
-              _ <- run(parameters)
+              _          <- run(parameters)
             } yield ()
-        }
-            
+          }
+
         }
 
       // prepend a first argument in case the CliApp's command is expected to consume it

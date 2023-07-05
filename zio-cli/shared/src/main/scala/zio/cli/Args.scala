@@ -74,7 +74,8 @@ sealed trait Args[+A] extends Parameter { self =>
 object Args {
 
   final case class Single[+A](pseudoName: Option[String], primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
-      extends Args[A] with Input {
+      extends Args[A]
+      with Input {
     self =>
 
     override lazy val shortDesc: String = s"Argument $name: ${description.getSpan.text}"
@@ -163,7 +164,8 @@ object Args {
     override def pipeline = ("", List(head, tail))
   }
 
-  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] with Input { self =>
+  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] with Input {
+    self =>
 
     override lazy val shortDesc: String = helpDoc.toPlaintext()
     def ??(that: String): Args[List[A]] = Variadic(self.value ?? that, self.min, self.max)
@@ -212,15 +214,15 @@ object Args {
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       for {
         list <- ZIO.succeed(input.split(" ").toList)
-        _ <- validate(list, conf)
+        _    <- validate(list, conf)
       } yield list
-
 
   }
 
-  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] with Pipeline with Wrap { self =>
+  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] with Pipeline with Wrap {
+    self =>
     override lazy val shortDesc: String = value.shortDesc
-    def ??(that: String): Args[B] = Map(self.value ?? that, self.f)
+    def ??(that: String): Args[B]       = Map(self.value ?? that, self.f)
 
     lazy val helpDoc: HelpDoc = self.value.helpDoc
 
