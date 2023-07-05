@@ -35,7 +35,14 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
       }
       case None => p(instruction)
     }
-    val help: Span = Span.text("Write ") + Span.code("help") + Span.text(" for more information.")
+    val help: Span =
+      Span.text("Write ") +
+        Span.code("help") +
+        Span.text(" for more information about this parameter, ") +
+        Span.code("restart") +
+        Span.text(" to start again Wizard mode and ") +
+        Span.code("quit") +
+        Span.text(" to exit.")
     val info: HelpDoc =
       if (needHelp) parameter.helpDoc
       else
@@ -56,7 +63,7 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     param: Alternatives,
     invalidInput: Option[String] = None,
     needHelp: Boolean = false
-  ): UIO[(List[String], Parameter)] = {
+  ): IO[Wizard.WizardException, (List[String], Parameter)] = {
 
     val map = param.getSubparameters
 
@@ -91,8 +98,10 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
         _     <- printLine(mkColumns(lines.toList).toPlaintext()).orDie
         input <- readLine(prompt).orDie
         res <- input match {
-                 case ""     => chooseParam(param, Some(input), false)
-                 case "help" => chooseParam(param, None, true)
+                 case ""        => chooseParam(param, Some(input), false)
+                 case "help"    => chooseParam(param, None, true)
+                 case "quit"    => ZIO.fail(Wizard.QuitException())
+                 case "restart" => ZIO.fail(Wizard.RestartException())
                  case _ =>
                    map.get(input) match {
                      case Some(command) => ZIO.succeed((List(command._1), command._2))
@@ -117,14 +126,20 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   /**
    * Allows the user enterin the value of a parameter represented by Input trait.
    */
-  def inputParam(param: Input, invalidInput: Option[String] = None, needHelp: Boolean = false): UIO[List[String]] =
+  def inputParam(
+    param: Input,
+    invalidInput: Option[String] = None,
+    needHelp: Boolean = false
+  ): IO[Wizard.WizardException, List[String]] =
     for {
       _     <- printHeader
       _     <- printInfo(invalidInput, s"Please, specify the following ${param.tag}.", param, needHelp)
       input <- readLine(prompt).orDie
       params <- input match {
-                  case ""     => inputParam(param, Some(input), false)
-                  case "help" => inputParam(param, None, true)
+                  case ""        => inputParam(param, Some(input), false)
+                  case "help"    => inputParam(param, None, true)
+                  case "quit"    => ZIO.fail(Wizard.QuitException())
+                  case "restart" => ZIO.fail(Wizard.RestartException())
                   case _ =>
                     param.isValid(input, conf).catchAll { case _: ValidationError =>
                       inputParam(param, Some(input), false)
@@ -135,7 +150,7 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   /**
    * Constructs a command interacting with the user.
    */
-  def generateParams(command: Parameter): UIO[List[String]] =
+  def generateParams(command: Parameter): IO[Wizard.WizardException, List[String]] =
     command match {
       case p: Alternatives =>
         for {
@@ -157,7 +172,6 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
    */
   def printFinalCommand(params: List[String]) = for {
     _ <- printHeader
-
     _ <- printLine(
            (p("You may bypass the wizard and execute your command directly with the following options and arguments:")
              + p("  " + params.filter(_ != "").mkString(" "))
@@ -168,9 +182,18 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   /**
    * Entry point for Wizard mode.
    */
-  def execute: UIO[List[String]] = for {
-    parameters <- generateParams(command)
-    _          <- printFinalCommand(parameters).orDie
+  def execute: IO[Wizard.QuitException, List[String]] = for {
+    parameters <- generateParams(command).catchAll {
+                    case Wizard.RestartException()     => execute
+                    case quit @ Wizard.QuitException() => ZIO.fail(quit)
+                  }
+    _ <- printFinalCommand(parameters).orDie
   } yield parameters.filter(_ != "")
 
+}
+
+object Wizard {
+  sealed trait WizardException  extends Exception
+  case class RestartException() extends WizardException
+  case class QuitException()    extends WizardException
 }
