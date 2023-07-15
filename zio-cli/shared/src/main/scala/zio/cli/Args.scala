@@ -23,7 +23,7 @@ import java.time.{
 /**
  * A `Args` represents arguments that can be passed to a command-line application.
  */
-sealed trait Args[+A] { self =>
+sealed trait Args[+A] extends Parameter { self =>
 
   final def ++[B](that: Args[B])(implicit zippable: Zippable[A, B]): Args[zippable.Out] =
     Args.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
@@ -42,8 +42,6 @@ sealed trait Args[+A] { self =>
   final def atMost(max: Int): Args[List[A]] = Args.Variadic(self, None, Some(max))
 
   final def between(min: Int, max: Int): Args[List[A]] = Args.Variadic(self, Some(min), Some(max))
-
-  def generateArgs: UIO[List[String]]
 
   def helpDoc: HelpDoc
 
@@ -68,13 +66,20 @@ sealed trait Args[+A] { self =>
   def uid: Option[String]
 
   def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
+
+  lazy val tag = "argument"
+
 }
 
 object Args {
 
   final case class Single[+A](pseudoName: Option[String], primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
-      extends Args[A] {
+      extends Args[A]
+      with Input {
     self =>
+
+    override lazy val shortDesc: String = s"Argument $name: ${description.getSpan.text}"
+
     def ??(that: String): Args[A] = copy(description = self.description + HelpDoc.p(that))
 
     lazy val helpDoc: HelpDoc =
@@ -105,13 +110,15 @@ object Args {
 
     private def name: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
 
-    def generateArgs: UIO[List[String]] =
-      (Console.print(s"${self.uid.getOrElse("")} (${self.primType.typeName}): ") *> Console.readLine).orDie.map(List(_))
-
     def uid: Option[String] = Some(self.name)
+
+    override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
+      for {
+        _ <- validate(List(input), conf)
+      } yield List(input)
   }
 
-  case object Empty extends Args[Unit] {
+  case object Empty extends Args[Unit] with Pipeline {
     def ??(that: String): Args[Unit] = Empty
 
     lazy val helpDoc: HelpDoc = HelpDoc.Empty
@@ -125,12 +132,12 @@ object Args {
     def validate(args: List[String], conf: CliConfig): UIO[(List[String], Unit)] =
       ZIO.succeed((args, ()))
 
-    def generateArgs: UIO[List[String]] = ZIO.succeed(List.empty)
-
     def uid: Option[String] = None
+
+    override def pipeline = ("", List())
   }
 
-  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] { self =>
+  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] with Pipeline { self =>
     def ??(that: String): Args[(A, B)] = Both(self.head ?? that, self.tail ?? that)
 
     lazy val helpDoc: HelpDoc = self.head.helpDoc + self.tail.helpDoc
@@ -149,15 +156,19 @@ object Args {
         (args, b) = tuple
       } yield (args, (a, b))
 
-    def generateArgs: UIO[List[String]] = self.head.generateArgs.zipWith(self.tail.generateArgs)(_ ++ _)
-
     def uid: Option[String] = self.head.uid.toList ++ self.tail.uid.toList match {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
+
+    override def pipeline = ("", List(head, tail))
   }
 
-  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] { self =>
+  final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] with Input {
+    self =>
+
+    override lazy val shortDesc: String = helpDoc.toPlaintext()
+
     def ??(that: String): Args[List[A]] = Variadic(self.value ?? that, self.min, self.max)
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Repeated(self.value.synopsis)
@@ -199,25 +210,20 @@ object Args {
       loop(args, Nil).map { case (args, list) => (args, list.reverse) }
     }
 
-    def generateArgs: UIO[List[String]] = {
-      val repetitionsString =
-        (self.min, self.max) match {
-          case (Some(min), Some(max)) => s"$min - $max repetitions"
-          case (Some(1), _)           => "1 repetition minimum"
-          case (Some(min), _)         => s"$min repetitions minimum"
-          case (_, Some(1))           => "1 repetition maximum"
-          case (_, Some(max))         => s"$max repetitions maximum"
-          case _                      => ""
-        }
-      (Console.print(s"${self.uid.getOrElse("")} ($repetitionsString): ") *> Console.readLine).orDie.map { input =>
-        input.split(" ").toList
-      }
-    }
-
     def uid: Option[String] = self.value.uid
+
+    override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
+      for {
+        list <- ZIO.succeed(input.split(" ").toList)
+        _    <- validate(list, conf)
+      } yield list
+
   }
 
-  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] { self =>
+  final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] with Pipeline with Wrap {
+    self =>
+    override lazy val shortDesc: String = value.shortDesc
+
     def ??(that: String): Args[B] = Map(self.value ?? that, self.f)
 
     lazy val helpDoc: HelpDoc = self.value.helpDoc
@@ -236,9 +242,11 @@ object Args {
         }
       }
 
-    def generateArgs: UIO[List[String]] = self.value.generateArgs
-
     def uid: Option[String] = self.value.uid
+
+    override val wrapped = value
+
+    override val pipeline = ("", List(value))
   }
 
   /**
