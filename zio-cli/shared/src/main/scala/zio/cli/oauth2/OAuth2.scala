@@ -218,7 +218,7 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
               t.accessToken,
               t.tokenType,
               t.expiresIn.map(exp => time.plus(exp)),
-              refreshToken.orElse(t.refreshToken),
+              t.refreshToken.orElse(refreshToken),
               t.scope
             )
           )

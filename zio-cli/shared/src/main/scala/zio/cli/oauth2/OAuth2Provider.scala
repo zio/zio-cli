@@ -101,7 +101,19 @@ object OAuth2Provider {
         .POST(HttpRequest.BodyPublishers.noBody())
         .build()
 
-    override def refreshTokenRequest(refreshToken: String): Option[HttpRequest] = None
+    override def refreshTokenRequest(refreshToken: String): Option[HttpRequest] =
+      Some(
+        HttpRequest
+          .newBuilder()
+          .uri(
+            URI.create(
+              s"https://github.com/login/oauth/access_token?client_id=$clientId&grant_type=refresh_token&refresh_token=$refreshToken"
+            )
+          )
+          .header("Accept", "application/json")
+          .POST(HttpRequest.BodyPublishers.noBody())
+          .build()
+      )
   }
 
   final case class Google(clientId: String, clientSecret: String) extends OAuth2Provider {
