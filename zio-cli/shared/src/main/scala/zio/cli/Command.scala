@@ -3,7 +3,7 @@ package zio.cli
 import zio.cli.HelpDoc.h1
 import zio.cli.ValidationErrorType.CommandMismatch
 import zio.cli.oauth2.OAuth2PlatformSpecific
-import zio.{IO, UIO, ZIO}
+import zio.{Chunk, IO, UIO, ZIO}
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application will have at least one
@@ -283,6 +283,7 @@ object Command {
 
       self.parent
         .parse(args, conf)
+        .debug("Subcommand parent parse")
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
@@ -290,7 +291,24 @@ object Command {
             wizardDirectiveForChild orElse wizardDirectiveForParent
           case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
-            self.child.parse(leftover, conf).map(_.map((a, _)))
+            self.child
+              .parse(leftover, conf)
+              .mapBoth(
+                {
+                  case ValidationError(CommandMismatch, _) =>
+                    val parentName      = self.names.headOption.getOrElse("")
+                    val subCommandNames = Chunk.fromIterable(self.getSubcommands.keys).map(n => s"'$n'")
+                    val oneOf           = if (subCommandNames.size == 1) "" else " one of"
+                    ValidationError(
+                      CommandMismatch,
+                      HelpDoc.p(
+                        s"Invalid subcommand for ${parentName}. Use$oneOf ${subCommandNames.mkString(", ")}"
+                      )
+                    )
+                  case other: ValidationError => other
+                },
+                _.map((a, _))
+              )
           case _ =>
             helpDirectiveForParent
         }
