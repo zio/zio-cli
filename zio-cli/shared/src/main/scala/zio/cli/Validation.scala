@@ -1,6 +1,6 @@
 package zio.cli
 
-final case class ValidationError(validationErrorType: ValidationErrorType, error: HelpDoc) {
+final case class ValidationError(validationErrorType: ValidationErrorType, error: HelpDoc) extends Throwable {
   def isOptionMissing: Boolean = validationErrorType == ValidationErrorType.MissingValue
 }
 

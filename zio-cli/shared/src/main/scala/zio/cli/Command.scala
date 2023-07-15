@@ -3,13 +3,13 @@ package zio.cli
 import zio.cli.HelpDoc.h1
 import zio.cli.ValidationErrorType.CommandMismatch
 import zio.cli.oauth2.OAuth2PlatformSpecific
-import zio.{IO, UIO, ZIO}
+import zio.{IO, ZIO}
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application will have at least one
  * command: the application itself. Other command-line applications may support multiple commands.
  */
-sealed trait Command[+A] { self =>
+sealed trait Command[+A] extends Parameter with Named { self =>
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.OrElse(self, that)
 
   final def as[B](b: => B): Command[B] = self.map(_ => b)
@@ -35,15 +35,9 @@ sealed trait Command[+A] { self =>
         subcommands.copy(parent = subcommands.parent.withHelp(help)).asInstanceOf[Command[A]]
     }
 
-  def generateArgs: UIO[List[String]]
-
-  def getSubcommands: Map[String, Command[_]]
-
   def helpDoc: HelpDoc
 
   final def map[B](f: A => B): Command[B] = Command.Map(self, f)
-
-  def names: Set[String]
 
   final def orElse[A1 >: A](that: Command[A1]): Command[A1] = self | that
 
@@ -60,6 +54,8 @@ sealed trait Command[+A] { self =>
     self.subcommands(cs.foldLeft(c1 | c2)(_ | _))(ev)
 
   def synopsis: UsageSynopsis
+
+  lazy val tag: String = "command"
 }
 
 object Command {
@@ -74,11 +70,15 @@ object Command {
   }
 
   final case class Single[OptionsType, ArgsType](
-    name: String,
+    val name: String,
     help: HelpDoc,
     options: Options[OptionsType],
     args: Args[ArgsType]
-  ) extends Command[(OptionsType, ArgsType)] { self =>
+  ) extends Command[(OptionsType, ArgsType)]
+      with Pipeline
+      with Named { self =>
+
+    override lazy val shortDesc = help.getSpan.text
 
     lazy val helpDoc: HelpDoc = {
       val helpHeader = {
@@ -157,17 +157,13 @@ object Command {
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
 
-    def generateArgs: UIO[List[String]] =
-      for {
-        options <- self.options.generateArgs
-        args    <- self.args.generateArgs
-      } yield List(self.name) ++ options ++ args
-
-    def getSubcommands: Predef.Map[String, Command[_]] = Predef.Map(self.name -> self)
+    def pipeline = ("", List(options, args))
   }
 
-  final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] { self =>
-    lazy val helpDoc = self.command.helpDoc
+  final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] with Pipeline with Wrap { self =>
+
+    override lazy val shortDesc = command.shortDesc
+    lazy val helpDoc            = self.command.helpDoc
 
     lazy val names: Set[String] = self.command.names
 
@@ -179,12 +175,12 @@ object Command {
 
     lazy val synopsis: UsageSynopsis = self.command.synopsis
 
-    def generateArgs: UIO[List[String]] = self.command.generateArgs
+    override def wrapped: Command[A] = self.command
 
-    def getSubcommands: Predef.Map[String, Command[_]] = self.command.getSubcommands
+    def pipeline = ("", List(command))
   }
 
-  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] { self =>
+  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives { self =>
     lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
     lazy val names: Set[String] = self.left.names ++ self.right.names
@@ -197,12 +193,15 @@ object Command {
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Mixed
 
-    def generateArgs: UIO[List[String]] = self.left.generateArgs.zipWith(self.right.generateArgs)(_ ++ _)
+    override val alternatives = List(left, right)
 
-    def getSubcommands: Predef.Map[String, Command[_]] = self.left.getSubcommands ++ self.right.getSubcommands
   }
 
-  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] { self =>
+  final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline {
+    self =>
+
+    override lazy val shortDesc = parent.shortDesc
+
     lazy val helpDoc = {
       def getMaxSynopsisLength[C](command: Command[C]): Int =
         command match {
@@ -274,19 +273,19 @@ object Command {
         self.child
           .parse(safeTail, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
-            case directive @ CommandDirective.BuiltIn(BuiltInOption.Wizard(_)) => directive
+            case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
           }
       }
 
       val wizardDirectiveForParent =
-        ZIO.succeed(CommandDirective.builtIn(BuiltInOption.Wizard(self)))
+        ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowWizard(self)))
 
       self.parent
         .parse(args, conf)
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
-          case CommandDirective.BuiltIn(BuiltInOption.Wizard(_)) =>
+          case CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) =>
             wizardDirectiveForChild orElse wizardDirectiveForParent
           case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
@@ -302,9 +301,7 @@ object Command {
 
     lazy val synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
 
-    def generateArgs: UIO[List[String]] = self.parent.generateArgs.zipWith(self.child.generateArgs)(_ ++ _)
-
-    def getSubcommands: Predef.Map[String, Command[_]] = self.child.getSubcommands
+    def pipeline = ("", List(parent, child))
   }
 
   /**

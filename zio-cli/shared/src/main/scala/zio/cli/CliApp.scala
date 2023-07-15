@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.Console.{print, printLine, readLine}
+import zio.Console.printLine
 import zio.System.envs
 import zio._
 import zio.cli.BuiltInOption._
@@ -86,21 +86,19 @@ object CliApp {
                   ZIO.foreachDiscard(completions)(word => printLine(word))
                 }
             }
-          case Wizard(command) =>
-            val subcommands = command.getSubcommands
+          case ShowWizard(command) => {
+            val fancyName   = p(code(self.figFont.render(self.name)))
+            val header      = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
+            val explanation = p(s"Wizard mode assist you in constructing commands for $name$version")
 
-            for {
-              subcommandName <- if (subcommands.size == 1) ZIO.succeed(subcommands.keys.head)
-                                else
-                                  (print("Command" + subcommands.keys.mkString("(", "|", "): ")) *> readLine).orDie
-              subcommand <-
-                ZIO
-                  .fromOption(subcommands.get(subcommandName))
-                  .orElseFail(ValidationError(ValidationErrorType.InvalidValue, HelpDoc.p("Invalid subcommand")))
-              args   <- subcommand.generateArgs
-              _      <- Console.printLine(s"Executing command: ${(prefix(self.command) ++ args).mkString(" ")}")
-              result <- self.run(args)
-            } yield result
+            (for {
+              parameters <- Wizard(command, config, fancyName + header + explanation).execute
+              _          <- run(parameters)
+            } yield ()).catchSome { case Wizard.QuitException() =>
+              ZIO.unit
+            }
+          }
+
         }
 
       // prepend a first argument in case the CliApp's command is expected to consume it
