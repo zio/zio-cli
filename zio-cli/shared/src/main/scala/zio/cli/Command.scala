@@ -70,8 +70,8 @@ object Command {
   }
 
   private def splitForcedArgs(args: List[String]): (List[String], List[String]) = {
-    val (forcedArgs, remainingArgs) = args.span(_ != "--")
-    (forcedArgs, remainingArgs.drop(1))
+    val (remainingArgs, forcedArgs) = args.span(_ != "--")
+    (remainingArgs, forcedArgs.drop(1))
   }
 
   final case class Single[OptionsType, ArgsType](
