@@ -3,7 +3,7 @@ package zio.cli
 import zio.cli.HelpDoc.h1
 import zio.cli.ValidationErrorType.CommandMismatch
 import zio.cli.oauth2.OAuth2PlatformSpecific
-import zio.{IO, ZIO}
+import zio.{Chunk, IO, ZIO}
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application will have at least one
@@ -34,6 +34,8 @@ sealed trait Command[+A] extends Parameter with Named { self =>
       case subcommands: Command.Subcommands[_, _] =>
         subcommands.copy(parent = subcommands.parent.withHelp(help)).asInstanceOf[Command[A]]
     }
+
+  def getSubcommands: Map[String, Command[_]]
 
   def helpDoc: HelpDoc
 
@@ -158,6 +160,8 @@ object Command {
       UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
 
     def pipeline = ("", List(options, args))
+
+    def getSubcommands: Predef.Map[String, Command[_]] = Predef.Map(self.name -> self)
   }
 
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] with Pipeline with Wrap { self =>
@@ -178,6 +182,8 @@ object Command {
     override def wrapped: Command[A] = self.command
 
     def pipeline = ("", List(command))
+
+    def getSubcommands: Predef.Map[String, Command[_]] = self.command.getSubcommands
   }
 
   final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives { self =>
@@ -195,6 +201,7 @@ object Command {
 
     override val alternatives = List(left, right)
 
+    def getSubcommands: Predef.Map[String, Command[_]] = self.left.getSubcommands ++ self.right.getSubcommands
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline {
@@ -282,6 +289,7 @@ object Command {
 
       self.parent
         .parse(args, conf)
+        .debug("Subcommand parent parse")
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
@@ -289,7 +297,24 @@ object Command {
             wizardDirectiveForChild orElse wizardDirectiveForParent
           case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
-            self.child.parse(leftover, conf).map(_.map((a, _)))
+            self.child
+              .parse(leftover, conf)
+              .mapBoth(
+                {
+                  case ValidationError(CommandMismatch, _) =>
+                    val parentName      = self.names.headOption.getOrElse("")
+                    val subCommandNames = Chunk.fromIterable(self.getSubcommands.keys).map(n => s"'$n'")
+                    val oneOf           = if (subCommandNames.size == 1) "" else " one of"
+                    ValidationError(
+                      CommandMismatch,
+                      HelpDoc.p(
+                        s"Invalid subcommand for ${parentName}. Use$oneOf ${subCommandNames.mkString(", ")}"
+                      )
+                    )
+                  case other: ValidationError => other
+                },
+                _.map((a, _))
+              )
           case _ =>
             helpDirectiveForParent
         }
@@ -302,6 +327,8 @@ object Command {
     lazy val synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
 
     def pipeline = ("", List(parent, child))
+
+    def getSubcommands: Predef.Map[String, Command[_]] = self.child.getSubcommands
   }
 
   /**

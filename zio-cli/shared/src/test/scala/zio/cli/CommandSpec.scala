@@ -117,6 +117,13 @@ object CommandSpec extends ZIOSpecDefault {
             assertZIO(git.parse(List("git", "log"), CliConfig.default))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
+          },
+          test("test unknown sub command error message") {
+            assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map { e =>
+              e.error
+            })(
+              equalTo(HelpDoc.p("Invalid subcommand for git. Use one of 'remote', 'log'"))
+            )
           }
         )
       }: _*),
@@ -147,6 +154,13 @@ object CommandSpec extends ZIOSpecDefault {
           test("test unknown sub command") {
             assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map(_.validationErrorType))(
               equalTo(ValidationErrorType.CommandMismatch)
+            )
+          },
+          test("test unknown sub command error message") {
+            assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map { e =>
+              e.error
+            })(
+              equalTo(HelpDoc.p("Invalid subcommand for git. Use 'rebase'"))
             )
           },
           test("test without sub command") {
