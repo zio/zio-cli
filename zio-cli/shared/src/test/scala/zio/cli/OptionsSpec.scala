@@ -351,6 +351,44 @@ object OptionsSpec extends ZIOSpecDefault {
         val r = m.validate(List("--defs", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
 
         assertZIO(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+      },
+      test(
+        "validate should keep non-key-value parameters that follow the key-value pairs (each preceded by alias -d)"
+      ) {
+        val r = m.validate(
+          List("-d", "key1=val1", "-d", "key2=val2", "-d", "key3=val3", "arg1", "arg2", "--verbose"),
+          CliConfig.default
+        )
+
+        assertZIO(r)(
+          equalTo(List("arg1", "arg2", "--verbose") -> Map("key1" -> "val1", "key2" -> "val2", "key3" -> "val3"))
+        )
+      },
+      test(
+        "validate should keep non-key-value parameters that follow the key-value pairs (only the first key/value pair is preceded by alias)"
+      ) {
+        val r = m.validate(
+          List("-d", "key1=val1", "key2=val2", "key3=val3", "arg1", "arg2", "--verbose"),
+          CliConfig.default
+        )
+
+        assertZIO(r)(
+          equalTo(List("arg1", "arg2", "--verbose") -> Map("key1" -> "val1", "key2" -> "val2", "key3" -> "val3"))
+        )
+      },
+      test(
+        "validate should keep non-key-value parameters that follow the key-value pairs (with a 'mixed' style of proceeding -- name or alias)"
+      ) {
+        val r = m.validate(
+          List("-d", "key1=val1", "key2=val2", "--defs", "key3=val3", "key4=", "arg1", "arg2", "--verbose"),
+          CliConfig.default
+        )
+
+        assertZIO(r)(
+          equalTo(
+            List("key4=", "arg1", "arg2", "--verbose") -> Map("key1" -> "val1", "key2" -> "val2", "key3" -> "val3")
+          )
+        )
       }
     )
   )
