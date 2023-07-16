@@ -245,7 +245,21 @@ object CommandSpec extends ZIOSpecDefault {
           )
         )
       }
-    )
+    ),
+    test("cmd opts -- args") {
+      val command =
+        Command("cmd", Options.text("something").optional ++ Options.boolean("verbose").alias("v"), Args.text.*)
+
+      for {
+        r1 <- command.parse(List("cmd", "-v", "--something", "abc", "something"), CliConfig.default)
+        r2 <- command.parse(List("cmd", "-v", "--", "--something", "abc", "something"), CliConfig.default)
+        r3 <- command.parse(List("cmd", "--", "-v", "--something", "abc", "something"), CliConfig.default)
+      } yield assertTrue(
+        r1 == CommandDirective.UserDefined(Nil, ((Some("abc"), true), List("something"))),
+        r2 == CommandDirective.UserDefined(Nil, ((None, true), List("--something", "abc", "something"))),
+        r3 == CommandDirective.UserDefined(Nil, ((None, false), List("-v", "--something", "abc", "something")))
+      )
+    }
   )
 
   object Tail {

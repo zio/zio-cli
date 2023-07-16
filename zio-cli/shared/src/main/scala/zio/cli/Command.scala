@@ -71,6 +71,11 @@ object Command {
     }
   }
 
+  private def splitForcedArgs(args: List[String]): (List[String], List[String]) = {
+    val (remainingArgs, forcedArgs) = args.span(_ != "--")
+    (remainingArgs, forcedArgs.drop(1))
+  }
+
   final case class Single[OptionsType, ArgsType](
     val name: String,
     help: HelpDoc,
@@ -147,10 +152,12 @@ object Command {
                                          )
                                        }
                                    }
-          tuple                     <- self.options.validate(unCluster(commandOptionsAndArgs), conf)
-          (commandArgs, optionsType) = tuple
-          tuple                     <- self.args.validate(commandArgs, conf)
-          (argsLeftover, argsType)   = tuple
+          tuple1                              = splitForcedArgs(commandOptionsAndArgs)
+          (optionsAndArgs, forcedCommandArgs) = tuple1
+          tuple2                             <- self.options.validate(unCluster(optionsAndArgs), conf)
+          (commandArgs, optionsType)          = tuple2
+          tuple                              <- self.args.validate(commandArgs ++ forcedCommandArgs, conf)
+          (argsLeftover, argsType)            = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
       parseBuiltInArgs orElse parseUserDefinedArgs
