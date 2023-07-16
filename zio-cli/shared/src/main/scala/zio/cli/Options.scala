@@ -21,6 +21,7 @@ import java.time.{
   ZoneOffset => JZoneOffset,
   ZonedDateTime => JZonedDateTime
 }
+import scala.annotation.tailrec
 
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
@@ -453,33 +454,89 @@ object Options extends OptionsPlatformSpecific {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
+
+      def extractArgOptKeyValuePairs(
+        input: List[String],
+        conf: CliConfig
+      ): (List[String], List[(String, String)]) = {
+
+        val caseSensitive = conf.caseSensitive
+
+        def withHyphen(argOpt: String) =
+          (if (argOpt.length == 1) "-" else "--") +
+            (if (caseSensitive) argOpt else argOpt.toLowerCase)
+
+        val argOptSwitchNameAndAliases =
+          (self.argumentOption.name +: self.argumentOption.aliases)
+            .map(withHyphen)
+            .toSet
+
+        def isSwitch(s: String) = {
+          val switch =
+            if (caseSensitive) s
+            else s.toLowerCase
+
+          argOptSwitchNameAndAliases.contains(switch)
+        }
+
+        @tailrec
+        def loop(
+          acc: (List[String], List[(String, String)])
+        ): (List[String], List[(String, String)]) = {
+          val (input, pairs) = acc
+          input match {
+            case Nil => acc
+            // `input` can be in the form of "-d key1=value1 -d key2=value2"
+            case switch :: keyValueString :: tail if isSwitch(switch.trim) =>
+              keyValueString.trim.split("=") match {
+                case Array(key, value) =>
+                  loop(tail -> ((key, value) :: pairs))
+                case _ =>
+                  acc
+              }
+            // Or, it can be in the form of "-d key1=value1 key2=value2"
+            case keyValueString :: tail =>
+              keyValueString.trim.split("=") match {
+                case Array(key, value) =>
+                  loop(tail -> ((key, value) :: pairs))
+                case _ =>
+                  acc
+              }
+            // Otherwise we give up and keep what remains as the leftover.
+            case _ => acc
+          }
+        }
+
+        loop(input -> Nil)
+      }
+
       def processArguments(
         input: List[String],
         first: String,
         conf: CliConfig
-      ): (List[String], Predef.Map[String, String]) = {
-        val r = input.span(s => !s.startsWith("-") || supports(s, conf))
-        (r._2, createMapFromStringList(r._1) + createMapEntry(first))
+      ): IO[ValidationError, (List[String], Predef.Map[String, String])] = (
+        first.trim.split("=") match {
+          case Array(key, value) =>
+            ZIO.succeed(key -> value)
+          case _ =>
+            ZIO.fail(
+              ValidationError(
+                ValidationErrorType.InvalidArgument,
+                p(error(s"Expected a key/value pair but got '$first'."))
+              )
+            )
+        }
+      ).map { first =>
+        val (remains, pairs) = extractArgOptKeyValuePairs(input, conf)
+
+        (remains, (first :: pairs).toMap)
       }
 
-      def supports(s: String, conf: CliConfig): Boolean = {
-        val argumentNames =
-          makeFullName(self.argumentOption.name) :: self.argumentOption.aliases.map(makeFullName).toList
-
-        if (conf.caseSensitive) argumentNames.contains(s) else argumentNames.exists(_.equalsIgnoreCase(s))
-      }
-
-      def makeFullName(s: String): String = (if (s.length == 1) "-" else "--") + s
-
-      def createMapFromStringList(input: List[String]): Predef.Map[String, String] =
-        input.filterNot(_.startsWith("-")).map(createMapEntry).toMap
-
-      def createMapEntry(input: String): (String, String) = {
-        val arr = input.split("=").take(2)
-        arr.head -> arr(1)
-      }
-
-      self.argumentOption.validate(args, conf).map(tuple => processArguments(tuple._1, tuple._2, conf))
+      self.argumentOption
+        .validate(args, conf)
+        .flatMap { case (input, first) =>
+          processArguments(input, first, conf)
+        }
     }
 
     override private[cli] def modifySingle(f: SingleModifier) =
