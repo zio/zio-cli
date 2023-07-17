@@ -296,7 +296,6 @@ object Command {
 
       self.parent
         .parse(args, conf)
-        .debug("Subcommand parent parse")
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
