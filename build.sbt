@@ -54,7 +54,7 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-json"     % "0.6.0",
+      "dev.zio" %% "zio-json"     % "0.5.0",
       "dev.zio" %% "zio-process"  % "0.7.1",
       "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % Test,
@@ -112,6 +112,7 @@ lazy val sbtZioCli = project
     organization       := "zio.cli.sbt",
     scalaVersion       := Scala212,
     crossScalaVersions := Seq(Scala212),
+    publish / skip     := true,
     addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.3.2")
   )
   .enablePlugins(SbtPlugin)
