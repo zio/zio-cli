@@ -245,7 +245,7 @@ object Command {
             }
           case Map(cmd, _) =>
             subcommandsDesc(cmd, maxSynopsisLength)
-          case Subcommands(parent, _) =>
+          case Subcommands(parent, child) =>
             HelpDoc.enumeration(subcommandsDesc(parent, maxSynopsisLength), subcommandsDesc(child, maxSynopsisLength))
         }
 
