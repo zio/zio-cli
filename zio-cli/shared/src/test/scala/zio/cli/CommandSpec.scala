@@ -252,7 +252,7 @@ object CommandSpec extends ZIOSpecDefault {
         val child1 = Command("child1").subcommands(child2).withHelp("help 1")
 
         val parent = Command("parent").subcommands(child1)
-        
+
         test("test helpDoc list subcommands of subcommands")(
           assert(parent.helpDoc.toPlaintext())(
             containsString("this is some help with command")
