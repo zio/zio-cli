@@ -51,15 +51,15 @@ sealed trait Args[+A] extends Parameter { self =>
     Args.Map(self, (a: A) => f(a))
 
   final def mapTry[B](f: A => B): Args[B] =
-    self.mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => HelpDoc.p(e.getMessage())))
+    mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => HelpDoc.p(e.getMessage())))
 
   def maxSize: Int
 
   def minSize: Int
 
-  final def repeat: Args[List[A]] = self.*
+  final def repeat: Args[List[A]] = *
 
-  final def repeat1[A1 >: A]: Args[::[A1]] = self.+
+  final def repeat1[A1 >: A]: Args[::[A1]] = +
 
   def synopsis: UsageSynopsis
 
@@ -76,16 +76,15 @@ object Args {
   final case class Single[+A](pseudoName: Option[String], primType: PrimType[A], description: HelpDoc = HelpDoc.Empty)
       extends Args[A]
       with Input {
-    self =>
 
     override lazy val shortDesc: String = s"Argument $name: ${description.getSpan.text}"
 
-    def ??(that: String): Args[A] = copy(description = self.description + HelpDoc.p(that))
+    def ??(that: String): Args[A] = copy(description = description + HelpDoc.p(that))
 
     lazy val helpDoc: HelpDoc =
       HelpDoc.DescriptionList(
         List(
-          Span.weak(name) -> (p(self.primType.helpDoc) + self.description)
+          Span.weak(name) -> (p(primType.helpDoc) + description)
         )
       )
 
@@ -93,24 +92,24 @@ object Args {
 
     lazy val minSize: Int = 1
 
-    lazy val synopsis: UsageSynopsis = UsageSynopsis.Named(List(name), self.primType.choices)
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Named(List(name), primType.choices)
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       (args match {
-        case head :: tail => self.primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
+        case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
         case Nil =>
-          val msg = (self.pseudoName, self.primType.choices) match {
+          val msg = (pseudoName, primType.choices) match {
             case (Some(pseudoName), Some(choices)) => s"Missing argument <$pseudoName> with values $choices."
             case (Some(pseudoName), _)             => s"Missing argument <$pseudoName>."
-            case (None, Some(choices))             => s"Missing argument ${self.primType.typeName} with values $choices."
-            case (None, None)                      => s"Missing argument ${self.primType.typeName}."
+            case (None, Some(choices))             => s"Missing argument ${primType.typeName} with values $choices."
+            case (None, None)                      => s"Missing argument ${primType.typeName}."
           }
           ZIO.fail(HelpDoc.p(msg))
       }).mapError(ValidationError(ValidationErrorType.InvalidArgument, _))
 
-    private def name: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
+    private def name: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
 
-    def uid: Option[String] = Some(self.name)
+    def uid: Option[String] = Some(name)
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       for {
@@ -137,26 +136,26 @@ object Args {
     override def pipeline = ("", List())
   }
 
-  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] with Pipeline { self =>
-    def ??(that: String): Args[(A, B)] = Both(self.head ?? that, self.tail ?? that)
+  final case class Both[+A, +B](head: Args[A], tail: Args[B]) extends Args[(A, B)] with Pipeline {
+    def ??(that: String): Args[(A, B)] = Both(head ?? that, tail ?? that)
 
-    lazy val helpDoc: HelpDoc = self.head.helpDoc + self.tail.helpDoc
+    lazy val helpDoc: HelpDoc = head.helpDoc + tail.helpDoc
 
-    lazy val maxSize: Int = self.head.maxSize + self.tail.maxSize
+    lazy val maxSize: Int = head.maxSize + tail.maxSize
 
-    lazy val minSize: Int = self.head.minSize + self.tail.minSize
+    lazy val minSize: Int = head.minSize + tail.minSize
 
-    lazy val synopsis: UsageSynopsis = self.head.synopsis + self.tail.synopsis
+    lazy val synopsis: UsageSynopsis = head.synopsis + tail.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
-        tuple    <- self.head.validate(args, conf)
+        tuple    <- head.validate(args, conf)
         (args, a) = tuple
-        tuple    <- self.tail.validate(args, conf)
+        tuple    <- tail.validate(args, conf)
         (args, b) = tuple
       } yield (args, (a, b))
 
-    def uid: Option[String] = self.head.uid.toList ++ self.tail.uid.toList match {
+    def uid: Option[String] = head.uid.toList ++ tail.uid.toList match {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
@@ -165,22 +164,21 @@ object Args {
   }
 
   final case class Variadic[+A](value: Args[A], min: Option[Int], max: Option[Int]) extends Args[List[A]] with Input {
-    self =>
 
     override lazy val shortDesc: String = helpDoc.toPlaintext()
 
-    def ??(that: String): Args[List[A]] = Variadic(self.value ?? that, self.min, self.max)
+    def ??(that: String): Args[List[A]] = Variadic(value ?? that, min, max)
 
-    lazy val synopsis: UsageSynopsis = UsageSynopsis.Repeated(self.value.synopsis)
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Repeated(value.synopsis)
 
-    lazy val helpDoc: HelpDoc = self.value.helpDoc.mapDescriptionList { case (span, block) =>
+    lazy val helpDoc: HelpDoc = value.helpDoc.mapDescriptionList { case (span, block) =>
       val newSpan = span + Span.text(
-        if (self.max.isDefined) s" $minSize - $maxSize" else if (minSize == 0) "..." else s" $minSize+"
+        if (max.isDefined) s" $minSize - $maxSize" else if (minSize == 0) "..." else s" $minSize+"
       )
       val newBlock =
         block +
           HelpDoc.p(
-            if (self.max.isDefined)
+            if (max.isDefined)
               s"This argument must be repeated at least $minSize times and may be repeated up to $maxSize times."
             else if (minSize == 0) "This argument may be repeated zero or more times."
             else s"This argument must be repeated at least $minSize times."
@@ -189,18 +187,18 @@ object Args {
       (newSpan, newBlock)
     }
 
-    lazy val maxSize: Int = self.max.getOrElse(Int.MaxValue / 2) * self.value.maxSize
+    lazy val maxSize: Int = max.getOrElse(Int.MaxValue / 2) * value.maxSize
 
-    lazy val minSize: Int = self.min.getOrElse(0) * value.minSize
+    lazy val minSize: Int = min.getOrElse(0) * value.minSize
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
-      val max1 = self.max.getOrElse(Int.MaxValue)
+      val max1 = max.getOrElse(Int.MaxValue)
 
       def loop(args: List[String], acc: List[A]): IO[ValidationError, (List[String], List[A])] =
         if (acc.length >= max1) ZIO.succeed(args -> acc)
         else
-          self.value
+          value
             .validate(args, conf)
             .foldZIO(
               failure => if (acc.length >= min1 && args.isEmpty) ZIO.succeed(args -> acc) else ZIO.fail(failure),
@@ -210,7 +208,7 @@ object Args {
       loop(args, Nil).map { case (args, list) => (args, list.reverse) }
     }
 
-    def uid: Option[String] = self.value.uid
+    def uid: Option[String] = value.uid
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       for {
@@ -221,28 +219,28 @@ object Args {
   }
 
   final case class Map[A, B](value: Args[A], f: A => Either[HelpDoc, B]) extends Args[B] with Pipeline with Wrap {
-    self =>
+
     override lazy val shortDesc: String = value.shortDesc
 
-    def ??(that: String): Args[B] = Map(self.value ?? that, self.f)
+    def ??(that: String): Args[B] = Map(value ?? that, f)
 
-    lazy val helpDoc: HelpDoc = self.value.helpDoc
+    lazy val helpDoc: HelpDoc = value.helpDoc
 
-    lazy val maxSize: Int = self.value.maxSize
+    lazy val maxSize: Int = value.maxSize
 
-    lazy val minSize: Int = self.value.minSize
+    lazy val minSize: Int = value.minSize
 
-    lazy val synopsis: UsageSynopsis = self.value.synopsis
+    lazy val synopsis: UsageSynopsis = value.synopsis
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
-      self.value.validate(args, conf).flatMap { case (r, a) =>
-        self.f(a) match {
+      value.validate(args, conf).flatMap { case (r, a) =>
+        f(a) match {
           case Left(value)  => ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, value))
           case Right(value) => ZIO.succeed((r, value))
         }
       }
 
-    def uid: Option[String] = self.value.uid
+    def uid: Option[String] = value.uid
 
     override val wrapped = value
 
