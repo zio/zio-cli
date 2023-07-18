@@ -218,38 +218,43 @@ object Command {
     override lazy val shortDesc = parent.shortDesc
 
     lazy val helpDoc = {
-      def getMaxSynopsisLength[C](command: Command[C]): Int =
-        command match {
-          case OrElse(left, right) =>
-            Math.max(getMaxSynopsisLength(left), getMaxSynopsisLength(right))
-          case Single(_, _, _, _) =>
-            command.synopsis.helpDoc.getSpan.size
-          case Map(cmd, _) =>
-            getMaxSynopsisLength(cmd)
-          case Subcommands(parent, child) =>
-            Math.max(getMaxSynopsisLength(parent), getMaxSynopsisLength(child))
-        }
 
-      def subcommandsDesc[C](command: Command[C], maxSynopsisLength: Int): HelpDoc =
+      def getSynopsis[C](command: Command[C], precedent: HelpDoc.Span): List[(HelpDoc.Span, HelpDoc.Span)] =
         command match {
           case OrElse(left, right) =>
-            HelpDoc.enumeration(subcommandsDesc(left, maxSynopsisLength), subcommandsDesc(right, maxSynopsisLength))
+            getSynopsis(left, precedent) ++ getSynopsis(right, precedent)
           case Single(_, desc, _, _) =>
-            val synopsisSpan = command.synopsis.helpDoc.getSpan
-            HelpDoc.p {
-              HelpDoc.Span.spans(
-                synopsisSpan,
-                HelpDoc.Span.text(" " * (maxSynopsisLength - synopsisSpan.size + 2)),
-                desc.getSpan
-              )
-            }
+            List((precedent + command.synopsis.helpDoc.getSpan, desc.getSpan))
           case Map(cmd, _) =>
-            subcommandsDesc(cmd, maxSynopsisLength)
-          case Subcommands(parent, child) =>
-            HelpDoc.enumeration(subcommandsDesc(parent, maxSynopsisLength), subcommandsDesc(child, maxSynopsisLength))
+            getSynopsis(cmd, precedent)
+          case Subcommands(parent, child) => {
+            val parentSynopsis = getSynopsis(parent, precedent)
+            val headSynopsis = parentSynopsis.headOption match {
+              case None           => HelpDoc.Span.empty
+              case Some((syn, _)) => syn
+            }
+            val childSynopsis = getSynopsis(child, precedent + headSynopsis)
+            parentSynopsis ++ childSynopsis
+          }
         }
 
-      parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(child, getMaxSynopsisLength(child))
+      def printSubcommands(subcommands: List[(HelpDoc.Span, HelpDoc.Span)]) = {
+        val maxSynopsisLength = subcommands.foldRight(0) { case ((synopsis, _), max) =>
+          Math.max(synopsis.size, max)
+        }
+        val listOfSynopsis = subcommands.map { case (syn, desc) =>
+          HelpDoc.p {
+            HelpDoc.Span.spans(
+              syn,
+              HelpDoc.Span.text(" " * (maxSynopsisLength - syn.size + 2)),
+              desc
+            )
+          }
+        }
+        HelpDoc.enumeration(listOfSynopsis: _*)
+      }
+
+      parent.helpDoc + HelpDoc.h1("Commands") + printSubcommands(getSynopsis(child, HelpDoc.Span.empty))
     }
 
     lazy val names: Set[String] = parent.names

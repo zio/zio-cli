@@ -255,7 +255,9 @@ object CommandSpec extends ZIOSpecDefault {
 
         test("test helpDoc list subcommands of subcommands")(
           assert(parent.helpDoc.toPlaintext())(
-            containsString("this is some help with command")
+            containsString("- child1         help 2") &&
+              containsString("- child1 child2  help 2") &&
+              containsString("- child1 child3  help 3")
           )
         )
       }
