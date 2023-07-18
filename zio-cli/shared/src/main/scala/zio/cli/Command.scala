@@ -219,23 +219,26 @@ object Command {
 
     lazy val helpDoc = {
 
-      def getSynopsis[C](command: Command[C], precedent: HelpDoc.Span): List[(HelpDoc.Span, HelpDoc.Span)] =
+      def getSynopsis[C](command: Command[C], precedent: List[HelpDoc.Span]): List[(HelpDoc.Span, HelpDoc.Span)] =
         command match {
           case OrElse(left, right) =>
             getSynopsis(left, precedent) ++ getSynopsis(right, precedent)
           case Single(_, desc, _, _) =>
-            List((precedent + command.synopsis.helpDoc.getSpan, desc.getSpan))
+            val synopsisList = precedent ++ List(command.synopsis.helpDoc.getSpan)
+            val finalSynopsis = synopsisList
+              .foldRight(HelpDoc.Span.empty) {
+                case (HelpDoc.Span.Text(""), span) => span
+                case (span1, span2)                => span1 + HelpDoc.Span.text(" ") + span2
+              }
+            List((finalSynopsis, desc.getSpan))
           case Map(cmd, _) =>
             getSynopsis(cmd, precedent)
-          case Subcommands(parent, child) => {
+          case Subcommands(parent, child) =>
             val parentSynopsis = getSynopsis(parent, precedent)
-            val headSynopsis = parentSynopsis.headOption match {
-              case None           => HelpDoc.Span.empty
-              case Some((syn, _)) => syn
+            parentSynopsis.headOption match {
+              case None           => getSynopsis(child, precedent)
+              case Some((syn, _)) => parentSynopsis ++ getSynopsis(child, precedent ++ List(syn))
             }
-            val childSynopsis = getSynopsis(child, precedent + headSynopsis)
-            parentSynopsis ++ childSynopsis
-          }
         }
 
       def printSubcommands(subcommands: List[(HelpDoc.Span, HelpDoc.Span)]) = {
@@ -254,7 +257,7 @@ object Command {
         HelpDoc.enumeration(listOfSynopsis: _*)
       }
 
-      parent.helpDoc + HelpDoc.h1("Commands") + printSubcommands(getSynopsis(child, HelpDoc.Span.empty))
+      parent.helpDoc + HelpDoc.h1("Commands") + printSubcommands(getSynopsis(child, List()))
     }
 
     lazy val names: Set[String] = parent.names
