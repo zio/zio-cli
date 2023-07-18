@@ -228,6 +228,7 @@ object Command {
             val finalSynopsis = synopsisList
               .foldRight(HelpDoc.Span.empty) {
                 case (HelpDoc.Span.Text(""), span) => span
+                case (span, HelpDoc.Span.Text("")) => span
                 case (span1, span2)                => span1 + HelpDoc.Span.text(" ") + span2
               }
             List((finalSynopsis, desc.getSpan))
