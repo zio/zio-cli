@@ -7,15 +7,16 @@ import zio.{Chunk, IO, ZIO}
 
 /**
  * A `Command` represents a command in a command-line application. Every command-line application will have at least one
- * command: the application itself. Other command-line applications may support multiple commands.
+ * command: the application it Other command-line applications may support multiple commands.
  */
 sealed trait Command[+A] extends Parameter with Named { self =>
+
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.OrElse(self, that)
 
-  final def as[B](b: => B): Command[B] = self.map(_ => b)
+  final def as[B](b: => B): Command[B] = map(_ => b)
 
   final def withHelp(help: String): Command[A] =
-    self.withHelp(HelpDoc.p(help))
+    withHelp(HelpDoc.p(help))
 
   final def withHelp(help: HelpDoc): Command[A] =
     self match {
@@ -43,7 +44,7 @@ sealed trait Command[+A] extends Parameter with Named { self =>
 
   final def orElse[A1 >: A](that: Command[A1]): Command[A1] = self | that
 
-  final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = self.map(Left(_)) | that.map(Right(_))
+  final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = map(Left(_)) | that.map(Right(_))
 
   def parse(args: List[String], conf: CliConfig): IO[ValidationError, CommandDirective[A]]
 
@@ -53,7 +54,7 @@ sealed trait Command[+A] extends Parameter with Named { self =>
   final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*)(implicit
     ev: Reducable[A, B]
   ): Command[ev.Out] =
-    self.subcommands(cs.foldLeft(c1 | c2)(_ | _))(ev)
+    subcommands(cs.foldLeft(c1 | c2)(_ | _))(ev)
 
   def synopsis: UsageSynopsis
 
@@ -89,24 +90,24 @@ object Command {
 
     lazy val helpDoc: HelpDoc = {
       val helpHeader = {
-        val desc = self.help
+        val desc = help
 
         if (desc.isEmpty) HelpDoc.Empty
         else h1("description") + desc
       }
 
       val argumentsSection = {
-        val args = self.args.helpDoc
+        val argsHelp = args.helpDoc
 
-        if (args == HelpDoc.Empty) HelpDoc.Empty
-        else h1("arguments") + self.args.helpDoc
+        if (argsHelp == HelpDoc.Empty) HelpDoc.Empty
+        else h1("arguments") + argsHelp
       }
 
       val optionsSection = {
-        val opts = self.options.helpDoc
+        val optsHelp = options.helpDoc
 
-        if (opts == HelpDoc.Empty) HelpDoc.Empty
-        else h1("options") + opts
+        if (optsHelp == HelpDoc.Empty) HelpDoc.Empty
+        else h1("options") + optsHelp
       }
 
       val oauth2Section = OAuth2PlatformSpecific.oauth2HelpSection(options)
@@ -114,16 +115,16 @@ object Command {
       helpHeader + argumentsSection + optionsSection + oauth2Section
     }
 
-    lazy val names: Set[String] = Set(self.name)
+    lazy val names: Set[String] = Set(name)
 
     def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] = {
       val parseBuiltInArgs =
-        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name)))
+        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(name)))
           BuiltInOption
-            .builtInOptions(self, self.synopsis, self.helpDoc)
+            .builtInOptions(self, synopsis, helpDoc)
             .validate(args, conf)
             .mapBoth(_.error, _._2)
             .some
@@ -136,25 +137,25 @@ object Command {
                                      case head :: tail =>
                                        ZIO
                                          .succeed(tail)
-                                         .when(conf.normalizeCase(head) == conf.normalizeCase(self.name))
+                                         .when(conf.normalizeCase(head) == conf.normalizeCase(name))
                                          .some
                                          .orElseFail {
                                            ValidationError(
                                              ValidationErrorType.CommandMismatch,
-                                             HelpDoc.p(s"Missing command name: ${self.name}")
+                                             HelpDoc.p(s"Missing command name: ${name}")
                                            )
                                          }
                                      case Nil =>
                                        ZIO.fail {
                                          ValidationError(
                                            ValidationErrorType.CommandMismatch,
-                                           HelpDoc.p(s"Missing command name: ${self.name}")
+                                           HelpDoc.p(s"Missing command name: ${name}")
                                          )
                                        }
                                    }
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
-          tuple2                             <- self.options.validate(unCluster(optionsAndArgs), conf)
+          tuple2                             <- options.validate(unCluster(optionsAndArgs), conf)
           (commandArgs, optionsType)          = tuple2
           tuple                              <- self.args.validate(commandArgs ++ forcedCommandArgs, conf)
           (argsLeftover, argsType)            = tuple
@@ -164,51 +165,51 @@ object Command {
     }
 
     lazy val synopsis: UsageSynopsis =
-      UsageSynopsis.Named(List(self.name), None) + self.options.synopsis + self.args.synopsis
+      UsageSynopsis.Named(List(name), None) + options.synopsis + args.synopsis
 
     def pipeline = ("", List(options, args))
 
-    def getSubcommands: Predef.Map[String, Command[_]] = Predef.Map(self.name -> self)
+    def getSubcommands: Predef.Map[String, Command[_]] = Predef.Map(name -> self)
   }
 
-  final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] with Pipeline with Wrap { self =>
+  final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] with Pipeline with Wrap {
 
     override lazy val shortDesc = command.shortDesc
-    lazy val helpDoc            = self.command.helpDoc
+    lazy val helpDoc            = command.helpDoc
 
-    lazy val names: Set[String] = self.command.names
+    lazy val names: Set[String] = command.names
 
     def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[B]] =
-      self.command.parse(args, conf).map(_.map(f))
+      command.parse(args, conf).map(_.map(f))
 
-    lazy val synopsis: UsageSynopsis = self.command.synopsis
+    lazy val synopsis: UsageSynopsis = command.synopsis
 
-    override def wrapped: Command[A] = self.command
+    override def wrapped: Command[A] = command
 
     def pipeline = ("", List(command))
 
-    def getSubcommands: Predef.Map[String, Command[_]] = self.command.getSubcommands
+    def getSubcommands: Predef.Map[String, Command[_]] = command.getSubcommands
   }
 
-  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives { self =>
-    lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
+  final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives {
+    lazy val helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
-    lazy val names: Set[String] = self.left.names ++ self.right.names
+    lazy val names: Set[String] = left.names ++ right.names
 
     def parse(
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[A]] =
-      self.left.parse(args, conf).catchSome { case ValidationError(CommandMismatch, _) => self.right.parse(args, conf) }
+      left.parse(args, conf).catchSome { case ValidationError(CommandMismatch, _) => right.parse(args, conf) }
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Mixed
 
     override val alternatives = List(left, right)
 
-    def getSubcommands: Predef.Map[String, Command[_]] = self.left.getSubcommands ++ self.right.getSubcommands
+    def getSubcommands: Predef.Map[String, Command[_]] = left.getSubcommands ++ right.getSubcommands
   }
 
   final case class Subcommands[A, B](parent: Command[A], child: Command[B]) extends Command[(A, B)] with Pipeline {
@@ -225,8 +226,8 @@ object Command {
             command.synopsis.helpDoc.getSpan.size
           case Map(cmd, _) =>
             getMaxSynopsisLength(cmd)
-          case Subcommands(parent, _) =>
-            getMaxSynopsisLength(parent)
+          case Subcommands(parent, child) =>
+            Math.max(getMaxSynopsisLength(parent), getMaxSynopsisLength(child))
         }
 
       def subcommandsDesc[C](command: Command[C], maxSynopsisLength: Int): HelpDoc =
@@ -245,13 +246,13 @@ object Command {
           case Map(cmd, _) =>
             subcommandsDesc(cmd, maxSynopsisLength)
           case Subcommands(parent, _) =>
-            subcommandsDesc(parent, maxSynopsisLength)
+            HelpDoc.enumeration(subcommandsDesc(parent, maxSynopsisLength), subcommandsDesc(child, maxSynopsisLength))
         }
 
-      self.parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(self.child, getMaxSynopsisLength(self.child))
+      parent.helpDoc + HelpDoc.h1("Commands") + subcommandsDesc(child, getMaxSynopsisLength(child))
     }
 
-    lazy val names: Set[String] = self.parent.names
+    lazy val names: Set[String] = parent.names
 
     def parse(
       args: List[String],
@@ -262,11 +263,11 @@ object Command {
           case Nil       => Nil
           case _ :: tail => tail
         }
-        self.child
+        child
           .parse(safeTail, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
-              val parentName = self.names.headOption.getOrElse("")
+              val parentName = names.headOption.getOrElse("")
               CommandDirective.builtIn {
                 BuiltInOption.ShowHelp(
                   UsageSynopsis.Named(List(parentName), None) + synopsis,
@@ -277,14 +278,14 @@ object Command {
       }
 
       val helpDirectiveForParent =
-        ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(self.synopsis, self.helpDoc)))
+        ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(synopsis, helpDoc)))
 
       val wizardDirectiveForChild = {
         val safeTail = args match {
           case Nil       => Nil
           case _ :: tail => tail
         }
-        self.child
+        child
           .parse(safeTail, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
@@ -294,7 +295,7 @@ object Command {
       val wizardDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowWizard(self)))
 
-      self.parent
+      parent
         .parse(args, conf)
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
@@ -303,13 +304,13 @@ object Command {
             wizardDirectiveForChild orElse wizardDirectiveForParent
           case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
-            self.child
+            child
               .parse(leftover, conf)
               .mapBoth(
                 {
                   case ValidationError(CommandMismatch, _) =>
-                    val parentName      = self.names.headOption.getOrElse("")
-                    val subCommandNames = Chunk.fromIterable(self.getSubcommands.keys).map(n => s"'$n'")
+                    val parentName      = names.headOption.getOrElse("")
+                    val subCommandNames = Chunk.fromIterable(getSubcommands.keys).map(n => s"'$n'")
                     val oneOf           = if (subCommandNames.size == 1) "" else " one of"
                     ValidationError(
                       CommandMismatch,
@@ -330,11 +331,11 @@ object Command {
         }
     }
 
-    lazy val synopsis: UsageSynopsis = self.parent.synopsis + self.child.synopsis
+    lazy val synopsis: UsageSynopsis = parent.synopsis + child.synopsis
 
     def pipeline = ("", List(parent, child))
 
-    def getSubcommands: Predef.Map[String, Command[_]] = self.child.getSubcommands
+    def getSubcommands: Predef.Map[String, Command[_]] = child.getSubcommands
   }
 
   /**
