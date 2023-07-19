@@ -147,6 +147,10 @@ sealed trait Options[+A] extends Parameter { self =>
 
   def helpDoc: HelpDoc
 
+  def nameAndAliases: Set[String]
+
+  def valueCount: Int
+
   final def isBool: Boolean =
     self.asInstanceOf[Options[_]] match {
       case Options.Empty                   => false
@@ -205,6 +209,10 @@ object Options extends OptionsPlatformSpecific {
     override lazy val uid: Option[String] = None
 
     override def pipeline = ("", List())
+
+    override val nameAndAliases: Set[String] = Set.empty
+
+    override val valueCount: Int = 0
   }
 
   final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Input { self =>
@@ -238,6 +246,10 @@ object Options extends OptionsPlatformSpecific {
           if (input.isEmpty) List.empty else List(options.uid.getOrElse(""), input)
         }
       )
+
+    override val nameAndAliases: Set[String] = self.options.nameAndAliases
+
+    override val valueCount: Int = self.options.valueCount
   }
 
   final case class Single[+A](
@@ -324,6 +336,12 @@ object Options extends OptionsPlatformSpecific {
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
       _ <- validate(List(self.names.head, input), conf)
     } yield List(self.names.head, input)
+
+    override val nameAndAliases: Set[String] =
+      self.aliases.map(s => "-" + s.trim).toSet +
+        s"--${self.name.trim}"
+
+    override val valueCount: Int = 1
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives {
@@ -378,6 +396,11 @@ object Options extends OptionsPlatformSpecific {
     }
 
     override val alternatives = List(left, right)
+
+    override val nameAndAliases: Set[String] = self.left.nameAndAliases ++ self.right.nameAndAliases
+
+    // TODO: fix this
+    override val valueCount: Int = 0
   }
 
   final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Pipeline { self =>
@@ -412,6 +435,10 @@ object Options extends OptionsPlatformSpecific {
 
     override def pipeline = ("", List(self.left, self.right))
 
+    override val nameAndAliases: Set[String] = self.left.nameAndAliases ++ self.right.nameAndAliases
+
+    override val valueCount: Int = self.left.valueCount + self.right.valueCount
+
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B])
@@ -435,6 +462,10 @@ object Options extends OptionsPlatformSpecific {
     override def pipeline = ("", List(value))
 
     override val wrapped = value
+
+    override val nameAndAliases: Set[String] = self.value.nameAndAliases
+
+    override val valueCount: Int = self.value.valueCount
   }
 
   final case class KeyValueMap(argumentOption: Options.Single[String])
@@ -546,6 +577,10 @@ object Options extends OptionsPlatformSpecific {
       for {
         _ <- validate(uid.getOrElse("") :: input.split(" ").toList, conf)
       } yield uid.getOrElse("") :: input.split(" ").toList
+
+    override val nameAndAliases: Set[String] = self.argumentOption.nameAndAliases
+
+    override val valueCount: Int = self.argumentOption.valueCount
   }
 
   final case class OAuth2Options(
@@ -564,6 +599,10 @@ object Options extends OptionsPlatformSpecific {
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
       OAuth2Options(provider, scope, auxiliaryOptions.modifySingle(f))
+
+    override val nameAndAliases: Set[String] = auxiliaryOptions.nameAndAliases
+
+    override val valueCount: Int = auxiliaryOptions.valueCount
   }
 
   /**

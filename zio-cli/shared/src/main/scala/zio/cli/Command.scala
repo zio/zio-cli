@@ -257,9 +257,25 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
-      val helpDirectiveForChild = {
+      lazy val helpDirectiveForChild = {
+
+        val subCommandNamesAndAliases =
+          parent.getSubcommands.values.collect { case Single(name, _, options, _) =>
+            name -> (options.nameAndAliases, options.valueCount)
+          }.toMap
+
         val safeTail = args match {
-          case Nil       => Nil
+          case Nil => Nil
+          case first :: options :: tail =>
+            subCommandNamesAndAliases.get(first) match {
+              case Some((nameAndAliases, count)) =>
+                if (nameAndAliases.contains(options))
+                  tail.drop(count)
+                else
+                  options :: tail
+              case None =>
+                options :: tail
+            }
           case _ :: tail => tail
         }
         self.child

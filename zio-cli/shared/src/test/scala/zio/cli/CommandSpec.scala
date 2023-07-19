@@ -1,13 +1,12 @@
 package zio.cli
 
 import zio.cli.BuiltInOption.ShowHelp
-import zio.cli.HelpDoc.Span.error
-import zio.cli.HelpDoc.{Sequence, p}
+import zio.cli.HelpDoc.{Sequence, Span, p}
 import zio.test.Assertion._
 import zio.test._
+import zio.ZIO
 
 import scala.language.postfixOps
-import zio.test.ZIOSpecDefault
 
 object CommandSpec extends ZIOSpecDefault {
 
@@ -29,7 +28,7 @@ object CommandSpec extends ZIOSpecDefault {
               .either
               .map(_.left.map(_.error))
           )(
-            equalTo(Left(p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))))
+            equalTo(Left(p(Span.error("""The flag "--afte" is not recognized. Did you mean --after?"""))))
           ) *>
             assertZIO(
               Ag.command
@@ -37,7 +36,7 @@ object CommandSpec extends ZIOSpecDefault {
                 .either
                 .map(_.left.map(_.error))
             )(
-              equalTo(Left(p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))))
+              equalTo(Left(p(Span.error("""The flag "--efore" is not recognized. Did you mean --before?"""))))
             ) *>
             assertZIO(
               Ag.command
@@ -48,8 +47,8 @@ object CommandSpec extends ZIOSpecDefault {
               equalTo(
                 Left(
                   Sequence(
-                    p(error("""The flag "--afte" is not recognized. Did you mean --after?""")),
-                    p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))
+                    p(Span.error("""The flag "--afte" is not recognized. Did you mean --after?""")),
+                    p(Span.error("""The flag "--efore" is not recognized. Did you mean --before?"""))
                   )
                 )
               )
@@ -62,7 +61,7 @@ object CommandSpec extends ZIOSpecDefault {
               .either
               .map(_.left.map(_.error))
           )(
-            equalTo(Left(p(error("Expected to find --after option."))))
+            equalTo(Left(p(Span.error("Expected to find --after option."))))
           )
         }
       )
@@ -207,6 +206,99 @@ object CommandSpec extends ZIOSpecDefault {
           )
         }
       ),
+      suite("Helpdoc should omit user options")({
+        val testCommand = Command(
+          "test",
+          Options.text("param")
+        ).subcommands(
+          Command("a")
+            .subcommands(
+              Command("b")
+            )
+            .map(_ => ())
+        )
+        // This AST represents the following stdout:
+        //  $ test a b
+        //
+        // COMMANDS
+        //
+        //  b
+        val expectedHelpDoc =
+          CommandDirective.BuiltIn(
+            ShowHelp(
+              synopsis = UsageSynopsis.Sequence(
+                left = UsageSynopsis.Named(names = List("test"), acceptedValues = None),
+                right = UsageSynopsis.Sequence(
+                  left = UsageSynopsis.Sequence(
+                    left = UsageSynopsis
+                      .Sequence(
+                        left = UsageSynopsis.Named(names = List("a"), acceptedValues = None),
+                        right = UsageSynopsis.None
+                      ),
+                    right = UsageSynopsis.None
+                  ),
+                  right = UsageSynopsis.Sequence(
+                    left = UsageSynopsis
+                      .Sequence(
+                        left = UsageSynopsis.Named(names = List("b"), acceptedValues = None),
+                        right = UsageSynopsis.None
+                      ),
+                    right = UsageSynopsis.None
+                  )
+                )
+              ),
+              helpDoc = HelpDoc.Sequence(
+                left = HelpDoc.Header(value = Span.Text(value = "Commands"), level = 1),
+                right = HelpDoc.Paragraph(
+                  value = Span.Sequence(
+                    left = Span.Sequence(
+                      left = Span.Sequence(
+                        left = Span.Text(value = ""),
+                        right = Span.Sequence(
+                          left = Span.Sequence(
+                            left = Span.Sequence(
+                              left = Span.Sequence(
+                                left = Span.Sequence(
+                                  left = Span.Text(value = "b"),
+                                  right = Span.Text(value = "")
+                                ),
+                                right = Span.Text(value = "")
+                              ),
+                              right = Span.Text(value = "")
+                            ),
+                            right = Span.Text(value = "")
+                          ),
+                          right = Span.Text(value = "")
+                        )
+                      ),
+                      right = Span.Text(value = "  ")
+                    ),
+                    right = Span.Text(value = "")
+                  )
+                )
+              )
+            )
+          )
+
+        Vector(test("Helpdoc should omit user options") {
+          ZIO
+            .foreach(
+              List(
+                List("test", "a", "--help"),
+                List("test", "--param", "text", "a", "--help")
+              )
+            ) { args =>
+              testCommand.parse(args, CliConfig.default)
+            }
+            .map { results =>
+              assertTrue(
+                results.distinct.size == 1,
+                results.head == expectedHelpDoc
+              )
+            }
+
+        })
+      }: _*),
       suite("test adding helpdoc to sub commands") {
         val command =
           Command("command").subcommands(
