@@ -261,7 +261,7 @@ object Command {
 
         val subCommandNamesAndAliases =
           parent.getSubcommands.values.collect { case Single(name, _, options, _) =>
-            name -> (options.nameAndAliases, options.valueCount)
+            (name, (options.nameAndAliases, options.valueCount))
           }.toMap[String, (Set[String], Int)]
 
         val safeTail = args match {
