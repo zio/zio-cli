@@ -60,7 +60,7 @@ object FigFontRenderReportSpec extends ZIOSpecDefault {
           val path = Files.createTempFile("figlet-report", ".md")
           (path, Files.newBufferedWriter(path))
         }
-      } { case (_, w) =>
+      } { _ =>
         ZIO.unit
       } { case (path, w) =>
         ZIO.attempt {
