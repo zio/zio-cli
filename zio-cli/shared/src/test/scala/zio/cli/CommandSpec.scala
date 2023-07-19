@@ -91,6 +91,13 @@ object CommandSpec extends ZIOSpecDefault {
 
         assertZIO(clustered)(equalTo(commandDirective))
         assertZIO(unClustered)(equalTo(commandDirective))
+      },
+      test("Uncluster only unclustered") {
+        val list = Command.unCluster(List("--aa", "-ajsdh", "-a", "-"))
+
+        val unClustered = List("--aa", "-a", "-j", "-s", "-d", "-h", "-a", "-")
+
+        assert(list)(equalTo(unClustered))
       }
     ),
     suite("SubCommand Suite")(
