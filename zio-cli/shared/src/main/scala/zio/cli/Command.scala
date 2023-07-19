@@ -61,15 +61,6 @@ sealed trait Command[+A] extends Parameter with Named { self =>
 }
 
 object Command {
-  def unCluster(args: List[String]): List[String] = {
-    def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}$)")
-
-    args.flatMap { arg =>
-      if (isClusteredOption(arg))
-        arg.substring(1).map(c => s"-$c")
-      else arg :: Nil
-    }
-  }
 
   private def splitForcedArgs(args: List[String]): (List[String], List[String]) = {
     val (remainingArgs, forcedArgs) = args.span(_ != "--")
@@ -154,7 +145,7 @@ object Command {
                                    }
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
-          tuple2                             <- self.options.validate(unCluster(optionsAndArgs), conf)
+          tuple2                             <- self.options.validate(optionsAndArgs, conf)
           (commandArgs, optionsType)          = tuple2
           tuple                              <- self.args.validate(commandArgs ++ forcedCommandArgs, conf)
           (argsLeftover, argsType)            = tuple

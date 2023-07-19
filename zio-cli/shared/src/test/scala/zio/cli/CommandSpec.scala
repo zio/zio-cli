@@ -92,12 +92,23 @@ object CommandSpec extends ZIOSpecDefault {
         assertZIO(clustered)(equalTo(commandDirective))
         assertZIO(unClustered)(equalTo(commandDirective))
       },
-      test("Uncluster only unclustered") {
-        val list = Command.unCluster(List("--aa", "-ajsdh", "-a", "-"))
+      test("Not uncluster wrong clusters") {
+        val wrongCluster =
+          WC.command
+            .parse(List("wc", "-clk"), CliConfig.default)
 
-        val unClustered = List("--aa", "-a", "-j", "-s", "-d", "-h", "-a", "-")
+        val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, false), List("-clk")))
 
-        assert(list)(equalTo(unClustered))
+        assertZIO(wrongCluster)(equalTo(commandDirective))
+      },
+      test(""""-" unaltered """) {
+        val wrongCluster =
+          WC.command
+            .parse(List("wc", "-"), CliConfig.default)
+
+        val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, false), List("-")))
+
+        assertZIO(wrongCluster)(equalTo(commandDirective))
       }
     ),
     suite("SubCommand Suite")(

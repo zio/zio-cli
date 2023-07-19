@@ -258,42 +258,57 @@ object Options extends OptionsPlatformSpecific {
         if (!self.primType.isBool) self.primType.choices.orElse(Some(self.primType.typeName)) else None
       )
 
+    def unCluster(args: List[String]): List[String] = {
+      def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}$)")
+
+      args.flatMap { arg =>
+        if (isClusteredOption(arg))
+          arg.substring(1).map(c => s"-$c")
+        else arg :: Nil
+      }
+    }
+
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       args match {
         case head :: tail =>
-          val (rest, supported) = processArg(head, tail, conf)
-          if (supported) {
-            self.primType match {
+          if (head.trim.matches("^-{1}([^-]{2,}$)")) 
+            validate(head.drop(1).map(c => s"-$c") :: tail, conf).catchSome {
+              case _: ValidationError => validate(tail, conf).map {
+                case (rest, a) => (head :: rest, a)
+              }
+            }
+          else {
+            val (rest, supported) = processArg(head, tail, conf)
+            if (supported) {
+            primType match {
               case _: PrimType.Bool =>
-                self.primType
+                primType
                   .validate(None, conf)
                   .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest -> _)
               case _ =>
-                self.primType
+                primType
                   .validate(rest.headOption, conf)
                   .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
             }
-          } else if (
-            self.name.length > conf.autoCorrectLimit + 1 && AutoCorrect.levensteinDistance(
-              head,
-              self.fullName,
-              conf
-            ) <= conf.autoCorrectLimit
-          ) {
-            ZIO.fail(
-              ValidationError(
-                ValidationErrorType.InvalidValue,
-                p(error(s"""The flag "$head" is not recognized. Did you mean ${self.fullName}?"""))
-              )
-            )
           } else {
-            self.validate(rest, conf).map { case (args, a) =>
+            validate(rest, conf).map { case (args, a) =>
               (head :: args, a)
+            }.catchSome {
+              case e: ValidationError => if (
+                  name.length > conf.autoCorrectLimit + 1 && 
+                  AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
+                ) ZIO.fail(
+                ValidationError(
+                  ValidationErrorType.InvalidValue,
+                  p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
+                )
+              ) else ZIO.fail(e)
             }
           }
+        }
         case Nil =>
           ZIO.fail(
-            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${self.fullName} option.")))
+            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
           )
       }
 
