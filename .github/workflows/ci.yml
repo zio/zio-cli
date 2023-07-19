@@ -7,7 +7,7 @@ env:
 on:
   pull_request:
   push:
-    branches: [ 'master' ]
+    branches: [ 'orElse' ]
   release:
     types:
       - published
