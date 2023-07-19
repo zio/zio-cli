@@ -62,7 +62,7 @@ sealed trait Command[+A] extends Parameter with Named { self =>
 
 object Command {
   def unCluster(args: List[String]): List[String] = {
-    def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}|$)")
+    def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}$)")
 
     args.flatMap { arg =>
       if (isClusteredOption(arg))
