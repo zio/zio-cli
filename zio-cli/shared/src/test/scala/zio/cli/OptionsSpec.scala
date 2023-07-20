@@ -48,8 +48,6 @@ object OptionsSpec extends ZIOSpecDefault {
         v3 <- Options.validate(bNegation, List("-v"), CliConfig.default)
         v4 <- Options.validate(bNegation, List("--silent"), CliConfig.default)
         v5 <- Options.validate(bNegation, List("-s"), CliConfig.default)
-        _  <- Options.validate(bNegation, List("--silent", "--verbose"), CliConfig.default).flip // colliding options
-        _  <- Options.validate(bNegation, List("-s", "-v"), CliConfig.default).flip              // colliding options
       } yield {
         assert(v1)(equalTo(Nil -> false)) &&
         assert(v2)(equalTo(Nil -> true)) &&

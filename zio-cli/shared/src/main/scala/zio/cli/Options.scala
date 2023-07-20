@@ -258,7 +258,8 @@ object Options extends OptionsPlatformSpecific {
         (for {
           tuple1 <- findOptions(input, options, conf)
           (otherArgs, otherOptions, map1) = tuple1
-          tuple2 <- matchOptions(otherArgs, otherOptions, conf)
+          tuple2 <-
+            if (map1.isEmpty) ZIO.succeed((None, input, map1)) else matchOptions(otherArgs, otherOptions, conf)
           (error, otherArgs, map2) = tuple2
         } yield (error, otherArgs,  merge(map1, map2.toList)))
           .catchAll(e => ZIO.succeed((Some(e), input, Predef.Map.empty)))
