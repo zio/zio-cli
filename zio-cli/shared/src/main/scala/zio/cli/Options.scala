@@ -220,7 +220,23 @@ object Options extends OptionsPlatformSpecific {
                   ))
               }
           }
-        )
+        ).catchSome {
+          case e@ValidationError(validationErrorType, error) =>
+            validationErrorType match {
+              case ValidationErrorType.MissingFlag => 
+                findOptions(input, tail, conf).map {
+                  case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
+                }
+              case ValidationErrorType.CorrectedFlag =>
+                findOptions(input, tail, conf).map {
+                  case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
+                }.catchSome {
+                  case _ => ZIO.fail(e)
+                }
+              case _ => ZIO.fail(e)
+            }
+            
+        }
     }
 
   // Sums the list associated with the same key.
@@ -234,25 +250,32 @@ object Options extends OptionsPlatformSpecific {
         }
     }
 
-  private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], Predef.Map[String, List[String]])] =
+  private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[Nothing, (Option[ValidationError], List[String], Predef.Map[String, List[String]])] =
     (input, options) match {
-      case (Nil, _) => ZIO.succeed((Nil, Predef.Map.empty))
-      case (_, Nil) => ZIO.succeed((input, Predef.Map.empty))
+      case (Nil, _) => ZIO.succeed((None, Nil, Predef.Map.empty))
+      case (_, Nil) => ZIO.succeed((None, input, Predef.Map.empty))
       case (input, options) => 
-        for {
+        (for {
           tuple1 <- findOptions(input, options, conf)
           (otherArgs, otherOptions, map1) = tuple1
           tuple2 <- matchOptions(otherArgs, otherOptions, conf)
-          (otherArgs, map2) = tuple2
-        } yield (otherArgs,  merge(map1, map2.toList))
+          (error, otherArgs, map2) = tuple2
+        } yield (error, otherArgs,  merge(map1, map2.toList)))
+          .catchAll(e => ZIO.succeed((Some(e), input, Predef.Map.empty)))
     }
 
   def validate[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
-    matchOptions(args, options.flatten, conf).flatMap {
-      case (commandArgs, matchedOptions) => options.validate(matchedOptions, conf).map {
-        case a => (commandArgs, a)
+    for {
+      matched <- matchOptions(args, options.flatten, conf)
+      (error, commandArgs, matchedOptions) = matched
+      a <- options.validate(matchedOptions, conf).catchSome {
+        case e =>
+          error match {
+            case Some(err) => ZIO.fail(e)
+            case None => ZIO.fail(e)
+          }
       }
-    }
+    } yield (commandArgs, a)
 
   case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
@@ -359,51 +382,7 @@ object Options extends OptionsPlatformSpecific {
               p(error(s"""More than one reference to option ${fullName}."""))
             )
           )
-      }/*
-      args match {
-        case head :: tail =>
-          if (head.trim.matches("^-{1}([^-]{2,}$)"))
-            validate(head.drop(1).map(c => s"-$c") :: tail, conf, true).catchSome { case _: ValidationError =>
-              validate(tail, conf, false).map { case (rest, a) =>
-                (head :: rest, a)
-              }
-            }
-          else {
-            val (rest, supported) = processArg(head, tail, conf)
-            if (supported) {
-              primType match {
-                case _: PrimType.Bool =>
-                  primType
-                    .validate(None, conf)
-                    .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest -> _)
-                case _ =>
-                  primType
-                    .validate(rest.headOption, conf)
-                    .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
-              }
-            } else {
-              validate(rest, conf, false).map { case (args, a) =>
-                (head :: args, a)
-              }.catchSome { case e: ValidationError =>
-                if (
-                  name.length > conf.autoCorrectLimit + 1 &&
-                  AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
-                )
-                  ZIO.fail(
-                    ValidationError(
-                      ValidationErrorType.InvalidValue,
-                      p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
-                    )
-                  )
-                else ZIO.fail(e)
-              }
-            }
-          }
-        case Nil =>
-          ZIO.fail(
-            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
-          )
-      }*/
+      }
 
     override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = 
       processArgs(args) match {
@@ -428,19 +407,19 @@ object Options extends OptionsPlatformSpecific {
                 )
                   ZIO.fail(
                     ValidationError(
-                      ValidationErrorType.InvalidValue,
+                      ValidationErrorType.CorrectedFlag,
                       p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
                     )
                   )
                 else ZIO.fail(
                     ValidationError(
-                      ValidationErrorType.InvalidValue,
-                      p(error(s"""Non-valid input."""))
+                      ValidationErrorType.MissingFlag,
+                      p(error(s"Expected to find ${fullName} option."))
                     )
                   )
         case Nil =>
           ZIO.fail(
-            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
+            ValidationError(ValidationErrorType.MissingFlag, p(error(s"Expected to find ${fullName} option.")))
           )
       }
 
