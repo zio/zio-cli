@@ -550,8 +550,7 @@ object Options extends OptionsPlatformSpecific {
     ): IO[ValidationError, Predef.Map[String, String]] = {
 
       def extractKeyValue(
-        keyValue: String,
-        conf: CliConfig
+        keyValue: String
       ): IO[ValidationError, (String, String)] = (
         keyValue.trim.split("=") match {
           case Array(key, value) =>
@@ -573,13 +572,13 @@ object Options extends OptionsPlatformSpecific {
             case e@ValidationError(errorType, _) => errorType match {
               case ValidationErrorType.KeyValuesDetected(list) =>
                 ZIO.foreach(list) {
-                  case keyValue => extractKeyValue(keyValue, conf)
+                  case keyValue => extractKeyValue(keyValue)
                 }.map(_.toMap)
               case _ => 
                 ZIO.fail(e)
             }
           },
-          keyValue => extractKeyValue(keyValue, conf).map(List(_).toMap)
+          keyValue => extractKeyValue(keyValue).map(List(_).toMap)
         )
     }
 
