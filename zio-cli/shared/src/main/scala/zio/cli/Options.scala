@@ -337,9 +337,7 @@ object Options extends OptionsPlatformSpecific {
       _ <- validate(List(self.names.head, input), conf)
     } yield List(self.names.head, input)
 
-    override val nameAndAliases: Set[String] =
-      self.aliases.map(s => "-" + s.trim).toSet +
-        s"--${self.name.trim}"
+    override val nameAndAliases: Set[String] = self.names.toSet
 
     override val valueCount: Int = 1
   }
