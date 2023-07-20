@@ -145,6 +145,8 @@ sealed trait Options[+A] extends Parameter { self =>
           )
     )
 
+  def flatten: List[Options[_]]
+
   def helpDoc: HelpDoc
 
   final def isBool: Boolean =
@@ -177,7 +179,10 @@ sealed trait Options[+A] extends Parameter { self =>
 
   def uid: Option[String]
 
-  def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)]
+  // Value `unclustered` is true if the first `String` represent an option that has been unclustered.
+  def validate(args: List[(String, Options)], conf: CliConfig): IO[ValidationError, (List[(String, Options)], A)]
+
+  def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])]
 
   def withDefault[A1 >: A](value: A1): Options[A1] =
     Options.WithDefault(self, value)
@@ -195,8 +200,8 @@ object Options extends OptionsPlatformSpecific {
   case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Unit)] =
-      ZIO.succeed((args, ()))
+    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], Unit, Boolean)] =
+      ZIO.succeed((args, (), unclustered))
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
 
@@ -213,11 +218,11 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
 
-    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
+    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], A, Boolean)] =
       self.options
-        .validate(args, conf)
+        .validate(args, conf, unclustered)
         .catchSome {
-          case error if error.isOptionMissing => ZIO.succeed(args -> self.default)
+          case error if error.isOptionMissing => ZIO.succeed(args, self.default, unclustered)
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =
@@ -268,13 +273,13 @@ object Options extends OptionsPlatformSpecific {
       }
     }
 
-    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
+    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], A, Boolean)] =
       args match {
         case head :: tail =>
           if (head.trim.matches("^-{1}([^-]{2,}$)"))
-            validate(head.drop(1).map(c => s"-$c") :: tail, conf).catchSome { case _: ValidationError =>
-              validate(tail, conf).map { case (rest, a) =>
-                (head :: rest, a)
+            validate(head.drop(1).map(c => s"-$c") :: tail, conf, true).catchSome { case _: ValidationError =>
+              validate(tail, conf, false).map { case (rest, a, unclustered) =>
+                (head :: rest, a, unclustered)
               }
             }
           else {
@@ -291,7 +296,7 @@ object Options extends OptionsPlatformSpecific {
                     .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
               }
             } else {
-              validate(rest, conf).map { case (args, a) =>
+              validate(rest, conf, false).map { case (args, a) =>
                 (head :: args, a)
               }.catchSome { case e: ValidationError =>
                 if (
@@ -308,6 +313,38 @@ object Options extends OptionsPlatformSpecific {
               }
             }
           }
+        case Nil =>
+          ZIO.fail(
+            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
+          )
+      }
+
+    def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = 
+      args match {
+        case head :: tail => 
+          val (rest, supported) = processArg(head, tail, conf)
+                if (supported) {
+                  primType match {
+                    case _: PrimType.Bool =>
+                      primType
+                        .validate(None, conf)
+                        .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest -> _)
+                    case _ =>
+                      primType
+                        .validate(rest.headOption, conf)
+                        .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
+                  }
+                } else if (
+                      name.length > conf.autoCorrectLimit + 1 &&
+                      AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
+                    )
+                      ZIO.fail(
+                        ValidationError(
+                          ValidationErrorType.InvalidValue,
+                          p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
+                        )
+                      )
+                    else ZIO.fail(e)
         case Nil =>
           ZIO.fail(
             ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
@@ -350,13 +387,13 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Alternation(self.left.synopsis, self.right.synopsis)
 
-    override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], Either[A, B])] =
+    override def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], Either[A, B], Boolean)] =
       self.left
-        .validate(args, conf)
+        .validate(args, conf, unclustered)
         .foldZIO(
           err1 =>
             self.right
-              .validate(args, conf)
+              .validate(args, conf, unclustered)
               .foldZIO[Any, ValidationError, (List[String], Either[A, B])](
                 err2 =>
                   ZIO.fail(
@@ -372,7 +409,7 @@ object Options extends OptionsPlatformSpecific {
               ),
           r =>
             self.right
-              .validate(r._1, conf)
+              .validate(r._1, conf, r._3)
               .foldZIO(
                 _ => ZIO.succeed((r._1, Left(r._2))),
                 _ =>
@@ -403,22 +440,22 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = self.left.synopsis + self.right.synopsis
 
-    override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
+    override def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], (A, B), Boolean)] =
       for {
         tuple <- self.left
-                   .validate(args, conf)
+                   .validate(args, conf, unclustered)
                    .catchAll(err1 =>
                      self.right
-                       .validate(args, conf)
+                       .validate(args, conf, unclustered)
                        .foldZIO(
                          err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
                          _ => ZIO.fail(err1)
                        )
                    )
-        (args, a) = tuple
-        tuple    <- self.right.validate(args, conf)
-        (args, b) = tuple
-      } yield args -> (a -> b)
+        (args, a, unclustered) = tuple
+        tuple    <- self.right.validate(args, conf, unclustered)
+        (args, b, unclustered) = tuple
+      } yield args -> (a -> b) -> unclustered
 
     override lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
@@ -442,8 +479,8 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
 
-    def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], B)] =
-      self.value.validate(args, conf).flatMap(r => self.f(r._2).fold(e => ZIO.fail(e), s => ZIO.succeed(r._1 -> s)))
+    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], B, Boolean)] =
+      self.value.validate(args, conf, unclustered).flatMap(r => self.f(r._2).fold(e => ZIO.fail(e), s => ZIO.succeed(r._1 -> s)))
 
     override lazy val uid: Option[String] = self.value.uid
 
@@ -469,8 +506,9 @@ object Options extends OptionsPlatformSpecific {
 
     override def validate(
       args: List[String],
-      conf: CliConfig
-    ): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
+      conf: CliConfig,
+      unclustered: Boolean
+    ): IO[ValidationError, (List[String], Predef.Map[String, String], Boolean)] = {
 
       def extractArgOptKeyValuePairs(
         input: List[String],
@@ -549,9 +587,15 @@ object Options extends OptionsPlatformSpecific {
         (remains, (first :: pairs).toMap)
       }
 
-      self.argumentOption
-        .validate(args, conf)
-        .flatMap { case (input, first) =>
+      if (unclustered) ZIO.fail(
+              ValidationError(
+                ValidationErrorType.InvalidArgument,
+                p(error(s"Expected non unclustered option"))
+              )
+            )
+      else argumentOption
+        .validate(args, conf, false)
+        .flatMap { case (input, first, _) =>
           processArguments(input, first, conf)
         }
     }
@@ -577,7 +621,7 @@ object Options extends OptionsPlatformSpecific {
     override def helpDoc: HelpDoc        = auxiliaryOptions.helpDoc
     override def synopsis: UsageSynopsis = auxiliaryOptions.synopsis
     override def uid: Option[String]     = auxiliaryOptions.uid
-    override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], OAuth2Token)] =
+    override def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], OAuth2Token, Boolean)] =
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
       OAuth2Options(provider, scope, auxiliaryOptions.modifySingle(f))

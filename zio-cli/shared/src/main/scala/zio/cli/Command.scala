@@ -67,6 +67,23 @@ object Command {
     (remainingArgs, forcedArgs.drop(1))
   }
 
+  private def matchOptions(input: List[String], options: List[Options[_]]): IO[ValidationError, (List[String], List[(String, Options[_])])] =
+    options match {
+      case Nil => ZIO.succeed((input, Nil))
+      case head :: tail =>
+        for {
+          parsed <- head.parse(input)
+          res <- parsed match {
+            case (Nil, input) => 
+              val matched = matchOptions(input, tail)
+              matchOptions(matched._1, head)
+            case (parsed, leftover) =>
+              val matched = matchOptions(leftover, tail)
+              ZIO.succeed((matched._1, (parsed, head) :: matched._2))
+          }
+        }
+      }
+
   final case class Single[OptionsType, ArgsType](
     val name: String,
     help: HelpDoc,
@@ -145,9 +162,11 @@ object Command {
                                    }
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
-          tuple2                             <- self.options.validate(optionsAndArgs, conf)
-          (commandArgs, optionsType)          = tuple2
-          tuple                              <- self.args.validate(commandArgs ++ forcedCommandArgs, conf)
+          basicOptions <- options.flatten 
+          matched <- matchOptions(optionsAndArgs, basicOptions, conf)
+          (commandArgs, matchedOptions) = matched
+          optionsType                             <- options.validate(matchedOptions)
+          tuple                              <-  args.validate(commandArgs ++ forcedCommandArgs, conf)
           (argsLeftover, argsType)            = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
