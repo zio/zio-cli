@@ -228,6 +228,13 @@ object Options extends OptionsPlatformSpecific {
                   case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
                 }
               case ValidationErrorType.CorrectedFlag =>
+                for {
+                  tuple <- findOptions(input, tail, conf).catchSome {
+                    case _ => ZIO.fail(e)
+                  }
+                  (otherArgs, otherOptions, map) = tuple
+                  _ <- ZIO.when(map.isEmpty)(ZIO.fail(e))
+                } yield (otherArgs, head :: otherOptions, map)
                 findOptions(input, tail, conf).map {
                   case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
                 }.catchSome {
