@@ -94,6 +94,17 @@ object Command {
         )
     }
 
+  // Sums the list associated with the same key.
+  private def merge(map1: Predef.Map[String, List[String]], map2: List[(String, List[String])]): Predef.Map[String, List[String]] =
+    map2 match {
+      case Nil => map1
+      case head :: tail =>
+        map1.updatedWith(head._1){
+          case None => Some(head._2)
+          case Some(list) => Some(list ++ head._2)
+        }
+    }
+
   private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
     (input, options) match {
       case (Nil, _) => ZIO.succeed((Nil, options, Predef.Map.empty))
@@ -104,7 +115,7 @@ object Command {
           (otherArgs, otherOptions, map1) = tuple1
           tuple2 <- matchOptions(otherArgs, otherOptions, conf)
           (otherArgs, unusedOptions, map2) = tuple2
-        } yield (otherArgs, unusedOptions, map1 ++ map2)
+        } yield (otherArgs, unusedOptions, merge(map1, map2.toList))
     }
     
     
