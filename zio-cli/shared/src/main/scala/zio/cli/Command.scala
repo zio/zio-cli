@@ -116,7 +116,7 @@ object Command {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
           Options.validate(options, args, conf)
-            .map(_._2)
+            .map(_._3)
             .mapError(_.error)
             .some
             .map(CommandDirective.BuiltIn)
@@ -149,8 +149,14 @@ object Command {
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
           tuple2 <- Options.validate(options, optionsAndArgs, conf)
-          (commandArgs, optionsType) = tuple2
-          tuple                              <-  self.args.validate(commandArgs ++ forcedCommandArgs, conf)
+          (error, commandArgs, optionsType) = tuple2
+          tuple                              <-  self.args.validate(commandArgs ++ forcedCommandArgs, conf).catchSome {
+            case e =>
+              error match {
+                case None => ZIO.fail(e)
+                case Some(err) => ZIO.fail(err)
+              }
+          }
           (argsLeftover, argsType)            = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 

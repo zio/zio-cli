@@ -265,7 +265,7 @@ object Options extends OptionsPlatformSpecific {
           .catchAll(e => ZIO.succeed((Some(e), input, Predef.Map.empty)))
     }
 
-  def validate[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
+  def validate[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (Option[ValidationError], List[String], A)] =
     for {
       matched <- matchOptions(args, options.flatten, conf)
       (error, commandArgs, matchedOptions) = matched
@@ -276,7 +276,7 @@ object Options extends OptionsPlatformSpecific {
             case None => ZIO.fail(e)
           }
       }
-    } yield (commandArgs, a)
+    } yield (error, commandArgs, a)
 
   case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
