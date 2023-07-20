@@ -12,7 +12,7 @@ private[cli] object OAuth2PlatformSpecific {
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions],
     args: Predef.Map[String, List[String]],
     conf: CliConfig
-  ): IO[ValidationError, (List[String], OAuth2Token)] =
+  ): IO[ValidationError, OAuth2Token] =
     ZIO.dieMessage(
       "OAuth2 support is not currently implemented for Scala.js. If you are interested in adding support, please open a pull request at https://github.com/zio/zio-cli."
     )
