@@ -245,11 +245,13 @@ object Options extends OptionsPlatformSpecific {
   private def merge(map1: Predef.Map[String, List[String]], map2: List[(String, List[String])]): Predef.Map[String, List[String]] =
     map2 match {
       case Nil => map1
-      case head :: tail =>
-        map1.updatedWith(head._1){
+      case head :: tail => {
+        val newMap = map1.updatedWith(head._1){
           case None => Some(head._2)
           case Some(list) => Some(list ++ head._2)
         }
+      	merge(newMap, tail)
+      }
     }
 
   private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[Nothing, (Option[ValidationError], List[String], Predef.Map[String, List[String]])] =
@@ -364,7 +366,7 @@ object Options extends OptionsPlatformSpecific {
       } match {
         case Nil => 
           ZIO.fail(
-            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option1.")))
+            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
           )
         case head :: Nil =>
           head match {
@@ -417,12 +419,12 @@ object Options extends OptionsPlatformSpecific {
                 else ZIO.fail(
                     ValidationError(
                       ValidationErrorType.MissingFlag,
-                      p(error(s"Expected to find ${fullName} option2."))
+                      p(error(s"Expected to find ${fullName} option."))
                     )
                   )
         case Nil =>
           ZIO.fail(
-            ValidationError(ValidationErrorType.MissingFlag, p(error(s"Expected to find ${fullName} option0.")))
+            ValidationError(ValidationErrorType.MissingFlag, p(error(s"Expected to find ${fullName} option.")))
           )
       }
 
