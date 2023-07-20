@@ -10,7 +10,7 @@ private[cli] object OAuth2PlatformSpecific {
     provider: OAuth2Provider,
     scope: List[String],
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions],
-    args: List[String],
+    args: Predef.Map[String, List[String]],
     conf: CliConfig
   ): IO[ValidationError, (List[String], OAuth2Token)] =
     ZIO.dieMessage(
