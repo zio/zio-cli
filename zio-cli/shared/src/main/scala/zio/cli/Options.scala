@@ -196,6 +196,64 @@ trait SingleModifier {
 }
 
 object Options extends OptionsPlatformSpecific {
+
+    private def findOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
+    options match {
+      case Nil => ZIO.succeed((input, Nil, Predef.Map.empty))
+      case head :: tail =>
+        head.parse(input, conf).flatMap(
+            parsed => parsed match {
+            case (Nil, input) => 
+              findOptions(input, tail, conf).map {
+                case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
+              }
+            case (parsed, leftover) => 
+              parsed match {
+                case name :: Nil =>
+                  ZIO.succeed((leftover, tail, Predef.Map(name -> Nil)))
+                case name :: value :: Nil =>
+                  ZIO.succeed((leftover, tail, Predef.Map(name -> List(value))))
+                case _ =>
+                  ZIO.fail(ValidationError(
+                    ValidationErrorType.CommandMismatch,
+                    HelpDoc.p(s"Non-valid input")
+                  ))
+              }
+          }
+        )
+    }
+
+  // Sums the list associated with the same key.
+  private def merge(map1: Predef.Map[String, List[String]], map2: List[(String, List[String])]): Predef.Map[String, List[String]] =
+    map2 match {
+      case Nil => map1
+      case head :: tail =>
+        map1.updatedWith(head._1){
+          case None => Some(head._2)
+          case Some(list) => Some(list ++ head._2)
+        }
+    }
+
+  private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], Predef.Map[String, List[String]])] =
+    (input, options) match {
+      case (Nil, _) => ZIO.succeed((Nil, Predef.Map.empty))
+      case (_, Nil) => ZIO.succeed((input, Predef.Map.empty))
+      case (input, options) => 
+        for {
+          tuple1 <- findOptions(input, options, conf)
+          (otherArgs, otherOptions, map1) = tuple1
+          tuple2 <- matchOptions(otherArgs, otherOptions, conf)
+          (otherArgs, map2) = tuple2
+        } yield (otherArgs,  merge(map1, map2.toList))
+    }
+
+  def validate[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
+    matchOptions(args, options.flatten, conf).flatMap {
+      case (commandArgs, matchedOptions) => options.validate(matchedOptions, conf).map {
+        case a => (commandArgs, a)
+      }
+    }
+
   case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
@@ -628,7 +686,7 @@ object Options extends OptionsPlatformSpecific {
       } yield uid.getOrElse("") :: input.split(" ").toList
   }
 
-  
+
   final case class OAuth2Options(
     provider: OAuth2Provider,
     scope: List[String],
