@@ -95,6 +95,9 @@ object Args {
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Named(List(name), self.primType.choices)
 
+    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] =
+      ZIO.succeed((Nil, Nil))
+
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       (args match {
         case head :: tail => self.primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
@@ -192,6 +195,9 @@ object Args {
     lazy val maxSize: Int = self.max.getOrElse(Int.MaxValue / 2) * self.value.maxSize
 
     lazy val minSize: Int = self.min.getOrElse(0) * value.minSize
+
+    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] =
+      ZIO.succeed((Nil, Nil))
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[A])] = {
       val min1 = min.getOrElse(0)
