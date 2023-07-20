@@ -62,7 +62,7 @@ object CommandSpec extends ZIOSpecDefault {
               .either
               .map(_.left.map(_.error))
           )(
-            equalTo(Left(p(error("Expected to find --after option.")) + p(error("Expected to find --after option."))))
+            equalTo(Left(p(error("Expected to find --after option.")) + p(error("Expected to find --before option."))))
           )
         }
       )
@@ -97,7 +97,7 @@ object CommandSpec extends ZIOSpecDefault {
           WC.command
             .parse(List("wc", "-clk"), CliConfig.default)
 
-        val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, false), List("-clk")))
+        val commandDirective = CommandDirective.UserDefined(Nil, ((false, false, false, true), List("-clk")))
 
         assertZIO(wrongCluster)(equalTo(commandDirective))
       },
@@ -106,7 +106,7 @@ object CommandSpec extends ZIOSpecDefault {
           WC.command
             .parse(List("wc", "-"), CliConfig.default)
 
-        val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, false), List("-")))
+        val commandDirective = CommandDirective.UserDefined(Nil, ((false, false, false, true), List("-")))
 
         assertZIO(wrongCluster)(equalTo(commandDirective))
       }

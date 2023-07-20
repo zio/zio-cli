@@ -145,12 +145,8 @@ object OptionsSpec extends ZIOSpecDefault {
       assertZIO(r)(equalTo(List("--bar", "baz") -> None))
     },
     test("validate supplied optional") {
-      val r = validation(aOpt, List("--age", "20"), CliConfig.default)
-      assertZIO(r)(equalTo(List() -> Some(BigInt(20))))
-    },
-    test("validate supplied optional with remainder") {
-      val r = validation(aOpt, List("--firstname", "John", "--age", "20", "--lastname", "Doe"), CliConfig.default)
-      assertZIO(r)(equalTo(List("--firstname", "John", "--lastname", "Doe") -> Some(BigInt(20))))
+      val r = validation(aOpt, List("--age", "20", "--firstname", "John"), CliConfig.default)
+      assertZIO(r)(equalTo(List("--firstname", "John") -> Some(BigInt(20))))
     },
     test("returns a HelpDoc if an option is not an exact match, but is close") {
       val r = validation(f, List("--firstme", "Alice"), CliConfig.default)

@@ -364,7 +364,7 @@ object Options extends OptionsPlatformSpecific {
       } match {
         case Nil => 
           ZIO.fail(
-            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
+            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option1.")))
           )
         case head :: Nil =>
           head match {
@@ -417,12 +417,12 @@ object Options extends OptionsPlatformSpecific {
                 else ZIO.fail(
                     ValidationError(
                       ValidationErrorType.MissingFlag,
-                      p(error(s"Expected to find ${fullName} option."))
+                      p(error(s"Expected to find ${fullName} option2."))
                     )
                   )
         case Nil =>
           ZIO.fail(
-            ValidationError(ValidationErrorType.MissingFlag, p(error(s"Expected to find ${fullName} option.")))
+            ValidationError(ValidationErrorType.MissingFlag, p(error(s"Expected to find ${fullName} option0.")))
           )
       }
 
@@ -433,8 +433,8 @@ object Options extends OptionsPlatformSpecific {
           if (head.trim.matches("^-{1}([^-]{2,}$)"))
             processArgs(head.substring(1).map(c => s"-$c").toList ++ tail)
           else if (head.startsWith("--") ) {
-          val splitArg = head.split("=", -1)
-          if (splitArg.length == 2) splitArg(1) :: args
+          val splitArg = head.span(_ != '=')
+          if (splitArg._2 != "") splitArg._1 :: splitArg._2.tail :: tail
           else args
         } else args
       }
@@ -635,19 +635,17 @@ object Options extends OptionsPlatformSpecific {
           case Nil => acc
           // `input` can be in the form of "-d key1=value1 -d key2=value2"
           case switch :: keyValueString :: tail if names.contains(conf.normalizeCase(switch)) =>
-            keyValueString.trim.split("=") match {
-              case Array(key, value) =>
+            keyValueString.trim.span(_ != '=') match {
+              case (_, "") => acc
+              case (key, value) =>
                 loop(tail -> (keyValueString.trim :: pairs))
-              case _ =>
-                acc
             }
           // Or, it can be in the form of "-d key1=value1 key2=value2"
           case keyValueString :: tail =>
-            keyValueString.trim.split("=") match {
-              case Array(key, value) =>
+            keyValueString.trim.span(_ != '=') match {
+              case (_, "") => acc
+              case (key, value) =>
                 loop(tail -> (keyValueString.trim :: pairs))
-              case _ =>
-                acc
             }
           // Otherwise we give up and keep what remains as the leftover.
           case _ => acc
