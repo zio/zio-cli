@@ -235,11 +235,6 @@ object Options extends OptionsPlatformSpecific {
                   (otherArgs, otherOptions, map) = tuple
                   _ <- ZIO.when(map.isEmpty)(ZIO.fail(e))
                 } yield (otherArgs, head :: otherOptions, map)
-                findOptions(input, tail, conf).map {
-                  case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
-                }.catchSome {
-                  case _ => ZIO.fail(e)
-                }
               case _ => ZIO.fail(e)
             }
             
