@@ -271,10 +271,10 @@ object Options extends OptionsPlatformSpecific {
     for {
       matched <- matchOptions(args, options.flatten, conf)
       (error, commandArgs, matchedOptions) = matched
-      a <- options.validate(matchedOptions, conf).catchSome {
+      a <- options.validate(matchedOptions, conf).catchAll {
         case e =>
           error match {
-            case Some(err) => ZIO.fail(e)
+            case Some(err) => ZIO.fail(err)
             case None => ZIO.fail(e)
           }
       }

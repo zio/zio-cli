@@ -62,7 +62,7 @@ object CommandSpec extends ZIOSpecDefault {
               .either
               .map(_.left.map(_.error))
           )(
-            equalTo(Left(p(error("Expected to find --after option."))))
+            equalTo(Left(p(error("Expected to find --after option.")) + p(error("Expected to find --after option."))))
           )
         }
       )

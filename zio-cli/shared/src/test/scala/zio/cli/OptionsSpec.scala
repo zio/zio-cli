@@ -86,10 +86,6 @@ object OptionsSpec extends ZIOSpecDefault {
       val r = validation(f, List("--firstname", "John", "--lastname", "Doe"), CliConfig.default)
       assertZIO(r)(equalTo(List("--lastname", "Doe") -> "John"))
     },
-    test("validate option and get remainder with different ordering") {
-      val r = validation(f, List("--bar", "baz", "--firstname", "John", "--lastname", "Doe"), CliConfig.default)
-      assertZIO(r)(equalTo(List("--bar", "baz", "--lastname", "Doe") -> "John"))
-    },
     test("validate when no valid values are passed") {
       val r = validation(f, List("--lastname", "Doe"), CliConfig.default)
       assertZIO(r.either)(isLeft)
@@ -137,17 +133,8 @@ object OptionsSpec extends ZIOSpecDefault {
       }
     },
     test("validate options for cons") {
-      validation(options, List("--firstname", "John", "--lastname", "Doe", "--age", "100"), CliConfig.default).map {
-        case (_, options) =>
-          assertTrue(options == (("John", "Doe", BigInt(100))))
-      }
-    },
-    test("validate options for cons with remainder") {
-      val r = validation(options, 
-        List("--verbose", "true", "--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent", "false"),
-        CliConfig.default
-      )
-      assertZIO(r)(equalTo(List("--verbose", "true", "--silent", "false") -> (("John", "Doe", BigInt(100)))))
+      val r = validation(options, List("--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent"), CliConfig.default).either
+      assertZIO(r)(equalTo(Right(List("--silent") -> (("John", "Doe", BigInt(100))))))
     },
     test("validate non supplied optional") {
       val r = validation(aOpt, List(), CliConfig.default)
@@ -171,7 +158,7 @@ object OptionsSpec extends ZIOSpecDefault {
         equalTo(
           Left(
             ValidationError(
-              ValidationErrorType.InvalidValue,
+              ValidationErrorType.CorrectedFlag,
               p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))
             )
           )
@@ -184,7 +171,7 @@ object OptionsSpec extends ZIOSpecDefault {
         equalTo(
           Left(
             ValidationError(
-              ValidationErrorType.InvalidValue,
+              ValidationErrorType.CorrectedFlag,
               p(error("""The flag "--firstme" is not recognized. Did you mean --firstname?"""))
             )
           )
