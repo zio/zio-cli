@@ -628,6 +628,7 @@ object Options extends OptionsPlatformSpecific {
       } yield uid.getOrElse("") :: input.split(" ").toList
   }
 
+  
   final case class OAuth2Options(
     provider: OAuth2Provider,
     scope: List[String],
