@@ -6,6 +6,7 @@ final case class ValidationError(validationErrorType: ValidationErrorType, error
 
 sealed trait ValidationErrorType
 object ValidationErrorType {
+  case class  KeyValuesDetected(keyValues: List[String])     extends ValidationErrorType
   case object InvalidValue      extends ValidationErrorType
   case object MissingValue      extends ValidationErrorType
   case object CommandMismatch   extends ValidationErrorType

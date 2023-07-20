@@ -1,6 +1,7 @@
 package zio.cli
 
 import zio.cli.HelpDoc.h1
+import zio.cli.Input
 import zio.cli.ValidationErrorType.CommandMismatch
 import zio.cli.oauth2.OAuth2PlatformSpecific
 import zio.{Chunk, IO, ZIO}
@@ -67,22 +68,46 @@ object Command {
     (remainingArgs, forcedArgs.drop(1))
   }
 
-  private def matchOptions(input: List[String], options: List[Options[_]]): IO[ValidationError, (List[String], List[(String, Options[_])])] =
+  private def findOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
     options match {
-      case Nil => ZIO.succeed((input, Nil))
+      case Nil => ZIO.succeed((input, Nil, Predef.Map.empty))
       case head :: tail =>
-        for {
-          parsed <- head.parse(input)
-          res <- parsed match {
+        head.parse(input, conf).flatMap(
+            parsed => parsed match {
             case (Nil, input) => 
-              val matched = matchOptions(input, tail)
-              matchOptions(matched._1, head)
-            case (parsed, leftover) =>
-              val matched = matchOptions(leftover, tail)
-              ZIO.succeed((matched._1, (parsed, head) :: matched._2))
+              findOptions(input, tail, conf).map {
+                case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
+              }
+            case (parsed, leftover) => 
+              parsed match {
+                case name :: Nil =>
+                  ZIO.succeed((leftover, tail, Predef.Map(name -> Nil)))
+                case name :: value :: Nil =>
+                  ZIO.succeed((leftover, tail, Predef.Map(name -> List(value))))
+                case _ =>
+                  ZIO.fail(ValidationError(
+                    ValidationErrorType.CommandMismatch,
+                    HelpDoc.p(s"Non-valid input")
+                  ))
+              }
           }
-        }
-      }
+        )
+    }
+
+  private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
+    (input, options) match {
+      case (Nil, _) => ZIO.succeed((Nil, options, Predef.Map.empty))
+      case (_, Nil) => ZIO.succeed((input, Nil, Predef.Map.empty))
+      case (input, options) => 
+        for {
+          tuple1 <- findOptions(input, options, conf)
+          (otherArgs, otherOptions, map1) = tuple1
+          tuple2 <- matchOptions(otherArgs, otherOptions, conf)
+          (otherArgs, unusedOptions, map2) = tuple2
+        } yield (otherArgs, unusedOptions, map1 ++ map2)
+    }
+    
+    
 
   final case class Single[OptionsType, ArgsType](
     val name: String,
@@ -129,13 +154,18 @@ object Command {
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] = {
       val parseBuiltInArgs =
-        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name)))
-          BuiltInOption
+        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) {
+          val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
-            .validate(args, conf)
-            .mapBoth(_.error, _._2)
+          matchOptions(args, options.flatten, conf)
+            .flatMap {
+              case matched => options.validate(matched._3, conf)
+            }
+            .mapError(_.error)
             .some
             .map(CommandDirective.BuiltIn)
+        }
+
         else ZIO.fail(None)
 
       val parseUserDefinedArgs =
@@ -162,11 +192,11 @@ object Command {
                                    }
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
-          basicOptions <- options.flatten 
+          basicOptions = options.flatten 
           matched <- matchOptions(optionsAndArgs, basicOptions, conf)
-          (commandArgs, matchedOptions) = matched
-          optionsType                             <- options.validate(matchedOptions)
-          tuple                              <-  args.validate(commandArgs ++ forcedCommandArgs, conf)
+          (commandArgs, unusedOptions, matchedOptions) = matched
+          optionsType                             <- options.validate(matchedOptions, conf)
+          tuple                              <-  self.args.validate(commandArgs ++ forcedCommandArgs, conf)
           (argsLeftover, argsType)            = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 

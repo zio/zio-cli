@@ -22,6 +22,7 @@ import java.time.{
   ZonedDateTime => JZonedDateTime
 }
 import scala.annotation.tailrec
+import zio.cli.PrimType.Bool
 
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
@@ -145,7 +146,7 @@ sealed trait Options[+A] extends Parameter { self =>
           )
     )
 
-  def flatten: List[Options[_]]
+  def flatten: List[Options[_] with Input]
 
   def helpDoc: HelpDoc
 
@@ -180,9 +181,7 @@ sealed trait Options[+A] extends Parameter { self =>
   def uid: Option[String]
 
   // Value `unclustered` is true if the first `String` represent an option that has been unclustered.
-  def validate(args: List[(String, Options)], conf: CliConfig): IO[ValidationError, (List[(String, Options)], A)]
-
-  def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])]
+  def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, A]
 
   def withDefault[A1 >: A](value: A1): Options[A1] =
     Options.WithDefault(self, value)
@@ -200,8 +199,10 @@ object Options extends OptionsPlatformSpecific {
   case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
-    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], Unit, Boolean)] =
-      ZIO.succeed((args, (), unclustered))
+    override def flatten: List[Options[_] with Input] = Nil
+
+    override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, Unit] =
+      ZIO.succeed(())
 
     override def modifySingle(f: SingleModifier): Options[Unit] = Empty
 
@@ -218,11 +219,18 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
 
-    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], A, Boolean)] =
-      self.options
-        .validate(args, conf, unclustered)
+    override def flatten: List[Options[_] with Input] = options.flatten
+
+    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] =
+      ZIO.fail(
+          ValidationError(ValidationErrorType.CommandMismatch, p(error("Error in command design")))
+        )
+
+    override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, A] =
+      options
+        .validate(args, conf)
         .catchSome {
-          case error if error.isOptionMissing => ZIO.succeed(args, self.default, unclustered)
+          case error if error.isOptionMissing => ZIO.succeed(default)
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =
@@ -263,23 +271,43 @@ object Options extends OptionsPlatformSpecific {
         if (!self.primType.isBool) self.primType.choices.orElse(Some(self.primType.typeName)) else None
       )
 
-    def unCluster(args: List[String]): List[String] = {
-      def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}$)")
+    override def flatten: List[Options[_] with Input] = List(self)
 
-      args.flatMap { arg =>
-        if (isClusteredOption(arg))
-          arg.substring(1).map(c => s"-$c")
-        else arg :: Nil
-      }
-    }
-
-    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], A, Boolean)] =
+    override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, A] =
+      names.map(args.get).flatMap {
+        case None => Nil
+        case Some(x) => List(x)
+      } match {
+        case Nil => 
+          ZIO.fail(
+            ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
+          )
+        case head :: Nil =>
+          head match {
+            case Nil => 
+              primType
+                .validate(None, conf)
+                .mapError(e => ValidationError(ValidationErrorType.InvalidValue, p(e)))
+            case head :: Nil =>
+              primType
+                .validate(head, conf)
+                .mapError(e => ValidationError(ValidationErrorType.InvalidValue, p(e)))
+            case list => ZIO.fail(ValidationError(ValidationErrorType.KeyValuesDetected(list), HelpDoc.empty))
+          }
+        case _ => 
+          ZIO.fail(
+            ValidationError(
+              ValidationErrorType.InvalidValue,
+              p(error(s"""More than one reference to option ${fullName}."""))
+            )
+          )
+      }/*
       args match {
         case head :: tail =>
           if (head.trim.matches("^-{1}([^-]{2,}$)"))
             validate(head.drop(1).map(c => s"-$c") :: tail, conf, true).catchSome { case _: ValidationError =>
-              validate(tail, conf, false).map { case (rest, a, unclustered) =>
-                (head :: rest, a, unclustered)
+              validate(tail, conf, false).map { case (rest, a) =>
+                (head :: rest, a)
               }
             }
           else {
@@ -317,51 +345,59 @@ object Options extends OptionsPlatformSpecific {
           ZIO.fail(
             ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
           )
-      }
+      }*/
 
-    def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = 
-      args match {
-        case head :: tail => 
-          val (rest, supported) = processArg(head, tail, conf)
-                if (supported) {
-                  primType match {
-                    case _: PrimType.Bool =>
-                      primType
-                        .validate(None, conf)
-                        .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest -> _)
-                    case _ =>
-                      primType
-                        .validate(rest.headOption, conf)
-                        .mapBoth(e => ValidationError(ValidationErrorType.InvalidValue, p(e)), rest.drop(1) -> _)
-                  }
-                } else if (
-                      name.length > conf.autoCorrectLimit + 1 &&
-                      AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
+    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = 
+      processArgs(args) match {
+        case head :: tail =>
+          if (names.map(conf.normalizeCase).contains(conf.normalizeCase(head))) {
+            primType match {
+              case _: Bool => tail match {
+                case "true" :: tail => ZIO.succeed((head :: "true" :: Nil, tail))
+                case "false" :: tail => ZIO.succeed((head :: "false" :: Nil, tail))
+                case _ => ZIO.succeed((head :: Nil, tail))
+              }
+              case _ => tail match {
+                case value :: tail => ZIO.succeed((List(head, value), tail))
+                case Nil => ZIO.fail(
+                  ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected some value.")))
+                )
+              }
+            }
+          } else if (
+                  name.length > conf.autoCorrectLimit + 1 &&
+                  AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
+                )
+                  ZIO.fail(
+                    ValidationError(
+                      ValidationErrorType.InvalidValue,
+                      p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
                     )
-                      ZIO.fail(
-                        ValidationError(
-                          ValidationErrorType.InvalidValue,
-                          p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
-                        )
-                      )
-                    else ZIO.fail(e)
+                  )
+                else ZIO.fail(
+                    ValidationError(
+                      ValidationErrorType.InvalidValue,
+                      p(error(s"""Non-valid input."""))
+                    )
+                  )
         case Nil =>
           ZIO.fail(
             ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
           )
       }
 
-    private def processArg(arg: String, args: List[String], conf: CliConfig): (List[String], Boolean) = {
-      def process(predicate: String => Boolean): (List[String], Boolean) =
-        if (predicate(arg)) (args, true)
-        else if (arg.startsWith("--")) {
-          val splitArg = arg.split("=", -1)
-          if (splitArg.length == 2) (splitArg(1) :: args, predicate(splitArg.head))
-          else (args, false)
-        } else (args, false)
-
-      if (conf.caseSensitive) process(self.names.contains)
-      else process(s => self.names.exists(_.equalsIgnoreCase(s)))
+    private def processArgs(args: List[String]): List[String] = {
+      args match {
+        case Nil => Nil
+        case head :: tail =>
+          if (head.trim.matches("^-{1}([^-]{2,}$)"))
+            processArgs(head.substring(1).map(c => s"-$c").toList ++ tail)
+          else if (head.startsWith("--") ) {
+          val splitArg = head.split("=", -1)
+          if (splitArg.length == 2) splitArg(1) :: args
+          else args
+        } else args
+      }
     }
 
     lazy val uid: Option[String] = Some(self.fullName)
@@ -376,7 +412,7 @@ object Options extends OptionsPlatformSpecific {
       HelpDoc.DescriptionList(List(self.synopsis.helpDoc.getSpan -> (p(self.primType.helpDoc) + self.description)))
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
-      _ <- validate(List(self.names.head, input), conf)
+      _ <- parse(List(self.names.head, input), conf)
     } yield List(self.names.head, input)
   }
 
@@ -387,37 +423,37 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Alternation(self.left.synopsis, self.right.synopsis)
 
-    override def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], Either[A, B], Boolean)] =
-      self.left
-        .validate(args, conf, unclustered)
+    override def flatten: List[Options[_] with Input] = left.flatten ++ right.flatten
+
+    override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, Either[A, B]] =
+      left
+        .validate(args, conf)
         .foldZIO(
           err1 =>
-            self.right
-              .validate(args, conf, unclustered)
-              .foldZIO[Any, ValidationError, (List[String], Either[A, B])](
+            right
+              .validate(args, conf)
+              .mapBoth(
                 err2 =>
-                  ZIO.fail(
                     // orElse option is only missing in case neither option was given
                     (err1.validationErrorType, err2.validationErrorType) match {
                       case (ValidationErrorType.MissingValue, ValidationErrorType.MissingValue) =>
                         ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)
                       case _ =>
                         ValidationError(ValidationErrorType.InvalidValue, err1.error + err2.error)
-                    }
-                  ),
-                success => ZIO.succeed((success._1, Right(success._2)))
+                    },
+                b => Right(b)
               ),
-          r =>
-            self.right
-              .validate(r._1, conf, r._3)
+          a =>
+            right
+              .validate(args, conf)
               .foldZIO(
-                _ => ZIO.succeed((r._1, Left(r._2))),
+                _ => ZIO.succeed(Left(a)),
                 _ =>
                   ZIO.fail(
                     ValidationError(
                       ValidationErrorType.InvalidValue,
                       p(
-                        error(s"Options collision detected. You can only specify either ${self.left} or ${self.right}.")
+                        error(s"Options collision detected. You can only specify either $left or $right.")
                       )
                     )
                   )
@@ -440,22 +476,22 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = self.left.synopsis + self.right.synopsis
 
-    override def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], (A, B), Boolean)] =
+    override def flatten: List[Options[_] with Input] = left.flatten ++ right.flatten
+
+    override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, (A, B)] =
       for {
-        tuple <- self.left
-                   .validate(args, conf, unclustered)
-                   .catchAll(err1 =>
-                     self.right
-                       .validate(args, conf, unclustered)
-                       .foldZIO(
-                         err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
-                         _ => ZIO.fail(err1)
-                       )
-                   )
-        (args, a, unclustered) = tuple
-        tuple    <- self.right.validate(args, conf, unclustered)
-        (args, b, unclustered) = tuple
-      } yield args -> (a -> b) -> unclustered
+        a <- left
+          .validate(args, conf)
+          .catchAll(err1 =>
+            right
+              .validate(args, conf)
+              .foldZIO(
+                err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
+                _ => ZIO.fail(err1)
+              )
+            )
+        b <- right.validate(args, conf)
+      } yield (a -> b)
 
     override lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
 
@@ -479,8 +515,10 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis = self.value.synopsis
 
-    def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], B, Boolean)] =
-      self.value.validate(args, conf, unclustered).flatMap(r => self.f(r._2).fold(e => ZIO.fail(e), s => ZIO.succeed(r._1 -> s)))
+    override def flatten: List[Options[_] with Input] = value.flatten
+
+    def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, B] =
+      value.validate(args, conf).flatMap(a => f(a).fold(e => ZIO.fail(e), s => ZIO.succeed(s)))
 
     override lazy val uid: Option[String] = self.value.uid
 
@@ -502,110 +540,92 @@ object Options extends OptionsPlatformSpecific {
 
     override def synopsis: UsageSynopsis = self.argumentOption.synopsis
 
+    override def flatten: List[Options[_] with Input] = List(self)
+
     override def uid: Option[String] = self.argumentOption.uid
 
     override def validate(
-      args: List[String],
-      conf: CliConfig,
-      unclustered: Boolean
-    ): IO[ValidationError, (List[String], Predef.Map[String, String], Boolean)] = {
+      args: Predef.Map[String, List[String]],
+      conf: CliConfig
+    ): IO[ValidationError, Predef.Map[String, String]] = {
 
-      def extractArgOptKeyValuePairs(
-        input: List[String],
+      def extractKeyValue(
+        keyValue: String,
         conf: CliConfig
-      ): (List[String], List[(String, String)]) = {
-
-        val caseSensitive = conf.caseSensitive
-
-        def withHyphen(argOpt: String) =
-          (if (argOpt.length == 1) "-" else "--") +
-            (if (caseSensitive) argOpt else argOpt.toLowerCase)
-
-        val argOptSwitchNameAndAliases =
-          (self.argumentOption.name +: self.argumentOption.aliases)
-            .map(withHyphen)
-            .toSet
-
-        def isSwitch(s: String) = {
-          val switch =
-            if (caseSensitive) s
-            else s.toLowerCase
-
-          argOptSwitchNameAndAliases.contains(switch)
-        }
-
-        @tailrec
-        def loop(
-          acc: (List[String], List[(String, String)])
-        ): (List[String], List[(String, String)]) = {
-          val (input, pairs) = acc
-          input match {
-            case Nil => acc
-            // `input` can be in the form of "-d key1=value1 -d key2=value2"
-            case switch :: keyValueString :: tail if isSwitch(switch.trim) =>
-              keyValueString.trim.split("=") match {
-                case Array(key, value) =>
-                  loop(tail -> ((key, value) :: pairs))
-                case _ =>
-                  acc
-              }
-            // Or, it can be in the form of "-d key1=value1 key2=value2"
-            case keyValueString :: tail =>
-              keyValueString.trim.split("=") match {
-                case Array(key, value) =>
-                  loop(tail -> ((key, value) :: pairs))
-                case _ =>
-                  acc
-              }
-            // Otherwise we give up and keep what remains as the leftover.
-            case _ => acc
-          }
-        }
-
-        loop(input -> Nil)
-      }
-
-      def processArguments(
-        input: List[String],
-        first: String,
-        conf: CliConfig
-      ): IO[ValidationError, (List[String], Predef.Map[String, String])] = (
-        first.trim.split("=") match {
+      ): IO[ValidationError, (String, String)] = (
+        keyValue.trim.split("=") match {
           case Array(key, value) =>
-            ZIO.succeed(key -> value)
+            ZIO.succeed((key -> value))
           case _ =>
             ZIO.fail(
               ValidationError(
                 ValidationErrorType.InvalidArgument,
-                p(error(s"Expected a key/value pair but got '$first'."))
+                p(error(s"Expected a key/value pair but got '$keyValue'."))
               )
             )
         }
-      ).map { first =>
-        val (remains, pairs) = extractArgOptKeyValuePairs(input, conf)
+      )
+      
 
-        (remains, (first :: pairs).toMap)
+      argumentOption
+        .validate(args, conf).foldZIO(
+          err => err match {
+            case e@ValidationError(errorType, _) => errorType match {
+              case ValidationErrorType.KeyValuesDetected(list) =>
+                ZIO.foreach(list) {
+                  case keyValue => extractKeyValue(keyValue, conf)
+                }.map(_.toMap)
+              case _ => 
+                ZIO.fail(e)
+            }
+          },
+          keyValue => extractKeyValue(keyValue, conf).map(List(_).toMap)
+        )
+    }
+
+    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = {
+
+      lazy val names = argumentOption.names.map(conf.normalizeCase)
+
+      @tailrec
+      def loop(
+        acc: (List[String], List[String])
+      ): (List[String], List[String]) = {
+        val (input, pairs) = acc
+        input match {
+          case Nil => acc
+          // `input` can be in the form of "-d key1=value1 -d key2=value2"
+          case switch :: keyValueString :: tail if names.contains(conf.normalizeCase(switch)) =>
+            keyValueString.trim.split("=") match {
+              case Array(key, value) =>
+                loop(tail -> (keyValueString.trim :: pairs))
+              case _ =>
+                acc
+            }
+          // Or, it can be in the form of "-d key1=value1 key2=value2"
+          case keyValueString :: tail =>
+            keyValueString.trim.split("=") match {
+              case Array(key, value) =>
+                loop(tail -> (keyValueString.trim :: pairs))
+              case _ =>
+                acc
+            }
+          // Otherwise we give up and keep what remains as the leftover.
+          case _ => acc
+        }
       }
 
-      if (unclustered) ZIO.fail(
-              ValidationError(
-                ValidationErrorType.InvalidArgument,
-                p(error(s"Expected non unclustered option"))
-              )
-            )
-      else argumentOption
-        .validate(args, conf, false)
-        .flatMap { case (input, first, _) =>
-          processArguments(input, first, conf)
-        }
+      ZIO.succeed(loop(args -> Nil))
+      
     }
+
 
     override private[cli] def modifySingle(f: SingleModifier) =
       Options.keyValueMap(f(self.argumentOption))
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       for {
-        _ <- validate(uid.getOrElse("") :: input.split(" ").toList, conf)
+        _ <- validate(Predef.Map(uid.getOrElse("") -> input.split(" ").toList), conf)
       } yield uid.getOrElse("") :: input.split(" ").toList
   }
 
@@ -620,8 +640,9 @@ object Options extends OptionsPlatformSpecific {
     override val wrapped                 = auxiliaryOptions
     override def helpDoc: HelpDoc        = auxiliaryOptions.helpDoc
     override def synopsis: UsageSynopsis = auxiliaryOptions.synopsis
+    override def flatten: List[Options[_] with Input] = auxiliaryOptions.flatten
     override def uid: Option[String]     = auxiliaryOptions.uid
-    override def validate(args: List[String], conf: CliConfig, unclustered: Boolean): IO[ValidationError, (List[String], OAuth2Token, Boolean)] =
+    override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, OAuth2Token] =
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
       OAuth2Options(provider, scope, auxiliaryOptions.modifySingle(f))
