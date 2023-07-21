@@ -57,13 +57,13 @@ object OptionsSpec extends ZIOSpecDefault {
         v2 <- validation(bNegation, List("--verbose"), CliConfig.default).either
         v3 <- validation(bNegation, List("-v"), CliConfig.default).either
         v4 <- validation(bNegation, List("--silent"), CliConfig.default).either
-        //v5 <- validation(bNegation, List("-s"), CliConfig.default)
+        v5 <- validation(bNegation, List("-s"), CliConfig.default).either
       } yield {
         assert(v1)(equalTo(Right(Nil -> false))) &&
         assert(v2)(equalTo(Right(Nil -> true))) &&
         assert(v3)(equalTo(Right(Nil -> true))) &&
-        assert(v4)(equalTo(Right(Nil -> false))) //&&
-        //assert(v5)(equalTo(Nil -> false))
+        assert(v4)(equalTo(Right(Nil -> false))) &&
+        assert(v5)(equalTo(Right(Nil -> false)))
       }
     },
     test("validate text option") {
