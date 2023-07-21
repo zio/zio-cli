@@ -197,6 +197,10 @@ trait SingleModifier {
 
 object Options extends OptionsPlatformSpecific {
 
+  /**
+   * Returns the leftover arguments, leftover options and a `Map`linking the first argument with its values if it
+   * corresponds to an option flag.
+   */
   private def findOptions(
     input: List[String],
     options: List[Options[_] with Input],
@@ -277,6 +281,10 @@ object Options extends OptionsPlatformSpecific {
       }
     }
 
+  /**
+   * Returns a possible `ValidationError` when parsing the commands, leftover arguments from `input` and a `Map` linking
+   * each flag with its values.
+   */
   private def matchOptions(
     input: List[String],
     options: List[Options[_] with Input],
@@ -296,6 +304,12 @@ object Options extends OptionsPlatformSpecific {
           .catchAll(e => ZIO.succeed((Some(e), input, Predef.Map.empty)))
     }
 
+  /**
+   * `Options.validate` parses `args` for `options and returns an `Option[ValidationError]`, the leftover arguments and
+   * the constructed value of type `A`. The possible error inside `Option[ValidationError]` would only be triggered if
+   * there is an error when parsing the `Args` of a `Command`. This is because `ValidationErrors` are used to control
+   * the end of the args corresponding to options.
+   */
   def validate[A](
     options: Options[A],
     args: List[String],
