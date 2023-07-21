@@ -681,14 +681,16 @@ object Options extends OptionsPlatformSpecific {
           // `input` can be in the form of "-d key1=value1 -d key2=value2"
           case switch :: keyValueString :: tail if names.contains(conf.normalizeCase(switch)) =>
             keyValueString.trim.span(_ != '=') match {
-              case (_, "") => acc
+              case (_, "")  => acc
+              case (_, "=") => acc
               case (key, value) =>
                 loop((keyValueString.trim :: pairs) -> tail)
             }
           // Or, it can be in the form of "-d key1=value1 key2=value2"
           case keyValueString :: tail =>
             keyValueString.trim.span(_ != '=') match {
-              case (_, "") => acc
+              case (_, "")  => acc
+              case (_, "=") => acc
               case (key, value) =>
                 loop((keyValueString.trim :: pairs) -> tail)
             }
