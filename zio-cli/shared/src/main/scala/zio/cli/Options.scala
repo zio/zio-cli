@@ -675,7 +675,7 @@ object Options extends OptionsPlatformSpecific {
         }
       }
 
-      ZIO.succeed(loop(args -> Nil))
+      ZIO.succeed(loop(Nil -> args))
       
     }
 
