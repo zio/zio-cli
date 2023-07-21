@@ -331,7 +331,7 @@ object OptionsSpec extends ZIOSpecDefault {
       test("validate repeated values") {
         val r = validation(m, List("-d", "key1=v1", "-d", "key2=v2", "--verbose"), CliConfig.default)
 
-        assertZIO(r)(equalTo(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2")))
+        assertZIO(r.either)(equalTo(Right(List("--verbose") -> Map("key1" -> "v1", "key2" -> "v2"))))
       },
       test("validate different key/values with alias") {
         val r = validation(m, List("-d", "key1=v1", "key2=v2", "--verbose"), CliConfig.default)
