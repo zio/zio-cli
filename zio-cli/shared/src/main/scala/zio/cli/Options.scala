@@ -197,96 +197,118 @@ trait SingleModifier {
 
 object Options extends OptionsPlatformSpecific {
 
-    private def findOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
+  private def findOptions(
+    input: List[String],
+    options: List[Options[_] with Input],
+    conf: CliConfig
+  ): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
     options match {
       case Nil => ZIO.succeed((input, Nil, Predef.Map.empty))
       case head :: tail =>
-        head.parse(input, conf).flatMap(
-            parsed => parsed match {
-            case (Nil, leftover) => 
-              findOptions(input, tail, conf).map {
-                case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
-              }
-            case (name :: values, leftover) => 
-                  ZIO.succeed((leftover, tail, Predef.Map(name -> values)))
-          }
-        ).catchSome {
-          case e@ValidationError(validationErrorType, error) =>
+        head
+          .parse(input, conf)
+          .flatMap(parsed =>
+            parsed match {
+              case (Nil, leftover) =>
+                findOptions(input, tail, conf).map { case (otherArgs, otherOptions, map) =>
+                  (otherArgs, head :: otherOptions, map)
+                }
+              case (name :: values, leftover) =>
+                ZIO.succeed((leftover, tail, Predef.Map(name -> values)))
+            }
+          )
+          .catchSome { case e @ ValidationError(validationErrorType, error) =>
             validationErrorType match {
               case ValidationErrorType.UnclusteredFlag(list, tail) =>
-                matchUnclustered(list, tail, options, conf).catchAll {
-                  case _ => ZIO.fail(e)
+                matchUnclustered(list, tail, options, conf).catchAll { case _ =>
+                  ZIO.fail(e)
                 }
-              case ValidationErrorType.MissingFlag => 
-                findOptions(input, tail, conf).map {
-                  case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
+              case ValidationErrorType.MissingFlag =>
+                findOptions(input, tail, conf).map { case (otherArgs, otherOptions, map) =>
+                  (otherArgs, head :: otherOptions, map)
                 }
               case ValidationErrorType.CorrectedFlag =>
                 for {
-                  tuple <- findOptions(input, tail, conf).catchSome {
-                    case _ => ZIO.fail(e)
-                  }
+                  tuple <- findOptions(input, tail, conf).catchSome { case _ =>
+                             ZIO.fail(e)
+                           }
                   (otherArgs, otherOptions, map) = tuple
-                  _ <- ZIO.when(map.isEmpty)(ZIO.fail(e))
+                  _                             <- ZIO.when(map.isEmpty)(ZIO.fail(e))
                 } yield (otherArgs, head :: otherOptions, map)
               case _ => ZIO.fail(e)
             }
-            
-        }
+
+          }
     }
 
-  private def matchUnclustered(input: List[String], tail: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
+  private def matchUnclustered(
+    input: List[String],
+    tail: List[String],
+    options: List[Options[_] with Input],
+    conf: CliConfig
+  ): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
     input match {
       case Nil => ZIO.succeed((tail, options, Predef.Map.empty))
-      case flag :: otherFlags => for {
-        tuple1 <- findOptions(flag :: Nil, options, conf)
-        (_, opts1, map1) = tuple1
-        tuple2 <- 
-          if(map1.isEmpty) ZIO.fail(ValidationError(ValidationErrorType.UnclusteredFlag(Nil, tail), HelpDoc.empty))
-          else matchUnclustered(otherFlags, tail, opts1, conf)
-        (_, opts2, map2) = tuple2
-      } yield (tail, opts2, merge(map1, map2.toList))
+      case flag :: otherFlags =>
+        for {
+          tuple1          <- findOptions(flag :: Nil, options, conf)
+          (_, opts1, map1) = tuple1
+          tuple2 <-
+            if (map1.isEmpty) ZIO.fail(ValidationError(ValidationErrorType.UnclusteredFlag(Nil, tail), HelpDoc.empty))
+            else matchUnclustered(otherFlags, tail, opts1, conf)
+          (_, opts2, map2) = tuple2
+        } yield (tail, opts2, merge(map1, map2.toList))
     }
 
   // Sums the list associated with the same key.
-  private def merge(map1: Predef.Map[String, List[String]], map2: List[(String, List[String])]): Predef.Map[String, List[String]] =
+  private def merge(
+    map1: Predef.Map[String, List[String]],
+    map2: List[(String, List[String])]
+  ): Predef.Map[String, List[String]] =
     map2 match {
       case Nil => map1
       case head :: tail => {
-        val newMap = map1.updatedWith(head._1){
-          case None => Some(head._2)
+        val newMap = map1.updatedWith(head._1) {
+          case None       => Some(head._2)
           case Some(list) => Some(list ++ head._2)
         }
-      	merge(newMap, tail)
+        merge(newMap, tail)
       }
     }
 
-  private def matchOptions(input: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[Nothing, (Option[ValidationError], List[String], Predef.Map[String, List[String]])] =
+  private def matchOptions(
+    input: List[String],
+    options: List[Options[_] with Input],
+    conf: CliConfig
+  ): IO[Nothing, (Option[ValidationError], List[String], Predef.Map[String, List[String]])] =
     (input, options) match {
       case (Nil, _) => ZIO.succeed((None, Nil, Predef.Map.empty))
       case (_, Nil) => ZIO.succeed((None, input, Predef.Map.empty))
-      case (input, options) => 
+      case (input, options) =>
         (for {
-          tuple1 <- findOptions(input, options, conf)
+          tuple1                         <- findOptions(input, options, conf)
           (otherArgs, otherOptions, map1) = tuple1
           tuple2 <-
             if (map1.isEmpty) ZIO.succeed((None, input, map1)) else matchOptions(otherArgs, otherOptions, conf)
           (error, otherArgs, map2) = tuple2
-        } yield (error, otherArgs,  merge(map1, map2.toList)))
+        } yield (error, otherArgs, merge(map1, map2.toList)))
           .catchAll(e => ZIO.succeed((Some(e), input, Predef.Map.empty)))
     }
 
-  def validate[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (Option[ValidationError], List[String], A)] =
+  def validate[A](
+    options: Options[A],
+    args: List[String],
+    conf: CliConfig
+  ): IO[ValidationError, (Option[ValidationError], List[String], A)] =
     for {
-      matched <- matchOptions(args, options.flatten, conf)
+      matched                             <- matchOptions(args, options.flatten, conf)
       (error, commandArgs, matchedOptions) = matched
-      a <- options.validate(matchedOptions, conf).catchAll {
-        case e =>
-          error match {
-            case Some(err) => ZIO.fail(err)
-            case None => ZIO.fail(e)
-          }
-      }
+      a <- options.validate(matchedOptions, conf).catchAll { case e =>
+             error match {
+               case Some(err) => ZIO.fail(err)
+               case None      => ZIO.fail(e)
+             }
+           }
     } yield (error, commandArgs, a)
 
   case object Empty extends Options[Unit] with Pipeline { self =>
@@ -316,8 +338,8 @@ object Options extends OptionsPlatformSpecific {
 
     override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] =
       ZIO.fail(
-          ValidationError(ValidationErrorType.CommandMismatch, p(error("Error in command design")))
-        )
+        ValidationError(ValidationErrorType.CommandMismatch, p(error("Error in command design")))
+      )
 
     override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, A] =
       options
@@ -368,16 +390,16 @@ object Options extends OptionsPlatformSpecific {
 
     override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, A] =
       names.map(args.get).flatMap {
-        case None => Nil
+        case None    => Nil
         case Some(x) => List(x)
       } match {
-        case Nil => 
+        case Nil =>
           ZIO.fail(
             ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected to find ${fullName} option.")))
           )
         case head :: Nil =>
           head match {
-            case Nil => 
+            case Nil =>
               primType
                 .validate(None, conf)
                 .mapError(e => ValidationError(ValidationErrorType.InvalidValue, p(e)))
@@ -387,7 +409,7 @@ object Options extends OptionsPlatformSpecific {
                 .mapError(e => ValidationError(ValidationErrorType.InvalidValue, p(e)))
             case list => ZIO.fail(ValidationError(ValidationErrorType.KeyValuesDetected(list), HelpDoc.empty))
           }
-        case _ => 
+        case _ =>
           ZIO.fail(
             ValidationError(
               ValidationErrorType.InvalidValue,
@@ -396,46 +418,50 @@ object Options extends OptionsPlatformSpecific {
           )
       }
 
-    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = 
+    override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] =
       processArgs(args).flatMap {
         case head :: tail =>
           if (names.map(conf.normalizeCase).contains(conf.normalizeCase(head))) {
             primType match {
-              case _: Bool => tail match {
-                case "true" :: tail => ZIO.succeed((head :: "true" :: Nil, tail))
-                case "false" :: tail => ZIO.succeed((head :: "false" :: Nil, tail))
-                case _ => ZIO.succeed((head :: Nil, tail))
-              }
-              case _ => tail match {
-                case value :: tail => ZIO.succeed((List(head, value), tail))
-                case Nil => ZIO.fail(
-                  ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected some value.")))
-                )
-              }
+              case _: Bool =>
+                tail match {
+                  case "true" :: tail  => ZIO.succeed((head :: "true" :: Nil, tail))
+                  case "false" :: tail => ZIO.succeed((head :: "false" :: Nil, tail))
+                  case _               => ZIO.succeed((head :: Nil, tail))
+                }
+              case _ =>
+                tail match {
+                  case value :: tail => ZIO.succeed((List(head, value), tail))
+                  case Nil =>
+                    ZIO.fail(
+                      ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected some value.")))
+                    )
+                }
             }
           } else if (
-                  name.length > conf.autoCorrectLimit + 1 &&
-                  AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
-                )
-                  ZIO.fail(
-                    ValidationError(
-                      ValidationErrorType.CorrectedFlag,
-                      p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
-                    )
-                  )
-                else ZIO.fail(
-                    ValidationError(
-                      ValidationErrorType.MissingFlag,
-                      p(error(s"Expected to find ${fullName} option."))
-                    )
-                  )
+            name.length > conf.autoCorrectLimit + 1 &&
+            AutoCorrect.levensteinDistance(head, fullName, conf) <= conf.autoCorrectLimit
+          )
+            ZIO.fail(
+              ValidationError(
+                ValidationErrorType.CorrectedFlag,
+                p(error(s"""The flag "$head" is not recognized. Did you mean ${fullName}?"""))
+              )
+            )
+          else
+            ZIO.fail(
+              ValidationError(
+                ValidationErrorType.MissingFlag,
+                p(error(s"Expected to find ${fullName} option."))
+              )
+            )
         case Nil =>
           ZIO.fail(
             ValidationError(ValidationErrorType.MissingFlag, p(error(s"Expected to find ${fullName} option.")))
           )
       }
 
-    private def processArgs(args: List[String]): IO[ValidationError, List[String]] = {
+    private def processArgs(args: List[String]): IO[ValidationError, List[String]] =
       args match {
         case Nil => ZIO.succeed(Nil)
         case head :: tail =>
@@ -445,15 +471,16 @@ object Options extends OptionsPlatformSpecific {
                 ValidationErrorType.UnclusteredFlag(
                   head.substring(1).map(c => s"-$c").toList,
                   tail
-                ), HelpDoc.empty)
+                ),
+                HelpDoc.empty
               )
-          else if (head.startsWith("--") ) {
-          val splitArg = head.span(_ != '=')
-          if (splitArg._2 != "") ZIO.succeed(splitArg._1 :: splitArg._2.tail :: tail)
-          else ZIO.succeed(args)
-        } else ZIO.succeed(args)
+            )
+          else if (head.startsWith("--")) {
+            val splitArg = head.span(_ != '=')
+            if (splitArg._2 != "") ZIO.succeed(splitArg._1 :: splitArg._2.tail :: tail)
+            else ZIO.succeed(args)
+          } else ZIO.succeed(args)
       }
-    }
 
     lazy val uid: Option[String] = Some(self.fullName)
 
@@ -489,13 +516,13 @@ object Options extends OptionsPlatformSpecific {
               .validate(args, conf)
               .mapBoth(
                 err2 =>
-                    // orElse option is only missing in case neither option was given
-                    (err1.validationErrorType, err2.validationErrorType) match {
-                      case (ValidationErrorType.MissingValue, ValidationErrorType.MissingValue) =>
-                        ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)
-                      case _ =>
-                        ValidationError(ValidationErrorType.InvalidValue, err1.error + err2.error)
-                    },
+                  // orElse option is only missing in case neither option was given
+                  (err1.validationErrorType, err2.validationErrorType) match {
+                    case (ValidationErrorType.MissingValue, ValidationErrorType.MissingValue) =>
+                      ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)
+                    case _ =>
+                      ValidationError(ValidationErrorType.InvalidValue, err1.error + err2.error)
+                  },
                 b => Right(b)
               ),
           a =>
@@ -536,15 +563,15 @@ object Options extends OptionsPlatformSpecific {
     override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, (A, B)] =
       for {
         a <- left
-          .validate(args, conf)
-          .catchAll(err1 =>
-            right
-              .validate(args, conf)
-              .foldZIO(
-                err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
-                _ => ZIO.fail(err1)
-              )
-            )
+               .validate(args, conf)
+               .catchAll(err1 =>
+                 right
+                   .validate(args, conf)
+                   .foldZIO(
+                     err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
+                     _ => ZIO.fail(err1)
+                   )
+               )
         b <- right.validate(args, conf)
       } yield (a -> b)
 
@@ -606,9 +633,10 @@ object Options extends OptionsPlatformSpecific {
 
       def extractKeyValue(
         keyValue: String
-      ): IO[ValidationError, (String, String)] = 
+      ): IO[ValidationError, (String, String)] =
         keyValue.trim.span(_ != '=') match {
-          case (_, "") => ZIO.fail(
+          case (_, "") =>
+            ZIO.fail(
               ValidationError(
                 ValidationErrorType.InvalidArgument,
                 p(error(s"Expected a key/value pair but got '$keyValue'."))
@@ -617,20 +645,24 @@ object Options extends OptionsPlatformSpecific {
           case (key, value) =>
             ZIO.succeed((key -> value.tail))
         }
-      
 
       argumentOption
-        .validate(args, conf).foldZIO(
-          err => err match {
-            case e@ValidationError(errorType, _) => errorType match {
-              case ValidationErrorType.KeyValuesDetected(list) =>
-                ZIO.foreach(list) {
-                  case keyValue => extractKeyValue(keyValue)
-                }.map(_.toMap)
-              case _ => 
-                ZIO.fail(e)
-            }
-          },
+        .validate(args, conf)
+        .foldZIO(
+          err =>
+            err match {
+              case e @ ValidationError(errorType, _) =>
+                errorType match {
+                  case ValidationErrorType.KeyValuesDetected(list) =>
+                    ZIO
+                      .foreach(list) { case keyValue =>
+                        extractKeyValue(keyValue)
+                      }
+                      .map(_.toMap)
+                  case _ =>
+                    ZIO.fail(e)
+                }
+            },
           keyValue => extractKeyValue(keyValue).map(List(_).toMap)
         )
     }
@@ -670,9 +702,8 @@ object Options extends OptionsPlatformSpecific {
           ZIO.succeed(loop(List(switch) -> args))
         case _ => ZIO.succeed(Nil -> args)
       }
-      
-    }
 
+    }
 
     override private[cli] def modifySingle(f: SingleModifier) =
       Options.keyValueMap(f(self.argumentOption))
@@ -683,7 +714,6 @@ object Options extends OptionsPlatformSpecific {
       } yield uid.getOrElse("") :: input.split(" ").toList
   }
 
-
   final case class OAuth2Options(
     provider: OAuth2Provider,
     scope: List[String],
@@ -692,11 +722,11 @@ object Options extends OptionsPlatformSpecific {
       with Wrap {
     override lazy val shortDesc: String = auxiliaryOptions.shortDesc
 
-    override val wrapped                 = auxiliaryOptions
-    override def helpDoc: HelpDoc        = auxiliaryOptions.helpDoc
-    override def synopsis: UsageSynopsis = auxiliaryOptions.synopsis
+    override val wrapped                              = auxiliaryOptions
+    override def helpDoc: HelpDoc                     = auxiliaryOptions.helpDoc
+    override def synopsis: UsageSynopsis              = auxiliaryOptions.synopsis
     override def flatten: List[Options[_] with Input] = auxiliaryOptions.flatten
-    override def uid: Option[String]     = auxiliaryOptions.uid
+    override def uid: Option[String]                  = auxiliaryOptions.uid
     override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, OAuth2Token] =
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
@@ -718,13 +748,24 @@ object Options extends OptionsPlatformSpecific {
 
   /**
    * Creates a boolean flag with the specified name, which, if present, will produce the specified constant boolean
-   * value. Negation names may be specified to explicitly invert the boolean value of this option.
-   * An alias might be specified to substitute the name.
+   * value. Negation names may be specified to explicitly invert the boolean value of this option. An alias might be
+   * specified to substitute the name.
    */
-  def boolean(name: String, alias: String, ifPresent: Boolean,negationName: String, negationNames: String*): Options[Boolean] =
+  def boolean(
+    name: String,
+    alias: String,
+    ifPresent: Boolean,
+    negationName: String,
+    negationNames: String*
+  ): Options[Boolean] =
     makeBoolean(name, ifPresent, negationName :: negationNames.toList, alias :: Nil)
 
-  private def makeBoolean(name: String, ifPresent: Boolean, negationNames: List[String], aliases: List[String] = Nil): Options[Boolean] = {
+  private def makeBoolean(
+    name: String,
+    ifPresent: Boolean,
+    negationNames: List[String],
+    aliases: List[String] = Nil
+  ): Options[Boolean] = {
 
     val option = Single(name, aliases.toVector, PrimType.Bool(Some(ifPresent)))
 

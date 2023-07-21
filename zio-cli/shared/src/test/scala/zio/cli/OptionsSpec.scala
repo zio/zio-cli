@@ -1,6 +1,6 @@
 package zio.cli
 
-import zio.{ IO, ZIO }
+import zio.{IO, ZIO}
 import zio.test.Assertion._
 import zio.test._
 import zio.cli.HelpDoc.p
@@ -22,12 +22,11 @@ object OptionsSpec extends ZIOSpecDefault {
   val options: Options[(String, String, BigInt)] = f ++ l ++ a
 
   def validation[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
-    Options.validate(options, args, conf).flatMap {
-      case (err, rest, a) =>
-        err match {
-          case None => ZIO.succeed((rest, a))
-          case Some(e) => ZIO.fail(e)
-        }
+    Options.validate(options, args, conf).flatMap { case (err, rest, a) =>
+      err match {
+        case None    => ZIO.succeed((rest, a))
+        case Some(e) => ZIO.fail(e)
+      }
     }
 
   def spec = suite("Options Suite")(
@@ -133,7 +132,11 @@ object OptionsSpec extends ZIOSpecDefault {
       }
     },
     test("validate options for cons") {
-      val r = validation(options, List("--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent"), CliConfig.default).either
+      val r = validation(
+        options,
+        List("--firstname", "John", "--lastname", "Doe", "--age", "100", "--silent"),
+        CliConfig.default
+      ).either
       assertZIO(r)(equalTo(Right(List("--silent") -> (("John", "Doe", BigInt(100))))))
     },
     test("validate non supplied optional") {
@@ -346,7 +349,8 @@ object OptionsSpec extends ZIOSpecDefault {
       test(
         "validate should keep non-key-value parameters that follow the key-value pairs (each preceded by alias -d)"
       ) {
-        val r = validation(m, 
+        val r = validation(
+          m,
           List("-d", "key1=val1", "-d", "key2=val2", "-d", "key3=val3", "arg1", "arg2", "--verbose"),
           CliConfig.default
         )
@@ -358,7 +362,8 @@ object OptionsSpec extends ZIOSpecDefault {
       test(
         "validate should keep non-key-value parameters that follow the key-value pairs (only the first key/value pair is preceded by alias)"
       ) {
-        val r = validation(m, 
+        val r = validation(
+          m,
           List("-d", "key1=val1", "key2=val2", "key3=val3", "arg1", "arg2", "--verbose"),
           CliConfig.default
         )
@@ -370,7 +375,8 @@ object OptionsSpec extends ZIOSpecDefault {
       test(
         "validate should keep non-key-value parameters that follow the key-value pairs (with a 'mixed' style of proceeding -- name or alias)"
       ) {
-        val r = validation(m, 
+        val r = validation(
+          m,
           List("-d", "key1=val1", "key2=val2", "--defs", "key3=val3", "key4=", "arg1", "arg2", "--verbose"),
           CliConfig.default
         )

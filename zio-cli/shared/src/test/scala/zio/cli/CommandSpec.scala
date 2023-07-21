@@ -47,7 +47,7 @@ object CommandSpec extends ZIOSpecDefault {
             )(
               equalTo(
                 Left(
-                    p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))
+                  p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))
                 )
               )
             )

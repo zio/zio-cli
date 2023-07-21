@@ -65,7 +65,7 @@ object Command {
   private def splitForcedArgs(args: List[String]): (List[String], List[String]) = {
     val (remainingArgs, forcedArgs) = args.span(_ != "--")
     (remainingArgs, forcedArgs.drop(1))
-  }   
+  }
 
   final case class Single[OptionsType, ArgsType](
     val name: String,
@@ -115,14 +115,13 @@ object Command {
         if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
-          Options.validate(options, args, conf)
+          Options
+            .validate(options, args, conf)
             .map(_._3)
             .mapError(_.error)
             .some
             .map(CommandDirective.BuiltIn)
-        }
-
-        else ZIO.fail(None)
+        } else ZIO.fail(None)
 
       val parseUserDefinedArgs =
         for {
@@ -148,16 +147,15 @@ object Command {
                                    }
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
-          tuple2 <- Options.validate(options, optionsAndArgs, conf)
-          (error, commandArgs, optionsType) = tuple2
-          tuple                              <-  self.args.validate(commandArgs ++ forcedCommandArgs, conf).catchSome {
-            case e =>
-              error match {
-                case None => ZIO.fail(e)
-                case Some(err) => ZIO.fail(err)
-              }
-          }
-          (argsLeftover, argsType)            = tuple
+          tuple2                             <- Options.validate(options, optionsAndArgs, conf)
+          (error, commandArgs, optionsType)   = tuple2
+          tuple <- self.args.validate(commandArgs ++ forcedCommandArgs, conf).catchSome { case e =>
+                     error match {
+                       case None      => ZIO.fail(e)
+                       case Some(err) => ZIO.fail(err)
+                     }
+                   }
+          (argsLeftover, argsType) = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
       parseBuiltInArgs orElse parseUserDefinedArgs
