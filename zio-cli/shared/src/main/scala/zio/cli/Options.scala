@@ -616,19 +616,17 @@ object Options extends OptionsPlatformSpecific {
 
       def extractKeyValue(
         keyValue: String
-      ): IO[ValidationError, (String, String)] = (
-        keyValue.trim.split("=") match {
-          case Array(key, value) =>
-            ZIO.succeed((key -> value))
-          case _ =>
-            ZIO.fail(
+      ): IO[ValidationError, (String, String)] = 
+        keyValue.trim.span(_ != '=') match {
+          case (_, "") => ZIO.fail(
               ValidationError(
                 ValidationErrorType.InvalidArgument,
                 p(error(s"Expected a key/value pair but got '$keyValue'."))
               )
             )
+          case (key, value) =>
+            ZIO.succeed((key -> value.tail))
         }
-      )
       
 
       argumentOption
