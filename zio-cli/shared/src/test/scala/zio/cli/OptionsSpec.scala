@@ -44,7 +44,7 @@ object OptionsSpec extends ZIOSpecDefault {
       val args = List("--firstname", "-ab")
       val r    = validation(f, args, CliConfig.default)
 
-      val res = (List(), ("--firstname", "-ab"))
+      val res = (List(), "-ab")
 
       assertZIO(r)(equalTo(res))
     },
