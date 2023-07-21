@@ -678,7 +678,7 @@ object Options extends OptionsPlatformSpecific {
       args match {
         case switch :: tail if names.contains(conf.normalizeCase(switch)) =>
           ZIO.succeed(loop(List(switch) -> args))
-        case _ => Nil -> args
+        case _ => ZIO.succeed(Nil -> args)
       }
       
     }
