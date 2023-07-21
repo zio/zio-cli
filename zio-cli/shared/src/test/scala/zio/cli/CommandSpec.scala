@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.cli.BuiltInOption.ShowHelp
 import zio.cli.HelpDoc.Span.error
-import zio.cli.HelpDoc.{Sequence, p}
+import zio.cli.HelpDoc.p
 import zio.test.Assertion._
 import zio.test._
 
@@ -47,10 +47,7 @@ object CommandSpec extends ZIOSpecDefault {
             )(
               equalTo(
                 Left(
-                  Sequence(
-                    p(error("""The flag "--afte" is not recognized. Did you mean --after?""")),
-                    p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))
-                  )
+                    p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))
                 )
               )
             )

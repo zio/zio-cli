@@ -9,6 +9,7 @@ object ValidationErrorType {
   // needed because KeyValueMap depends on a Single[String] option
   case class  KeyValuesDetected(keyValues: List[String])     extends ValidationErrorType
 
+  case class UnclusteredFlag(unclustered: List[String], tail: List[String]) extends ValidationErrorType
   case object InvalidValue      extends ValidationErrorType
   case object MissingValue      extends ValidationErrorType
   case object MissingFlag       extends ValidationErrorType

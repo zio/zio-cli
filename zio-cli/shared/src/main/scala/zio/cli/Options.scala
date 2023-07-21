@@ -223,6 +223,10 @@ object Options extends OptionsPlatformSpecific {
         ).catchSome {
           case e@ValidationError(validationErrorType, error) =>
             validationErrorType match {
+              case ValidationErrorType.UnclusteredFlag(list, tail) =>
+                matchUnclustered(list, tail, options, conf).catchAll {
+                  case _ => ZIO.fail(e)
+                }
               case ValidationErrorType.MissingFlag => 
                 findOptions(input, tail, conf).map {
                   case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
@@ -239,6 +243,17 @@ object Options extends OptionsPlatformSpecific {
             }
             
         }
+    }
+
+  private def matchUnclustered(input: List[String], tail: List[String], options: List[Options[_] with Input], conf: CliConfig): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
+    input match {
+      case Nil => ZIO.succeed((tail, options, Predef.Map.empty))
+      case flag :: otherFlags => for {
+        tuple1 <- findOptions(flag :: Nil, options, conf)
+        (_, opts1, map1) = tuple1
+        tuple2 <- matchUnclustered(otherFlags, tail, opts1, conf)
+        (_, opts2, map2) = tuple2
+      } yield (tail, opts2, merge(map1, map2.toList))
     }
 
   // Sums the list associated with the same key.
@@ -390,7 +405,7 @@ object Options extends OptionsPlatformSpecific {
       }
 
     override def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])] = 
-      processArgs(args) match {
+      processArgs(args).flatMap {
         case head :: tail =>
           if (names.map(conf.normalizeCase).contains(conf.normalizeCase(head))) {
             primType match {
@@ -428,17 +443,23 @@ object Options extends OptionsPlatformSpecific {
           )
       }
 
-    private def processArgs(args: List[String]): List[String] = {
+    private def processArgs(args: List[String]): IO[ValidationError, List[String]] = {
       args match {
-        case Nil => Nil
+        case Nil => ZIO.succeed(Nil)
         case head :: tail =>
           if (head.trim.matches("^-{1}([^-]{2,}$)"))
-            processArgs(head.substring(1).map(c => s"-$c").toList ++ tail)
+            ZIO.fail(
+              ValidationError(
+                ValidationErrorType.UnclusteredFlag(
+                  head.substring(1).map(c => s"-$c").toList,
+                  tail
+                ), HelpDoc.empty)
+              )
           else if (head.startsWith("--") ) {
           val splitArg = head.span(_ != '=')
-          if (splitArg._2 != "") splitArg._1 :: splitArg._2.tail :: tail
-          else args
-        } else args
+          if (splitArg._2 != "") ZIO.succeed(splitArg._1 :: splitArg._2.tail :: tail)
+          else ZIO.succeed(args)
+        } else ZIO.succeed(args)
       }
     }
 
