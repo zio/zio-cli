@@ -209,15 +209,8 @@ object Options extends OptionsPlatformSpecific {
               }
             case (parsed, leftover) => 
               parsed match {
-                case name :: Nil =>
-                  ZIO.succeed((leftover, tail, Predef.Map(name -> Nil)))
-                case name :: value :: Nil =>
-                  ZIO.succeed((leftover, tail, Predef.Map(name -> List(value))))
-                case _ =>
-                  ZIO.fail(ValidationError(
-                    ValidationErrorType.CommandMismatch,
-                    HelpDoc.p(s"Non-valid input")
-                  ))
+                case name :: values =>
+                  ZIO.succeed((leftover, tail, Predef.Map(name -> values)))
               }
           }
         ).catchSome {
