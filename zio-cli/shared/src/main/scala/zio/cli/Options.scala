@@ -268,8 +268,8 @@ object Options extends OptionsPlatformSpecific {
     map2 match {
       case Nil => map1
       case head :: tail => {
-        //replace with updatedWith for Scala 2.13
-        val newMap = map1.get(head._1) match{
+        // replace with updatedWith for Scala 2.13
+        val newMap = map1.get(head._1) match {
           case None       => map1 + head
           case Some(elem) => map1.updated(head._1, elem ++ head._2)
         }
