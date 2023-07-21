@@ -653,7 +653,7 @@ object Options extends OptionsPlatformSpecific {
       def loop(
         acc: (List[String], List[String])
       ): (List[String], List[String]) = {
-        val (input, pairs) = acc
+        val (pairs, input) = acc
         input match {
           case Nil => acc
           // `input` can be in the form of "-d key1=value1 -d key2=value2"
@@ -661,21 +661,25 @@ object Options extends OptionsPlatformSpecific {
             keyValueString.trim.span(_ != '=') match {
               case (_, "") => acc
               case (key, value) =>
-                loop(tail -> (keyValueString.trim :: pairs))
+                loop((keyValueString.trim :: pairs) -> tail)
             }
           // Or, it can be in the form of "-d key1=value1 key2=value2"
           case keyValueString :: tail =>
             keyValueString.trim.span(_ != '=') match {
               case (_, "") => acc
               case (key, value) =>
-                loop(tail -> (keyValueString.trim :: pairs))
+                loop((keyValueString.trim :: pairs) -> tail)
             }
           // Otherwise we give up and keep what remains as the leftover.
           case _ => acc
         }
       }
 
-      ZIO.succeed(loop(Nil -> args))
+      args match {
+        case switch :: tail if names.contains(conf.normalizeCase(switch)) =>
+          ZIO.succeed(loop(List(switch) -> args))
+        case _ => Nil -> args
+      }
       
     }
 
