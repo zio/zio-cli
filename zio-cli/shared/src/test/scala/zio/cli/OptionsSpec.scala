@@ -55,14 +55,14 @@ object OptionsSpec extends ZIOSpecDefault {
       for {
         v1 <- validation(bNegation, Nil, CliConfig.default).either
         v2 <- validation(bNegation, List("--verbose"), CliConfig.default).either
-        //v3 <- validation(bNegation, List("-v"), CliConfig.default)
-        //v4 <- validation(bNegation, List("--silent"), CliConfig.default)
+        v3 <- validation(bNegation, List("-v"), CliConfig.default).either
+        v4 <- validation(bNegation, List("--silent"), CliConfig.default).either
         //v5 <- validation(bNegation, List("-s"), CliConfig.default)
       } yield {
         assert(v1)(equalTo(Right(Nil -> false))) &&
-        assert(v2)(equalTo(Right(Nil -> true))) //&&
-        //assert(v3)(equalTo(Nil -> true)) &&
-        //assert(v4)(equalTo(Nil -> false)) &&
+        assert(v2)(equalTo(Right(Nil -> true))) &&
+        assert(v3)(equalTo(Right(Nil -> true))) &&
+        assert(v4)(equalTo(Right(Nil -> false))) //&&
         //assert(v5)(equalTo(Nil -> false))
       }
     },
