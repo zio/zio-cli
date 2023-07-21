@@ -203,15 +203,12 @@ object Options extends OptionsPlatformSpecific {
       case head :: tail =>
         head.parse(input, conf).flatMap(
             parsed => parsed match {
-            case (Nil, input) => 
+            case (Nil, leftover) => 
               findOptions(input, tail, conf).map {
                 case (otherArgs, otherOptions, map) => (otherArgs, head :: otherOptions, map)
               }
-            case (parsed, leftover) => 
-              parsed match {
-                case name :: values =>
+            case (name :: values, leftover) => 
                   ZIO.succeed((leftover, tail, Predef.Map(name -> values)))
-              }
           }
         ).catchSome {
           case e@ValidationError(validationErrorType, error) =>
