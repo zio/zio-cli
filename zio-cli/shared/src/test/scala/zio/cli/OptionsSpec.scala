@@ -51,7 +51,7 @@ object OptionsSpec extends ZIOSpecDefault {
     },
     test("validate boolean option with negation") {
       val bNegation: Options[Boolean] =
-        Options.boolean("verbose", true, "silent", "s").alias("v")
+        Options.boolean("verbose", "v", true, "silent", "s")
       for {
         v1 <- validation(bNegation, Nil, CliConfig.default).either
         v2 <- validation(bNegation, List("--verbose"), CliConfig.default).either

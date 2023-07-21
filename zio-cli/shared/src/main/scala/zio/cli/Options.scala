@@ -722,9 +722,17 @@ object Options extends OptionsPlatformSpecific {
   def boolean(name: String, ifPresent: Boolean, negationName: String, negationNames: String*): Options[Boolean] =
     makeBoolean(name, ifPresent, negationName :: negationNames.toList)
 
-  private def makeBoolean(name: String, ifPresent: Boolean, negationNames: List[String]): Options[Boolean] = {
+  /**
+   * Creates a boolean flag with the specified name, which, if present, will produce the specified constant boolean
+   * value. Negation names may be specified to explicitly invert the boolean value of this option.
+   * An alias might be specified to substitute the name.
+   */
+  def boolean(name: String, alias: String, ifPresent: Boolean,negationName: String, negationNames: String*): Options[Boolean] =
+    makeBoolean(name, ifPresent, negationName :: negationNames.toList, alias :: Nil)
 
-    val option = Single(name, Vector.empty, PrimType.Bool(Some(ifPresent)))
+  private def makeBoolean(name: String, ifPresent: Boolean, negationNames: List[String], aliases: List[String] = Nil): Options[Boolean] = {
+
+    val option = Single(name, aliases.toVector, PrimType.Bool(Some(ifPresent)))
 
     negationNames match {
       case Nil =>
