@@ -30,6 +30,16 @@ object OptionsSpec extends ZIOSpecDefault {
     }
 
   def spec = suite("Options Suite")(
+    test("validate without ambiguity") {
+      val args = List("--firstname --lastname --lastname --firstname")
+      val r1   = validation(f ++ l, args, CliConfig.default)
+      val r2   = validation(l ++ f, args, CliConfig.default)
+
+      val res1 = List() -> ("--lastname", "--firstname")
+      val res2 = List() -> ("--firstname", "--lastname")
+
+      assertZIO(r1)(equalTo(res1)) && assertZIO(r2)(equalTo(res2))
+    },
     test("validate boolean option without value") {
       val r = validation(b, List("--verbose"), CliConfig.default)
 
