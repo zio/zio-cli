@@ -251,7 +251,9 @@ object Options extends OptionsPlatformSpecific {
       case flag :: otherFlags => for {
         tuple1 <- findOptions(flag :: Nil, options, conf)
         (_, opts1, map1) = tuple1
-        tuple2 <- matchUnclustered(otherFlags, tail, opts1, conf)
+        tuple2 <- 
+          if(map1.isEmpty) ZIO.fail(ValidationError(ValidationErrorType.UnclusteredFlag(Nil, tail), HelpDoc.empty))
+          else matchUnclustered(otherFlags, tail, opts1, conf)
         (_, opts2, map2) = tuple2
       } yield (tail, opts2, merge(map1, map2.toList))
     }
