@@ -40,6 +40,14 @@ object OptionsSpec extends ZIOSpecDefault {
 
       assertZIO(r1)(equalTo(res1)) && assertZIO(r2)(equalTo(res2))
     },
+    test("not uncluster value") {
+      val args = List("--firstname", "-ab")
+      val r    = validation(f, args, CliConfig.default)
+
+      val res = (List(), ("--firstname", "-ab"))
+
+      assertZIO(r)(equalTo(res))
+    },
     test("validate boolean option without value") {
       val r = validation(b, List("--verbose"), CliConfig.default)
 
