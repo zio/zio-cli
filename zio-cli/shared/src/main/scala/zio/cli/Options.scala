@@ -209,7 +209,7 @@ object Options extends OptionsPlatformSpecific {
           .parse(input, conf)
           .flatMap(parsed =>
             parsed match {
-              case (Nil, leftover) =>
+              case (Nil, input) =>
                 findOptions(input, tail, conf).map { case (otherArgs, otherOptions, map) =>
                   (otherArgs, head :: otherOptions, map)
                 }
@@ -217,7 +217,7 @@ object Options extends OptionsPlatformSpecific {
                 ZIO.succeed((leftover, tail, Predef.Map(name -> values)))
             }
           )
-          .catchSome { case e @ ValidationError(validationErrorType, error) =>
+          .catchSome { case e @ ValidationError(validationErrorType, _) =>
             validationErrorType match {
               case ValidationErrorType.UnclusteredFlag(list, tail) =>
                 matchUnclustered(list, tail, options, conf).catchAll { case _ =>
@@ -684,7 +684,7 @@ object Options extends OptionsPlatformSpecific {
             keyValueString.trim.span(_ != '=') match {
               case (_, "")  => acc
               case (_, "=") => acc
-              case (key, value) =>
+              case _ =>
                 loop((keyValueString.trim :: pairs) -> tail)
             }
           // Or, it can be in the form of "-d key1=value1 key2=value2"
@@ -692,7 +692,7 @@ object Options extends OptionsPlatformSpecific {
             keyValueString.trim.span(_ != '=') match {
               case (_, "")  => acc
               case (_, "=") => acc
-              case (key, value) =>
+              case _ =>
                 loop((keyValueString.trim :: pairs) -> tail)
             }
           // Otherwise we give up and keep what remains as the leftover.
@@ -702,8 +702,8 @@ object Options extends OptionsPlatformSpecific {
 
       args match {
         case switch :: tail if names.contains(switch) =>
-          loop(Nil -> args) match {
-            case (Nil, leftover)       => ZIO.succeed(Nil -> args)
+          loop(Nil -> tail) match {
+            case (Nil, _)              => ZIO.succeed(Nil -> args)
             case (keyValues, leftover) => ZIO.succeed((switch :: keyValues) -> leftover)
           }
         case _ => ZIO.succeed(Nil -> args)
