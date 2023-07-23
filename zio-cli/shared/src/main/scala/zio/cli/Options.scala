@@ -225,7 +225,14 @@ object Options extends OptionsPlatformSpecific {
 
     override lazy val helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
-        span -> (block + HelpDoc.p(s"This setting is optional. Default: '${self.default}'."))
+        val optionalDescription =
+          self.default.asInstanceOf[Any] match {
+            case None =>
+              HelpDoc.p(s"This setting is optional.")
+            case _ =>
+              HelpDoc.p(s"This setting is optional. Default: '${self.default}'.")
+          }
+        span -> (block + optionalDescription)
       }
 
     override lazy val uid: Option[String] = self.options.uid
