@@ -45,7 +45,7 @@ object WizardSpec extends ZIOSpecDefault {
       case Options.Map(_, _)      => "pipeline"
       case Options.OrElse(_, _)   => "alternatives"
       case KeyValueMap(_)         => "input"
-      case Single(_, _, _, _)     => "input"
+      case Single(_, _, _, _, _)  => "input"
       case WithDefault(_, _)      => "input"
       case OAuth2Options(_, _, _) => "wrap"
     }
