@@ -395,7 +395,7 @@ object OptionsSpec extends ZIOSpecDefault {
     test("Help describes default value but does not print None as default value") {
       assertTrue(
         aOpt.helpDoc.toPlaintext(color = false).trim ==
-          """--age integer
+          """--age <integer>
             |  An integer.
             |
             |  This setting is optional.
@@ -405,10 +405,30 @@ object OptionsSpec extends ZIOSpecDefault {
     test("Help describes default value if it is not None") {
       assertTrue(
         lOpt.helpDoc.toPlaintext(color = false).trim ==
-          """--lastname text
+          """--lastname <text>
             |  A user-defined piece of text.
             |
             |  This setting is optional. Default: 'xyz'.
+            |""".stripMargin.trim
+      )
+    },
+    test("Can overwrite the placeholder used in the help string") {
+      assertTrue(
+        lOpt
+          .withPseudoName("NAME")
+          .helpDoc
+          .toPlaintext(color = false)
+          .trim ==
+          """--lastname <NAME>
+            |  A user-defined piece of text.
+            |
+            |  This setting is optional. Default: 'xyz'.
+            |""".stripMargin.trim,
+        aOpt.withPseudoName("age").helpDoc.toPlaintext(color = false).trim ==
+          """--age <age>
+            |  An integer.
+            |
+            |  This setting is optional.
             |""".stripMargin.trim
       )
     }
