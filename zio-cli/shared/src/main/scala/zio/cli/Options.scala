@@ -2,6 +2,7 @@ package zio.cli
 
 import zio.cli.HelpDoc.Span._
 import zio.cli.HelpDoc.p
+import zio.cli.Options.NamesAndCount
 import zio.{IO, ZIO, Zippable}
 import zio.cli.oauth2._
 
@@ -147,9 +148,7 @@ sealed trait Options[+A] extends Parameter { self =>
 
   def helpDoc: HelpDoc
 
-  def nameAndAliases: Set[String]
-
-  def valueCount: Int
+  def namesAndCounts: List[NamesAndCount]
 
   final def isBool: Boolean =
     self.asInstanceOf[Options[_]] match {
@@ -196,6 +195,9 @@ trait SingleModifier {
 }
 
 object Options extends OptionsPlatformSpecific {
+
+  final case class NamesAndCount(names: Set[String], count: Int)
+
   case object Empty extends Options[Unit] with Pipeline { self =>
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
@@ -210,9 +212,7 @@ object Options extends OptionsPlatformSpecific {
 
     override def pipeline = ("", List())
 
-    override val nameAndAliases: Set[String] = Set.empty
-
-    override val valueCount: Int = 0
+    override val namesAndCounts: List[NamesAndCount] = Nil
   }
 
   final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Input { self =>
@@ -247,9 +247,7 @@ object Options extends OptionsPlatformSpecific {
         }
       )
 
-    override val nameAndAliases: Set[String] = self.options.nameAndAliases
-
-    override val valueCount: Int = self.options.valueCount
+    override lazy val namesAndCounts: List[NamesAndCount] = self.options.namesAndCounts
   }
 
   final case class Single[+A](
@@ -337,9 +335,12 @@ object Options extends OptionsPlatformSpecific {
       _ <- validate(List(self.names.head, input), conf)
     } yield List(self.names.head, input)
 
-    override val nameAndAliases: Set[String] = self.names.toSet
-
-    override val valueCount: Int = 1
+    override lazy val namesAndCounts: List[NamesAndCount] = List(
+      NamesAndCount(
+        self.names.toSet,
+        1
+      )
+    )
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives {
@@ -395,10 +396,9 @@ object Options extends OptionsPlatformSpecific {
 
     override val alternatives = List(left, right)
 
-    override val nameAndAliases: Set[String] = self.left.nameAndAliases ++ self.right.nameAndAliases
-
-    // TODO: fix this
-    override val valueCount: Int = 0
+    override lazy val namesAndCounts: List[NamesAndCount] =
+      self.left.namesAndCounts ++
+        self.right.namesAndCounts
   }
 
   final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Pipeline { self =>
@@ -433,10 +433,9 @@ object Options extends OptionsPlatformSpecific {
 
     override def pipeline = ("", List(self.left, self.right))
 
-    override val nameAndAliases: Set[String] = self.left.nameAndAliases ++ self.right.nameAndAliases
-
-    override val valueCount: Int = self.left.valueCount + self.right.valueCount
-
+    override lazy val namesAndCounts: List[NamesAndCount] =
+      self.left.namesAndCounts ++
+        self.right.namesAndCounts
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B])
@@ -461,9 +460,7 @@ object Options extends OptionsPlatformSpecific {
 
     override val wrapped = value
 
-    override val nameAndAliases: Set[String] = self.value.nameAndAliases
-
-    override val valueCount: Int = self.value.valueCount
+    override lazy val namesAndCounts: List[NamesAndCount] = self.value.namesAndCounts
   }
 
   final case class KeyValueMap(argumentOption: Options.Single[String])
@@ -576,9 +573,7 @@ object Options extends OptionsPlatformSpecific {
         _ <- validate(uid.getOrElse("") :: input.split(" ").toList, conf)
       } yield uid.getOrElse("") :: input.split(" ").toList
 
-    override val nameAndAliases: Set[String] = self.argumentOption.nameAndAliases
-
-    override val valueCount: Int = self.argumentOption.valueCount
+    override lazy val namesAndCounts: List[NamesAndCount] = self.argumentOption.namesAndCounts
   }
 
   final case class OAuth2Options(
@@ -598,9 +593,7 @@ object Options extends OptionsPlatformSpecific {
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
       OAuth2Options(provider, scope, auxiliaryOptions.modifySingle(f))
 
-    override val nameAndAliases: Set[String] = auxiliaryOptions.nameAndAliases
-
-    override val valueCount: Int = auxiliaryOptions.valueCount
+    override lazy val namesAndCounts: List[NamesAndCount] = auxiliaryOptions.namesAndCounts
   }
 
   /**

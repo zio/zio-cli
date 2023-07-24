@@ -261,18 +261,20 @@ object Command {
 
         val subCommandNamesAndAliases =
           parent.getSubcommands.values.collect { case Single(name, _, options, _) =>
-            (name, (options.nameAndAliases, options.valueCount))
+            (name, options.namesAndCounts)
           }.toMap
 
         val safeTail = args match {
           case Nil => Nil
           case first :: options :: tail =>
-            subCommandNamesAndAliases.get(first) match {
-              case Some((nameAndAliases, count)) =>
-                if (nameAndAliases.contains(options))
-                  tail.drop(count)
-                else
-                  options :: tail
+            (
+              for {
+                namesAndCounts <- subCommandNamesAndAliases.get(first)
+                matched        <- namesAndCounts.find(_.names.contains(options))
+              } yield matched.count
+            ) match {
+              case Some(count) =>
+                tail.drop(count)
               case None =>
                 options :: tail
             }
