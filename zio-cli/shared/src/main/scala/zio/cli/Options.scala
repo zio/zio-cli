@@ -237,11 +237,11 @@ object Options extends OptionsPlatformSpecific {
     override lazy val helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
         val optionalDescription =
-          self.default.asInstanceOf[Any] match {
+          default.asInstanceOf[Any] match {
             case None =>
               HelpDoc.p(s"This setting is optional.")
             case _ =>
-              HelpDoc.p(s"This setting is optional. Default: '${self.default}'.")
+              HelpDoc.p(s"This setting is optional. Default: '${default}'.")
           }
         span -> (block + optionalDescription)
       }
@@ -273,8 +273,8 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(
-        self.names,
-        if (!self.primType.isBool) self.primType.choices.orElse(Some(placeholder)) else None
+        names,
+        if (!primType.isBool) primType.choices.orElse(Some(placeholder)) else None
       )
 
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
@@ -341,10 +341,10 @@ object Options extends OptionsPlatformSpecific {
       HelpDoc.DescriptionList(List(synopsis.helpDoc.getSpan -> (p(primType.helpDoc) + description)))
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
-      _ <- validate(List(self.names.head, input), conf)
-    } yield List(self.names.head, input)
+      _ <- validate(List(names.head, input), conf)
+    } yield List(names.head, input)
 
-    private def placeholder: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
+    private def placeholder: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives {
