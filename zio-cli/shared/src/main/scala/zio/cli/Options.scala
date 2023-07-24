@@ -154,7 +154,7 @@ sealed trait Options[+A] extends Parameter { self =>
     self.asInstanceOf[Options[_]] match {
       case Options.Empty                   => false
       case Options.WithDefault(options, _) => options.isBool
-      case Single(_, _, primType, _)       => primType.isBool
+      case Single(_, _, primType, _, _)    => primType.isBool
       case Options.Map(value, _)           => value.isBool
       case _                               => false
     }
@@ -172,8 +172,8 @@ sealed trait Options[+A] extends Parameter { self =>
 
   final def primitiveType: Option[PrimType[A]] =
     self match {
-      case Single(_, _, primType, _) => Some(primType)
-      case _                         => None
+      case Single(_, _, primType, _, _) => Some(primType)
+      case _                            => None
     }
 
   def synopsis: UsageSynopsis
@@ -185,6 +185,17 @@ sealed trait Options[+A] extends Parameter { self =>
 
   def withDefault[A1 >: A](value: A1): Options[A1] =
     Options.WithDefault(self, value)
+
+  /**
+   * Customizes the name used to print a placeholder value in help strings.
+   *
+   * The default is the type name of the option (for example 'text', 'integer', etc.
+   */
+  def withPseudoName(name: String): Options[A] =
+    modifySingle(new SingleModifier {
+      override def apply[A2](single: Single[A2]): Single[A2] =
+        single.copy(pseudoName = Some(name))
+    })
 
   private[cli] def modifySingle(f: SingleModifier): Options[A]
 
@@ -368,7 +379,14 @@ object Options extends OptionsPlatformSpecific {
 
     override lazy val helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
-        span -> (block + HelpDoc.p(s"This setting is optional. Default: '${self.default}'."))
+        val optionalDescription =
+          self.default.asInstanceOf[Any] match {
+            case None =>
+              HelpDoc.p(s"This setting is optional.")
+            case _ =>
+              HelpDoc.p(s"This setting is optional. Default: '${self.default}'.")
+          }
+        span -> (block + optionalDescription)
       }
 
     override lazy val uid: Option[String] = self.options.uid
@@ -387,7 +405,8 @@ object Options extends OptionsPlatformSpecific {
     name: String,
     aliases: Vector[String],
     primType: PrimType[A],
-    description: HelpDoc = HelpDoc.Empty
+    description: HelpDoc = HelpDoc.Empty,
+    pseudoName: Option[String] = None
   ) extends Options[A]
       with Input { self =>
 
@@ -398,7 +417,7 @@ object Options extends OptionsPlatformSpecific {
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(
         self.names,
-        if (!self.primType.isBool) self.primType.choices.orElse(Some(self.primType.typeName)) else None
+        if (!self.primType.isBool) self.primType.choices.orElse(Some(placeholder)) else None
       )
 
     override def flatten: List[Options[_] with Input] = List(self)
@@ -511,6 +530,8 @@ object Options extends OptionsPlatformSpecific {
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
       _ <- parse(List(self.names.head, input), conf)
     } yield List(self.names.head, input)
+
+    private def placeholder: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives {

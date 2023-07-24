@@ -25,7 +25,7 @@ private[cli] object OAuth2PlatformSpecific {
       case KeyValueMap(_)                => None
       case Empty                         => None
       case Options.OrElse(left, right)   => findProvider(left).orElse(findProvider(right))
-      case Options.Single(_, _, _, _)    => None
+      case Options.Single(_, _, _, _, _) => None
       case OAuth2Options(provider, _, _) => Some(provider)
       case WithDefault(options, _)       => findProvider(options)
     }

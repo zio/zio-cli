@@ -81,9 +81,9 @@ object Completion {
         Epsilon
       case Options.WithDefault(options, _) =>
         toRegularLanguage(options).?
-      case single @ Options.Single(_, _, _: PrimType.Bool, _) =>
+      case single @ Options.Single(_, _, _: PrimType.Bool, _, _) =>
         single.names.foldLeft[RegularLanguage](Empty)((lang, name) => lang | StringToken(name))
-      case single @ Options.Single(_, _, primType, _) =>
+      case single @ Options.Single(_, _, primType, _, _) =>
         val names = single.names.foldLeft[RegularLanguage](Empty)((lang, name) => lang | StringToken(name))
         names ~ PrimTypeToken(primType)
       case Options.OrElse(left, right) =>
