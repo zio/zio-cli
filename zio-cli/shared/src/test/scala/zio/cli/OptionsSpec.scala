@@ -13,6 +13,7 @@ object OptionsSpec extends ZIOSpecDefault {
 
   val f: Options[String]              = Options.text("firstname").alias("f")
   val l: Options[String]              = Options.text("lastname")
+  val lOpt: Options[String]           = Options.text("lastname").withDefault("xyz")
   val a: Options[BigInt]              = Options.integer("age")
   val aOpt: Options[Option[BigInt]]   = Options.integer("age").optional
   val b: Options[Boolean]             = Options.boolean("verbose", true)
@@ -390,6 +391,46 @@ object OptionsSpec extends ZIOSpecDefault {
           )
         )
       }
-    )
+    ),
+    test("Help describes default value but does not print None as default value") {
+      assertTrue(
+        aOpt.helpDoc.toPlaintext(color = false).trim ==
+          """--age <integer>
+            |  An integer.
+            |
+            |  This setting is optional.
+            |""".stripMargin.trim
+      )
+    },
+    test("Help describes default value if it is not None") {
+      assertTrue(
+        lOpt.helpDoc.toPlaintext(color = false).trim ==
+          """--lastname <text>
+            |  A user-defined piece of text.
+            |
+            |  This setting is optional. Default: 'xyz'.
+            |""".stripMargin.trim
+      )
+    },
+    test("Can overwrite the placeholder used in the help string") {
+      assertTrue(
+        lOpt
+          .withPseudoName("NAME")
+          .helpDoc
+          .toPlaintext(color = false)
+          .trim ==
+          """--lastname <NAME>
+            |  A user-defined piece of text.
+            |
+            |  This setting is optional. Default: 'xyz'.
+            |""".stripMargin.trim,
+        aOpt.withPseudoName("age").helpDoc.toPlaintext(color = false).trim ==
+          """--age <age>
+            |  An integer.
+            |
+            |  This setting is optional.
+            |""".stripMargin.trim
+      )
+    }
   )
 }
