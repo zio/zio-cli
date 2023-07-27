@@ -549,7 +549,6 @@ object Options extends OptionsPlatformSpecific {
         .foldZIO(
           err1 =>
             right
-            right
               .validate(args, conf)
               .mapBoth(
                 err2 =>
