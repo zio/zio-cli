@@ -337,7 +337,7 @@ object Options extends OptionsPlatformSpecific {
            }
     } yield (error, commandArgs, a)
 
-  case object Empty extends Options[Unit] with Pipeline { self =>
+  case object Empty extends Options[Unit] with Pipeline {
     lazy val synopsis: UsageSynopsis = UsageSynopsis.None
 
     override def flatten: List[Options[_] with Input] = Nil
@@ -649,7 +649,7 @@ object Options extends OptionsPlatformSpecific {
 
   final case class KeyValueMap(argumentOption: Options.Single[String])
       extends Options[Predef.Map[String, String]]
-      with Input {
+      with Input { self =>
 
     override lazy val shortDesc: String = argumentOption.shortDesc
 
