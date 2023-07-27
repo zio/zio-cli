@@ -34,10 +34,10 @@ sealed trait Options[+A] extends Parameter { self =>
   final def ++[A1 >: A, B](that: Options[B])(implicit zippable: Zippable[A, B]): Options[zippable.Out] =
     Options.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
 
-  final def |[A1 >: A](that: Options[A1]): Options[A1] = self.orElse(that)
+  final def |[A1 >: A](that: Options[A1]): Options[A1] = orElse(that)
 
   final def orElse[A1 >: A](that: Options[A1]): Options[A1] =
-    self.orElseEither(that).map(_.merge)
+    orElseEither(that).map(_.merge)
 
   final def orElseEither[B](that: Options[B]): Options[Either[A, B]] =
     Options.OrElse(self, that)
@@ -55,27 +55,27 @@ sealed trait Options[+A] extends Parameter { self =>
   // TODO : spend time to understand usage of implicit here
 
   final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< (B, C)): Options[Z] =
-    self.map(ev).map { case (b, c) => f(b, c) }
+    map(ev).map { case (b, c) => f(b, c) }
 
   final def as[B, C, D, Z](f: (B, C, D) => Z)(implicit ev: A <:< (B, C, D)): Options[Z] =
-    self.map(ev).map { case (b, c, d) => f(b, c, d) }
+    map(ev).map { case (b, c, d) => f(b, c, d) }
 
   final def as[B, C, D, E, Z](f: (B, C, D, E) => Z)(implicit ev: A <:< (B, C, D, E)): Options[Z] =
-    self.map(ev).map { case (b, c, d, e) => f(b, c, d, e) }
+    map(ev).map { case (b, c, d, e) => f(b, c, d, e) }
 
   final def as[B, C, D, E, F, Z](f0: (B, C, D, E, F) => Z)(implicit ev: A <:< (B, C, D, E, F)): Options[Z] =
-    self.map(ev).map { case (b, c, d, e, f) => f0(b, c, d, e, f) }
+    map(ev).map { case (b, c, d, e, f) => f0(b, c, d, e, f) }
 
   final def as[B, C, D, E, F, G, Z](
     f0: (B, C, D, E, F, G) => Z
   )(implicit ev: A <:< (B, C, D, E, F, G)): Options[Z] =
-    self.map(ev).map { case (b, c, d, e, f, g) => f0(b, c, d, e, f, g) }
+    map(ev).map { case (b, c, d, e, f, g) => f0(b, c, d, e, f, g) }
 
   final def fold[B, C, Z](
     f1: B => Z,
     f2: C => Z
   )(implicit ev: A <:< Either[B, C]): Options[Z] =
-    self.map(ev).map {
+    map(ev).map {
       case Left(b)  => f1(b)
       case Right(c) => f2(c)
     }
@@ -85,7 +85,7 @@ sealed trait Options[+A] extends Parameter { self =>
     f2: C => Z,
     f3: D => Z
   )(implicit ev: A <:< Either[Either[B, C], D]): Options[Z] =
-    self.map(ev).map {
+    map(ev).map {
       case Left(Left(b))  => f1(b)
       case Left(Right(c)) => f2(c)
       case Right(d)       => f3(d)
@@ -97,7 +97,7 @@ sealed trait Options[+A] extends Parameter { self =>
     f3: D => Z,
     f4: E => Z
   )(implicit ev: A <:< Either[Either[Either[B, C], D], E]): Options[Z] =
-    self.map(ev).map {
+    map(ev).map {
       case Left(Left(Left(b)))  => f1(b)
       case Left(Left(Right(c))) => f2(c)
       case Left(Right(d))       => f3(d)
@@ -111,7 +111,7 @@ sealed trait Options[+A] extends Parameter { self =>
     f4: E => Z,
     f5: F => Z
   )(implicit ev: A <:< Either[Either[Either[Either[B, C], D], E], F]): Options[Z] =
-    self.map(ev).map {
+    map(ev).map {
       case Left(Left(Left(Left(b))))  => f1(b)
       case Left(Left(Left(Right(c)))) => f2(c)
       case Left(Left(Right(d)))       => f3(d)
@@ -127,7 +127,7 @@ sealed trait Options[+A] extends Parameter { self =>
     f5: F => Z,
     f6: G => Z
   )(implicit ev: A <:< Either[Either[Either[Either[Either[B, C], D], E], F], G]): Options[Z] =
-    self.map(ev).map {
+    map(ev).map {
       case Left(Left(Left(Left(Left(b)))))  => f1(b)
       case Left(Left(Left(Left(Right(c))))) => f2(c)
       case Left(Left(Left(Right(d))))       => f3(d)
@@ -151,7 +151,7 @@ sealed trait Options[+A] extends Parameter { self =>
   def helpDoc: HelpDoc
 
   final def isBool: Boolean =
-    self.asInstanceOf[Options[_]] match {
+    asInstanceOf[Options[_]] match {
       case Options.Empty                   => false
       case Options.WithDefault(options, _) => options.isBool
       case Single(_, _, primType, _, _)    => primType.isBool
@@ -165,10 +165,10 @@ sealed trait Options[+A] extends Parameter { self =>
     Options.Map(self, (a: A) => f(a))
 
   final def mapTry[B](f: A => B): Options[B] =
-    self.mapOrFail((a: A) =>
+    mapOrFail((a: A) =>
       scala.util.Try(f(a)).toEither.left.map(e => ValidationError(ValidationErrorType.InvalidValue, p(e.getMessage)))
     )
-  final def optional: Options[Option[A]] = self.map(Some(_)).withDefault(None)
+  final def optional: Options[Option[A]] = map(Some(_)).withDefault(None)
 
   final def primitiveType: Option[PrimType[A]] =
     self match {
@@ -354,11 +354,11 @@ object Options extends OptionsPlatformSpecific {
     override def pipeline = ("", List())
   }
 
-  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Input { self =>
+  final case class WithDefault[A](options: Options[A], default: A) extends Options[A] with Input {
 
     override lazy val shortDesc: String = options.shortDesc
 
-    lazy val synopsis: UsageSynopsis = self.options.synopsis.optional
+    lazy val synopsis: UsageSynopsis = options.synopsis.optional
 
     override def flatten: List[Options[_] with Input] = options.flatten
 
@@ -375,21 +375,21 @@ object Options extends OptionsPlatformSpecific {
         }
 
     override def modifySingle(f: SingleModifier): Options[A] =
-      WithDefault(self.options.modifySingle(f), self.default)
+      WithDefault(options.modifySingle(f), default)
 
     override lazy val helpDoc: HelpDoc =
       options.helpDoc.mapDescriptionList { case (span, block) =>
         val optionalDescription =
-          self.default.asInstanceOf[Any] match {
+          default.asInstanceOf[Any] match {
             case None =>
               HelpDoc.p(s"This setting is optional.")
             case _ =>
-              HelpDoc.p(s"This setting is optional. Default: '${self.default}'.")
+              HelpDoc.p(s"This setting is optional. Default: '${default}'.")
           }
         span -> (block + optionalDescription)
       }
 
-    override lazy val uid: Option[String] = self.options.uid
+    override lazy val uid: Option[String] = options.uid
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       ZIO.succeed(
@@ -416,8 +416,8 @@ object Options extends OptionsPlatformSpecific {
 
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(
-        self.names,
-        if (!self.primType.isBool) self.primType.choices.orElse(Some(placeholder)) else None
+        names,
+        if (!primType.isBool) primType.choices.orElse(Some(placeholder)) else None
       )
 
     override def flatten: List[Options[_] with Input] = List(self)
@@ -516,30 +516,30 @@ object Options extends OptionsPlatformSpecific {
           } else ZIO.succeed(args)
       }
 
-    lazy val uid: Option[String] = Some(self.fullName)
+    lazy val uid: Option[String] = Some(fullName)
 
     private def makeFullName(s: String): (Boolean, String) = if (s.length == 1) (true, "-" + s) else (false, "--" + s)
 
-    lazy val names: List[String] = (self.name :: self.aliases.toList).map(self.makeFullName).sortBy(!_._1).map(_._2)
+    lazy val names: List[String] = (name :: aliases.toList).map(makeFullName).sortBy(!_._1).map(_._2)
 
-    private lazy val fullName: String = self.makeFullName(self.name)._2
+    private lazy val fullName: String = makeFullName(name)._2
 
     override lazy val helpDoc: HelpDoc =
-      HelpDoc.DescriptionList(List(self.synopsis.helpDoc.getSpan -> (p(self.primType.helpDoc) + self.description)))
+      HelpDoc.DescriptionList(List(synopsis.helpDoc.getSpan -> (p(primType.helpDoc) + description)))
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] = for {
-      _ <- parse(List(self.names.head, input), conf)
-    } yield List(self.names.head, input)
+      _ <- parse(List(names.head, input), conf)
+    } yield List(names.head, input)
 
-    private def placeholder: String = "<" + self.pseudoName.getOrElse(self.primType.typeName) + ">"
+    private def placeholder: String = "<" + pseudoName.getOrElse(primType.typeName) + ">"
   }
 
   final case class OrElse[A, B](left: Options[A], right: Options[B]) extends Options[Either[A, B]] with Alternatives {
-    self =>
-    override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
-      OrElse(left.modifySingle(f), self.right.modifySingle(f))
 
-    lazy val synopsis: UsageSynopsis = UsageSynopsis.Alternation(self.left.synopsis, self.right.synopsis)
+    override def modifySingle(f: SingleModifier): Options[Either[A, B]] =
+      OrElse(left.modifySingle(f), right.modifySingle(f))
+
+    lazy val synopsis: UsageSynopsis = UsageSynopsis.Alternation(left.synopsis, right.synopsis)
 
     override def flatten: List[Options[_] with Input] = left.flatten ++ right.flatten
 
@@ -548,6 +548,7 @@ object Options extends OptionsPlatformSpecific {
         .validate(args, conf)
         .foldZIO(
           err1 =>
+            right
             right
               .validate(args, conf)
               .mapBoth(
@@ -578,9 +579,9 @@ object Options extends OptionsPlatformSpecific {
               )
         )
 
-    override lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
+    override lazy val helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
-    override lazy val uid: Option[String] = self.left.uid.toList ++ self.right.uid.toList match {
+    override lazy val uid: Option[String] = left.uid.toList ++ right.uid.toList match {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
@@ -588,11 +589,11 @@ object Options extends OptionsPlatformSpecific {
     override val alternatives = List(left, right)
   }
 
-  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Pipeline { self =>
+  final case class Both[A, B](left: Options[A], right: Options[B]) extends Options[(A, B)] with Pipeline {
     override def modifySingle(f: SingleModifier): Options[(A, B)] =
-      Both(self.left.modifySingle(f), self.right.modifySingle(f))
+      Both(left.modifySingle(f), right.modifySingle(f))
 
-    lazy val synopsis: UsageSynopsis = self.left.synopsis + self.right.synopsis
+    lazy val synopsis: UsageSynopsis = left.synopsis + right.synopsis
 
     override def flatten: List[Options[_] with Input] = left.flatten ++ right.flatten
 
@@ -611,36 +612,36 @@ object Options extends OptionsPlatformSpecific {
         b <- right.validate(args, conf)
       } yield (a -> b)
 
-    override lazy val helpDoc: HelpDoc = self.left.helpDoc + self.right.helpDoc
+    override lazy val helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
-    override lazy val uid: Option[String] = self.left.uid.toList ++ self.right.uid.toList match {
+    override lazy val uid: Option[String] = left.uid.toList ++ right.uid.toList match {
       case Nil  => None
       case list => Some(list.mkString(", "))
     }
 
-    override def pipeline = ("", List(self.left, self.right))
+    override def pipeline = ("", List(left, right))
 
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B])
       extends Options[B]
       with Pipeline
-      with Wrap { self =>
+      with Wrap {
 
     override lazy val shortDesc = value.shortDesc
 
-    override def modifySingle(f0: SingleModifier): Options[B] = Map(self.value.modifySingle(f0), self.f)
+    override def modifySingle(f0: SingleModifier): Options[B] = Map(value.modifySingle(f0), f)
 
-    lazy val synopsis: UsageSynopsis = self.value.synopsis
+    lazy val synopsis: UsageSynopsis = value.synopsis
 
     override def flatten: List[Options[_] with Input] = value.flatten
 
     def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, B] =
       value.validate(args, conf).flatMap(a => f(a).fold(e => ZIO.fail(e), s => ZIO.succeed(s)))
 
-    override lazy val uid: Option[String] = self.value.uid
+    override lazy val uid: Option[String] = value.uid
 
-    override lazy val helpDoc: HelpDoc = self.value.helpDoc
+    override lazy val helpDoc: HelpDoc = value.helpDoc
 
     override def pipeline = ("", List(value))
 
@@ -650,17 +651,16 @@ object Options extends OptionsPlatformSpecific {
   final case class KeyValueMap(argumentOption: Options.Single[String])
       extends Options[Predef.Map[String, String]]
       with Input {
-    self =>
 
     override lazy val shortDesc: String = argumentOption.shortDesc
 
-    override def helpDoc: HelpDoc = self.argumentOption.helpDoc
+    override def helpDoc: HelpDoc = argumentOption.helpDoc
 
-    override def synopsis: UsageSynopsis = self.argumentOption.synopsis
+    override def synopsis: UsageSynopsis = argumentOption.synopsis
 
     override def flatten: List[Options[_] with Input] = List(self)
 
-    override def uid: Option[String] = self.argumentOption.uid
+    override def uid: Option[String] = argumentOption.uid
 
     override def validate(
       args: Predef.Map[String, List[String]],
@@ -747,7 +747,7 @@ object Options extends OptionsPlatformSpecific {
     }
 
     override private[cli] def modifySingle(f: SingleModifier) =
-      Options.keyValueMap(f(self.argumentOption))
+      Options.keyValueMap(f(argumentOption))
 
     override def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]] =
       for {
