@@ -126,12 +126,13 @@ object Command {
               )
             )
             .map(CommandDirective.BuiltIn)
-        } else ZIO.fail(
-          ValidationError(
-            ValidationErrorType.CommandMismatch,
-            HelpDoc.p(s"Missing command name: ${name}")
+        } else
+          ZIO.fail(
+            ValidationError(
+              ValidationErrorType.CommandMismatch,
+              HelpDoc.p(s"Missing command name: ${name}")
+            )
           )
-        )
 
       val parseUserDefinedArgs =
         for {
@@ -171,21 +172,21 @@ object Command {
       val exhaustiveSearch: IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
         if (args.contains("--help") || args.contains("-h")) parseBuiltInArgs(List(name, "--help"))
         else if (args.contains("--wizard") || args.contains("-w")) parseBuiltInArgs(List(name, "--wizard"))
-        else ZIO.fail(
-          ValidationError(
-            ValidationErrorType.CommandMismatch,
-            HelpDoc.p(s"Missing command name: ${name}")
+        else
+          ZIO.fail(
+            ValidationError(
+              ValidationErrorType.CommandMismatch,
+              HelpDoc.p(s"Missing command name: ${name}")
+            )
           )
-        )
 
       val first = parseBuiltInArgs(args) orElse parseUserDefinedArgs
-      
-      first.catchSome {
-        case e: ValidationError =>
-          if (conf.finalCheckBuiltIn) exhaustiveSearch.catchSome {
-            case _: ValidationError => ZIO.fail(e)
-          }
-          else ZIO.fail(e)
+
+      first.catchSome { case e: ValidationError =>
+        if (conf.finalCheckBuiltIn) exhaustiveSearch.catchSome { case _: ValidationError =>
+          ZIO.fail(e)
+        }
+        else ZIO.fail(e)
       }
     }
 
@@ -403,7 +404,6 @@ object Command {
 import zio._
 import zio.cli._
 
-
 object Ap extends ZIOAppDefault {
 
   private val param = Options.text("a")
@@ -411,19 +411,19 @@ object Ap extends ZIOAppDefault {
   val command = Command("test", param)
 
   val command2 = Command("test", param).subcommands(
-        Command("a")
-          .subcommands(
-            Command("b")
-          )
-          .map { _ => () }
+    Command("a")
+      .subcommands(
+        Command("b")
       )
+      .map(_ => ())
+  )
 
-  val c = List("-a", "--help")
-  //List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
+  val c = List("--shell-completion-index", "3", "--shell-type", "sh") 
+  // List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
   val run = (for {
-    parsed <- command.parse( "test" :: c, CliConfig.default)
-    _ <- Console.printLine(parsed)
-  } yield ()).catchSome {
-    case ValidationError(_, err) => Console.printLine(err.toPlaintext())
+    parsed <- command.parse("test" :: c, CliConfig.default)
+    _      <- Console.printLine(parsed)
+  } yield ()).catchSome { case ValidationError(_, err) =>
+    Console.printLine(err.toPlaintext())
   }
 }

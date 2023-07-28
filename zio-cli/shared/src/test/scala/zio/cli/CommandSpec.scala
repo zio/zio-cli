@@ -13,12 +13,13 @@ object CommandSpec extends ZIOSpecDefault {
 
   def directiveType[A](dir: CommandDirective[A]): String =
     dir match {
-      case CommandDirective.BuiltIn(option) => option match {
-        case BuiltInOption.ShowHelp(_, _) => "help"
-        case BuiltInOption.ShowWizard(_) => "wizard"
-        case BuiltInOption.ShowCompletionScript(_, _) => "script"
-        case BuiltInOption.ShowCompletions(_, _) => "completions"
-      }
+      case CommandDirective.BuiltIn(option) =>
+        option match {
+          case BuiltInOption.ShowHelp(_, _)             => "help"
+          case BuiltInOption.ShowWizard(_)              => "wizard"
+          case BuiltInOption.ShowCompletionScript(_, _) => "script"
+          case BuiltInOption.ShowCompletions(_, _)      => "completions"
+        }
       case CommandDirective.UserDefined(_, _) => "user"
     }
 
@@ -288,38 +289,36 @@ object CommandSpec extends ZIOSpecDefault {
         )
       }
     ),
-    suite("BuiltInOptions proccessing"){
+    suite("BuiltInOptions proccessing") {
       val command = Command("command", Options.text("a"))
       val params1 = List("command", "--help")
       val params2 = List("command", "-h")
       val params3 = List("command", "--wizard")
-      val params4 = List("command", "--shell-completion-script", "path", "--sh")
-      val params5 = List("command", "--shell-completion-index", "1", "--sh")
+      val params4 = List("command", "--shell-completion-index", "1", "--shell-type", "sh")
 
-      val params6 = List("command", "-a", "--help")
+      val params5 = List("command", "-a", "--help")
 
-      val params7 = List("command", "-a", "--help", "--help")
-      val params8 = List("command", "--help", "--wizard", "-b")
+      val params6 = List("command", "--help", "--wizard", "-b")
+      val params7 = List("command", "--hdf", "--help")
 
-      val params9 = List("command", "-a", "asdgf", "--wizard")
+      val params8 = List("command", "-af", "asdgf", "--wizard")
 
       Vector(
         test("trigger built-in options that are alone")(
           assertZIO(Ag.command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
             assertZIO(Ag.command.parse(params2, CliConfig.default).map(directiveType _))(equalTo("help")) &&
             assertZIO(Ag.command.parse(params3, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
-            assertZIO(Ag.command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("script")) &&
-            assertZIO(Ag.command.parse(params5, CliConfig.default).map(directiveType _))(equalTo("completions"))
+            assertZIO(Ag.command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("completions"))
         ),
         test("not trigger help if matches")(
-          assertZIO(command.parse(params6, CliConfig.default).map(directiveType _))(equalTo("user"))
+          assertZIO(command.parse(params5, CliConfig.default).map(directiveType _))(equalTo("user"))
         ),
         test("trigger help not alone")(
-          assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-            assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("help"))
+          assertZIO(command.parse(params6, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+          assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help"))
         ),
         test("triggering wizard not alone")(
-          assertZIO(command.parse(params9, CliConfig.default).map(directiveType _))(equalTo("wizard"))
+          assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("wizard"))
         )
       )
     },

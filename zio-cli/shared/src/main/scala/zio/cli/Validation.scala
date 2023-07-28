@@ -17,5 +17,5 @@ object ValidationErrorType {
   case object CommandMismatch                                               extends ValidationErrorType
   case object MissingSubCommand                                             extends ValidationErrorType
   case object InvalidArgument                                               extends ValidationErrorType
-  case object NoBuiltInMatch                                              extends ValidationErrorType
+  case object NoBuiltInMatch                                                extends ValidationErrorType
 }
