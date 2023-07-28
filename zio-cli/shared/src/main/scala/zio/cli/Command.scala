@@ -400,30 +400,3 @@ object Command {
   )(implicit ev: Reducable[Unit, Unit]): Command[ev.Out] =
     Single(name, HelpDoc.empty, Options.none, Args.none).map(ev.fromTuple2(_))
 }
-
-import zio._
-import zio.cli._
-
-object Ap extends ZIOAppDefault {
-
-  private val param = Options.text("a")
-
-  val command = Command("test", param)
-
-  val command2 = Command("test", param).subcommands(
-    Command("a")
-      .subcommands(
-        Command("b")
-      )
-      .map(_ => ())
-  )
-
-  val c = List("--wizard")
-  // List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
-  val run = (for {
-    parsed <- command.parse("test" :: c, CliConfig.default)
-    _      <- Console.printLine(parsed)
-  } yield ()).catchSome { case ValidationError(_, err) =>
-    Console.printLine(err.toPlaintext())
-  }
-}
