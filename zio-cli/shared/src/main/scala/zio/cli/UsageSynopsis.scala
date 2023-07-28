@@ -10,7 +10,7 @@ sealed trait UsageSynopsis { self =>
 
     def simplify(g: UsageSynopsis): UsageSynopsis =
       g match {
-        case named @ Named(names, acceptedValues) =>
+        case named @ Named(_, _) =>
           if (render(named).head.isEmpty) None else named
         case Optional(None) => None
         case Optional(value) =>
@@ -19,7 +19,7 @@ sealed trait UsageSynopsis { self =>
         case Repeated(value) =>
           val syn = simplify(value)
           if (syn == None) None else Repeated(syn)
-        case seq @ Sequence(left, right) =>
+        case Sequence(left, right) =>
           val leftSyn  = simplify(left)
           val rightSyn = simplify(right)
           if (leftSyn == None) rightSyn else if (rightSyn == None) leftSyn else Sequence(leftSyn, rightSyn)
