@@ -416,11 +416,10 @@ object Ap extends ZIOAppDefault {
           .map { _ => () }
       )
 
-  val commands = List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
+  val c = List("--help")
+  //List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
   val run = (for {
-    parsed <- ZIO.foreach(commands){ case c => 
-      command.parse(c, CliConfig.default)
-    }
+    parsed <- command.parse("test" :: c, CliConfig.default)
     _ <- Console.printLine(parsed)
   } yield ()).catchSome {
     case _: ValidationError => Console.printLine("valerr")
