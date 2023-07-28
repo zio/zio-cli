@@ -112,17 +112,26 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] = {
-      val parseBuiltInArgs =
+      def parseBuiltInArgs(args: List[String]): IO[ValidationError, CommandDirective[Nothing]] =
         if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
           Options
             .validate(options, args, conf)
             .map(_._3)
-            .mapError(_.error)
-            .some
+            .someOrFail(
+              ValidationError(
+                ValidationErrorType.NoBuiltInMatch,
+                HelpDoc.p(s"No built-in option was matched")
+              )
+            )
             .map(CommandDirective.BuiltIn)
-        } else ZIO.fail(None)
+        } else ZIO.fail(
+          ValidationError(
+            ValidationErrorType.NoBuiltInMatch,
+            HelpDoc.p(s"No built-in option was matched")
+          )
+        )
 
       val parseUserDefinedArgs =
         for {
@@ -159,9 +168,9 @@ object Command {
           (argsLeftover, argsType) = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
-      val exhaustiveSearch =
-        if (args.contains("--help") || args.contains("-h")) parse(List(name, "--help"), conf)
-        else if (args.contains("--wizard") || args.contains("-w")) parse(List(name, "--wizard"), conf)
+      val exhaustiveSearch: IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
+        if (args.contains("--help") || args.contains("-h")) parseBuiltInArgs(List(name, "--help"))
+        else if (args.contains("--wizard") || args.contains("-w")) parseBuiltInArgs(List(name, "--wizard"))
         else ZIO.fail(
           ValidationError(
             ValidationErrorType.CommandMismatch,
@@ -169,9 +178,15 @@ object Command {
           )
         )
 
-      val first = parseBuiltInArgs orElse parseUserDefinedArgs
+      val first = parseBuiltInArgs(args) orElse parseUserDefinedArgs
       
-      if (conf.finalCheckBuiltIn) first orElse exhaustiveSearch else first
+      first.catchSome {
+        case e: ValidationError =>
+          if (conf.finalCheckBuiltIn) exhaustiveSearch.catchSome {
+            case _: ValidationError => ZIO.fail(e)
+          }
+          else ZIO.fail(e)
+      }
     }
 
     lazy val synopsis: UsageSynopsis =
