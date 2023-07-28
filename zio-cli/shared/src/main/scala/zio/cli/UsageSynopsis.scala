@@ -26,7 +26,7 @@ sealed trait UsageSynopsis { self =>
         case Alternation(left, right) =>
           val leftSyn  = simplify(left)
           val rightSyn = simplify(right)
-          if (leftSyn == None) rightSyn else if (rightSyn == None) leftSyn else Sequence(leftSyn, rightSyn)
+          if (leftSyn == None) rightSyn else if (rightSyn == None) leftSyn else Alternation(leftSyn, rightSyn)
         case Mixed => Mixed
         case None  => None
 
