@@ -305,10 +305,10 @@ object CommandSpec extends ZIOSpecDefault {
 
       Vector(
         test("trigger built-in options that are alone")(
-          assertZIO(Ag.command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-            assertZIO(Ag.command.parse(params2, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-            assertZIO(Ag.command.parse(params3, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
-            assertZIO(Ag.command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("completions"))
+          assertZIO(command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params2, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params3, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
+            assertZIO(command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("completions"))
         ),
         test("not trigger help if matches")(
           assertZIO(command.parse(params5, CliConfig.default).map(directiveType _))(equalTo("user"))
