@@ -117,7 +117,7 @@ object Command {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
           Options
-            .validate(options, args, conf)
+            .validate(options, args.tail, conf)
             .map(_._3)
             .someOrFail(
               ValidationError(
@@ -128,8 +128,8 @@ object Command {
             .map(CommandDirective.BuiltIn)
         } else ZIO.fail(
           ValidationError(
-            ValidationErrorType.NoBuiltInMatch,
-            HelpDoc.p(s"No built-in option was matched")
+            ValidationErrorType.CommandMismatch,
+            HelpDoc.p(s"Missing command name: ${name}")
           )
         )
 
@@ -406,9 +406,11 @@ import zio.cli._
 
 object Ap extends ZIOAppDefault {
 
-  private val param = Args.text("param")
+  private val param = Options.text("param")
 
-  val command = Command("test", param).subcommands(
+  val command = Command("test", param)
+
+  val command2 = Command("test", param).subcommands(
         Command("a")
           .subcommands(
             Command("b")
@@ -416,12 +418,12 @@ object Ap extends ZIOAppDefault {
           .map { _ => () }
       )
 
-  val c = List("--help")
+  val c = List("--wizard")
   //List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
   val run = (for {
-    parsed <- command.parse("test" :: c, CliConfig.default)
+    parsed <- command.parse( "test" :: c, CliConfig.default)
     _ <- Console.printLine(parsed)
   } yield ()).catchSome {
-    case _: ValidationError => Console.printLine("valerr")
+    case ValidationError(_, err) => Console.printLine(err.toPlaintext())
   }
 }
