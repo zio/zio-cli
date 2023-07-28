@@ -244,6 +244,22 @@ object CommandSpec extends ZIOSpecDefault {
             containsString("this is some help with command")
           )
         )
+      },
+      suite("correct display of helpDoc") {
+
+        val child2 = Command("child2").withHelp("help 2") | Command("child3").withHelp("help 3")
+
+        val child1 = Command("child1").subcommands(child2).withHelp("help 1")
+
+        val parent = Command("parent").subcommands(child1)
+
+        test("test helpDoc list subcommands of subcommands")(
+          assert(parent.helpDoc.toPlaintext())(
+            containsString("- child1         help 1") &&
+              containsString("- child1 child2  help 2") &&
+              containsString("- child1 child3  help 3")
+          )
+        )
       }
     ),
     test("cmd opts -- args") {
