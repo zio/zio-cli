@@ -418,7 +418,7 @@ object Ap extends ZIOAppDefault {
       .map(_ => ())
   )
 
-  val c = List("--shell-completion-index", "3", "--shell-type", "sh") 
+  val c = List("--shell-completion-index", "3", "--shell-type", "sh")
   // List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
   val run = (for {
     parsed <- command.parse("test" :: c, CliConfig.default)

@@ -315,7 +315,7 @@ object CommandSpec extends ZIOSpecDefault {
         ),
         test("trigger help not alone")(
           assertZIO(command.parse(params6, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-          assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help"))
+            assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help"))
         ),
         test("triggering wizard not alone")(
           assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("wizard"))
