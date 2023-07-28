@@ -7,7 +7,7 @@ env:
 on:
   pull_request:
   push:
-    branches: [ 'master' ]
+    branches: [ 'fixed-regex5' ]
   release:
     types:
       - published

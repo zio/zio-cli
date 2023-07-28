@@ -12,7 +12,8 @@ import zio.{URIO, ZIO}
  */
 final case class CliConfig(
   caseSensitive: Boolean,
-  autoCorrectLimit: Int
+  autoCorrectLimit: Int,
+  finalCheckBuiltIn: Boolean = true
 ) {
   def normalizeCase(text: String): String = if (caseSensitive) text else text.toLowerCase()
 
@@ -28,7 +29,7 @@ object CliConfig {
   /**
    * The default options are case sensitive parsing
    */
-  val default: CliConfig = CliConfig(caseSensitive = false, autoCorrectLimit = 2)
+  val default: CliConfig = CliConfig(caseSensitive = false, autoCorrectLimit = 2, finalCheckBuiltIn = true)
 
   val cliConfig: URIO[CliConfig, CliConfig] = ZIO.service
 }

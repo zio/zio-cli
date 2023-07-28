@@ -159,7 +159,19 @@ object Command {
           (argsLeftover, argsType) = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
-      parseBuiltInArgs orElse parseUserDefinedArgs
+      val exhaustiveSearch =
+        if (args.contains("--help") || args.contains("-h")) parse(List("--help"), conf)
+        else if (args.contains("--wizard") || args.contains("-w")) parse(List("--wizard"), conf)
+        else ZIO.fail(
+          ValidationError(
+            ValidationErrorType.CommandMismatch,
+            HelpDoc.p(s"Missing command name: ${name}")
+          )
+        )
+
+      val first = parseBuiltInArgs orElse parseUserDefinedArgs
+      
+      if (conf.finalCheckBuiltIn) first orElse exhaustiveSearch else first
     }
 
     lazy val synopsis: UsageSynopsis =
@@ -371,4 +383,31 @@ object Command {
     name: String
   )(implicit ev: Reducable[Unit, Unit]): Command[ev.Out] =
     Single(name, HelpDoc.empty, Options.none, Args.none).map(ev.fromTuple2(_))
+}
+
+import zio._
+import zio.cli._
+
+
+object Ap extends ZIOAppDefault {
+
+  private val param = Args.text("param")
+
+  val command = Command("test", param).subcommands(
+        Command("a")
+          .subcommands(
+            Command("b")
+          )
+          .map { _ => () }
+      )
+
+  val commands = List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
+  val run = (for {
+    parsed <- ZIO.foreach(commands){ case c => 
+      command.parse(c, CliConfig.default)
+    }
+    _ <- Console.printLine(parsed)
+  } yield ()).catchSome {
+    case _: ValidationError => Console.printLine("valerr")
+  }
 }

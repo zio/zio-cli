@@ -11,6 +11,17 @@ import zio.test.ZIOSpecDefault
 
 object CommandSpec extends ZIOSpecDefault {
 
+  def directiveType[A](dir: CommandDirective[A]): String =
+    dir match {
+      case CommandDirective.BuiltIn(option) => option match {
+        case BuiltInOption.ShowHelp(_, _) => "help"
+        case BuiltInOption.ShowWizard(_) => "wizard"
+        case BuiltInOption.ShowCompletionScript(_, _) => "script"
+        case BuiltInOption.ShowCompletions(_, _) => "completions"
+      }
+      case _ => "user"
+    }
+
   def spec = suite("Command Spec")(
     suite("Toplevel Command Spec")(
       suite("Command with options followed by args")(
@@ -277,6 +288,39 @@ object CommandSpec extends ZIOSpecDefault {
         )
       }
     ),
+    suite("BuiltInOptions proccessing"){
+        val command = Command("command", Options.text("a"))
+        val params1 = List("--help")
+        val params2 = List("-h")
+        val params3 = List("--wizard")
+        val params4 = List("--shell-completion-script", "path", "--sh")
+        val params5 = List("--shell-completion-index", "1", "--sh")
+
+        val params6 = List("-a", "--help")
+
+        val params7 = List("-a", "--help", "--help")
+        val params8 = List("--help", "--wizard", "-b")
+
+        val params9 = List("-a", "asdgf", "--wizard")
+
+      test("trigger built-in options that are alone")(
+        assertZIO(Ag.command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+          assertZIO(Ag.command.parse(params2, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+          assertZIO(Ag.command.parse(params3, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
+          assertZIO(Ag.command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("script")) &&
+          assertZIO(Ag.command.parse(params5, CliConfig.default).map(directiveType _))(equalTo("completions"))
+      )
+      test("not trigger help if matches")(
+        assertZIO(command.parse(params6, CliConfig.default).map(directiveType _))(equalTo("user"))
+      )
+      test("trigger help not alone")(
+        assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+          assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("help"))
+      )
+      test("triggering wizard not alone")(
+        assertZIO(command.parse(params9, CliConfig.default).map(directiveType _))(equalTo("wizard"))
+      )
+    },
     test("cmd opts -- args") {
       val command =
         Command("cmd", Options.text("something").optional ++ Options.boolean("verbose").alias("v"), Args.text.*)
