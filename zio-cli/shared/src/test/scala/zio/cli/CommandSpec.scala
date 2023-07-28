@@ -19,7 +19,7 @@ object CommandSpec extends ZIOSpecDefault {
         case BuiltInOption.ShowCompletionScript(_, _) => "script"
         case BuiltInOption.ShowCompletions(_, _) => "completions"
       }
-      case _ => "user"
+      case CommandDirective.UserDefined(_, _) => "user"
     }
 
   def spec = suite("Command Spec")(
@@ -290,18 +290,18 @@ object CommandSpec extends ZIOSpecDefault {
     ),
     suite("BuiltInOptions proccessing"){
       val command = Command("command", Options.text("a"))
-      val params1 = List("--help")
-      val params2 = List("-h")
-      val params3 = List("--wizard")
-      val params4 = List("--shell-completion-script", "path", "--sh")
-      val params5 = List("--shell-completion-index", "1", "--sh")
+      val params1 = List("command", "--help")
+      val params2 = List("command", "-h")
+      val params3 = List("command", "--wizard")
+      val params4 = List("command", "--shell-completion-script", "path", "--sh")
+      val params5 = List("command", "--shell-completion-index", "1", "--sh")
 
-      val params6 = List("-a", "--help")
+      val params6 = List("command", "-a", "--help")
 
-      val params7 = List("-a", "--help", "--help")
-      val params8 = List("--help", "--wizard", "-b")
+      val params7 = List("command", "-a", "--help", "--help")
+      val params8 = List("command", "--help", "--wizard", "-b")
 
-      val params9 = List("-a", "asdgf", "--wizard")
+      val params9 = List("command", "-a", "asdgf", "--wizard")
 
       Vector(
         test("trigger built-in options that are alone")(

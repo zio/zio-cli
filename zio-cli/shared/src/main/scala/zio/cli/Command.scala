@@ -406,7 +406,7 @@ import zio.cli._
 
 object Ap extends ZIOAppDefault {
 
-  private val param = Options.text("param")
+  private val param = Options.text("a")
 
   val command = Command("test", param)
 
@@ -418,7 +418,7 @@ object Ap extends ZIOAppDefault {
           .map { _ => () }
       )
 
-  val c = List("--wizard")
+  val c = List("-a", "--help")
   //List(List("--help"), List("asd", "--help"), List("asd", "a", "--help"), List("--help"), List("--wizard"), List("test", "--wizard"))
   val run = (for {
     parsed <- command.parse( "test" :: c, CliConfig.default)
