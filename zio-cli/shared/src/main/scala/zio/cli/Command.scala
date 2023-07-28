@@ -160,8 +160,8 @@ object Command {
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
       val exhaustiveSearch =
-        if (args.contains("--help") || args.contains("-h")) parse(List("--help"), conf)
-        else if (args.contains("--wizard") || args.contains("-w")) parse(List("--wizard"), conf)
+        if (args.contains("--help") || args.contains("-h")) parse(List(name, "--help"), conf)
+        else if (args.contains("--wizard") || args.contains("-w")) parse(List(name, "--wizard"), conf)
         else ZIO.fail(
           ValidationError(
             ValidationErrorType.CommandMismatch,
