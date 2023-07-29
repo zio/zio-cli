@@ -1,10 +1,9 @@
 package zio.cli
 
 import zio._
-import zio.test.{TestAspect, TestConsole, ZIOSpecDefault, assertTrue}
+import zio.test._
 
 object ArgumentCollisionSpec extends ZIOSpecDefault {
-
   def spec = suite("ArgumentCollisionSpec")(
     test("argument collision") {
       val a = Options.text("a").map(identity)
