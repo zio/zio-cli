@@ -51,8 +51,6 @@ sealed trait Options[+A] extends Parameter { self =>
       override def apply[A](single: Single[A]): Single[A] = single.copy(aliases = single.aliases ++ (name +: names))
     })
 
-  // TODO : spend time to understand usage of implicit here
-
   final def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< (B, C)): Options[Z] =
     map(ev).map { case (b, c) => f(b, c) }
 
@@ -161,17 +159,7 @@ sealed trait Options[+A] extends Parameter { self =>
   final def mapOrFail[B](f: A => Either[ValidationError, B]): Options[B] =
     Options.Map(self, (a: A) => f(a))
 
-  final def mapTry[B](f: A => B): Options[B] =
-    mapOrFail((a: A) =>
-      scala.util.Try(f(a)).toEither.left.map(e => ValidationError(ValidationErrorType.InvalidValue, p(e.getMessage)))
-    )
   final def optional: Options[Option[A]] = map(Some(_)).withDefault(None)
-
-  final def primitiveType: Option[PrimType[A]] =
-    self match {
-      case Single(_, _, primType, _, _) => Some(primType)
-      case _                            => None
-    }
 
   def synopsis: UsageSynopsis
 
@@ -379,15 +367,18 @@ object Options extends OptionsPlatformSpecific {
               .validate(r._1, conf)
               .foldZIO(
                 _ => ZIO.succeed((r._1, Left(r._2))),
-                _ =>
+                _ => {
+                  // `uid` will only be None for Options.Empty. Which means the user would
+                  // have had to purposefully compose Options.Empty | otherArgument.
+                  val leftUid  = left.uid.getOrElse("???")
+                  val rightUid = right.uid.getOrElse("???")
                   ZIO.fail(
                     ValidationError(
                       ValidationErrorType.InvalidValue,
-                      p(
-                        error(s"Options collision detected. You can only specify either ${left} or ${right}.")
-                      )
+                      p(error(s"Options collision detected. You can only specify either $leftUid or $rightUid."))
                     )
                   )
+                }
               )
         )
 
