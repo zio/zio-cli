@@ -28,26 +28,27 @@ sealed trait CliApp[-R, +E, +Model] {
 object CliApp {
 
   def make[R, E, Model](
-    name: String,
-    version: String,
-    summary: HelpDoc.Span,
-    command: Command[Model],
-    footer: HelpDoc = HelpDoc.Empty,
-    config: CliConfig = CliConfig.default,
-    figFont: FigFont = FigFont.Default
-  )(execute: Model => ZIO[R, E, Any]): CliApp[R, E, Model] =
+                         name: String,
+                         version: String,
+                         summary: HelpDoc.Span,
+                         command: Command[Model],
+                         footer: HelpDoc = HelpDoc.Empty,
+                         config: CliConfig = CliConfig.default,
+                         figFont: FigFont = FigFont.Default
+                       )(execute: Model => ZIO[R, E, Any]): CliApp[R, E, Model] =
     CliAppImpl(name, version, summary, command, execute, footer, config, figFont)
 
   private case class CliAppImpl[-R, +E, Model](
-    name: String,
-    version: String,
-    summary: HelpDoc.Span,
-    command: Command[Model],
-    execute: Model => ZIO[R, E, Any],
-    footer: HelpDoc = HelpDoc.Empty,
-    config: CliConfig = CliConfig.default,
-    figFont: FigFont = FigFont.Default
-  ) extends CliApp[R, E, Model] { self =>
+                                                name: String,
+                                                version: String,
+                                                summary: HelpDoc.Span,
+                                                command: Command[Model],
+                                                execute: Model => ZIO[R, E, Any],
+                                                footer: HelpDoc = HelpDoc.Empty,
+                                                config: CliConfig = CliConfig.default,
+                                                figFont: FigFont = FigFont.Default
+                                              ) extends CliApp[R, E, Model] {
+    self =>
     def config(newConfig: CliConfig): CliApp[R, E, Model] = copy(config = newConfig)
 
     def footer(newFooter: HelpDoc): CliApp[R, E, Model] =
@@ -90,13 +91,13 @@ object CliApp {
                 }
             }
           case ShowWizard(command) => {
-            val fancyName   = p(code(self.figFont.render(self.name)))
-            val header      = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
+            val fancyName = p(code(self.figFont.render(self.name)))
+            val header = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
             val explanation = p(s"Wizard mode assist you in constructing commands for $name$version")
 
             (for {
               parameters <- Wizard(command, config, fancyName + header + explanation).execute
-              _          <- run(parameters)
+              _ <- run(parameters)
             } yield ()).catchSome { case Wizard.QuitException() =>
               ZIO.unit
             }
@@ -108,29 +109,22 @@ object CliApp {
       @tailrec
       def prefix(command: Command[_]): List[String] =
         command match {
-          case Command.Single(name, _, _, _)  => List(name)
-          case Command.Map(command, _)        => prefix(command)
-          case Command.OrElse(_, _)           => Nil
+          case Command.Single(name, _, _, _) => List(name)
+          case Command.Map(command, _) => prefix(command)
+          case Command.OrElse(_, _) => Nil
           case Command.Subcommands(parent, _) => prefix(parent)
         }
-
-     println("hereR????")
 
       self.command
         .parse(prefix(self.command) ++ args, self.config)
         .foldZIO(
           e => {
-            println("here??")
             printDocs(e.error) *> ZIO.fail(e)
           },
           {
             case CommandDirective.UserDefined(_, value) =>
-
-              println("here??2")
-
               self.execute(value)
             case CommandDirective.BuiltIn(x) =>
-              println(s"here??11... ${x}")
               executeBuiltIn(x).catchSome { case e: ValidationError =>
                 printDocs(e.error) *> ZIO.fail(e)
               }

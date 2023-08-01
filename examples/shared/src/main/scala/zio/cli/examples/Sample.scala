@@ -8,10 +8,11 @@ import zio.Console.printLine
 object Sample extends ZIOCliDefault {
 
   val options: Options[Either[BigInt, String]] = Options.integer("opt1").orElseEither(Options.text("opt2"))
-  val arguments: Args[String] = Args.text("repository")
-  val help: HelpDoc = HelpDoc.p("Creates a copy of an existing repository")
+  val arguments: Args[String]                  = Args.text("repository")
+  val help: HelpDoc                            = HelpDoc.p("Creates a copy of an existing repository")
 
-  val command: Command[(Either[BigInt, String], String)] = Command("clone").subcommands(Command("clone", options, arguments).withHelp(help))
+  val command: Command[(Either[BigInt, String], String)] =
+    Command("clone").subcommands(Command("clone", options, arguments).withHelp(help))
 
   val cliApp = CliApp.make(
     name = "Sample Git",
