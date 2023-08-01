@@ -26,7 +26,8 @@ import scala.annotation.tailrec
 /**
  * A `Flag[A]` models a command-line flag that produces a value of type `A`.
  */
-sealed trait Options[+A] extends Parameter { self =>
+sealed trait Options[+A] extends Parameter {
+  self =>
 
   import Options.Single
 
@@ -64,73 +65,73 @@ sealed trait Options[+A] extends Parameter { self =>
     map(ev).map { case (b, c, d, e, f) => f0(b, c, d, e, f) }
 
   final def as[B, C, D, E, F, G, Z](
-    f0: (B, C, D, E, F, G) => Z
-  )(implicit ev: A <:< (B, C, D, E, F, G)): Options[Z] =
+                                     f0: (B, C, D, E, F, G) => Z
+                                   )(implicit ev: A <:< (B, C, D, E, F, G)): Options[Z] =
     map(ev).map { case (b, c, d, e, f, g) => f0(b, c, d, e, f, g) }
 
   final def fold[B, C, Z](
-    f1: B => Z,
-    f2: C => Z
-  )(implicit ev: A <:< Either[B, C]): Options[Z] =
+                           f1: B => Z,
+                           f2: C => Z
+                         )(implicit ev: A <:< Either[B, C]): Options[Z] =
     map(ev).map {
-      case Left(b)  => f1(b)
+      case Left(b) => f1(b)
       case Right(c) => f2(c)
     }
 
   final def fold[B, C, D, Z](
-    f1: B => Z,
-    f2: C => Z,
-    f3: D => Z
-  )(implicit ev: A <:< Either[Either[B, C], D]): Options[Z] =
+                              f1: B => Z,
+                              f2: C => Z,
+                              f3: D => Z
+                            )(implicit ev: A <:< Either[Either[B, C], D]): Options[Z] =
     map(ev).map {
-      case Left(Left(b))  => f1(b)
+      case Left(Left(b)) => f1(b)
       case Left(Right(c)) => f2(c)
-      case Right(d)       => f3(d)
+      case Right(d) => f3(d)
     }
 
   final def fold[B, C, D, E, Z](
-    f1: B => Z,
-    f2: C => Z,
-    f3: D => Z,
-    f4: E => Z
-  )(implicit ev: A <:< Either[Either[Either[B, C], D], E]): Options[Z] =
+                                 f1: B => Z,
+                                 f2: C => Z,
+                                 f3: D => Z,
+                                 f4: E => Z
+                               )(implicit ev: A <:< Either[Either[Either[B, C], D], E]): Options[Z] =
     map(ev).map {
-      case Left(Left(Left(b)))  => f1(b)
+      case Left(Left(Left(b))) => f1(b)
       case Left(Left(Right(c))) => f2(c)
-      case Left(Right(d))       => f3(d)
-      case Right(e)             => f4(e)
+      case Left(Right(d)) => f3(d)
+      case Right(e) => f4(e)
     }
 
   final def fold[B, C, D, E, F, Z](
-    f1: B => Z,
-    f2: C => Z,
-    f3: D => Z,
-    f4: E => Z,
-    f5: F => Z
-  )(implicit ev: A <:< Either[Either[Either[Either[B, C], D], E], F]): Options[Z] =
+                                    f1: B => Z,
+                                    f2: C => Z,
+                                    f3: D => Z,
+                                    f4: E => Z,
+                                    f5: F => Z
+                                  )(implicit ev: A <:< Either[Either[Either[Either[B, C], D], E], F]): Options[Z] =
     map(ev).map {
-      case Left(Left(Left(Left(b))))  => f1(b)
+      case Left(Left(Left(Left(b)))) => f1(b)
       case Left(Left(Left(Right(c)))) => f2(c)
-      case Left(Left(Right(d)))       => f3(d)
-      case Left(Right(e))             => f4(e)
-      case Right(f)                   => f5(f)
+      case Left(Left(Right(d))) => f3(d)
+      case Left(Right(e)) => f4(e)
+      case Right(f) => f5(f)
     }
 
   final def fold[B, C, D, E, F, G, Z](
-    f1: B => Z,
-    f2: C => Z,
-    f3: D => Z,
-    f4: E => Z,
-    f5: F => Z,
-    f6: G => Z
-  )(implicit ev: A <:< Either[Either[Either[Either[Either[B, C], D], E], F], G]): Options[Z] =
+                                       f1: B => Z,
+                                       f2: C => Z,
+                                       f3: D => Z,
+                                       f4: E => Z,
+                                       f5: F => Z,
+                                       f6: G => Z
+                                     )(implicit ev: A <:< Either[Either[Either[Either[Either[B, C], D], E], F], G]): Options[Z] =
     map(ev).map {
-      case Left(Left(Left(Left(Left(b)))))  => f1(b)
+      case Left(Left(Left(Left(Left(b))))) => f1(b)
       case Left(Left(Left(Left(Right(c))))) => f2(c)
-      case Left(Left(Left(Right(d))))       => f3(d)
-      case Left(Left(Right(e)))             => f4(e)
-      case Left(Right(f))                   => f5(f)
-      case Right(g)                         => f6(g)
+      case Left(Left(Left(Right(d)))) => f3(d)
+      case Left(Left(Right(e))) => f4(e)
+      case Left(Right(f)) => f5(f)
+      case Right(g) => f6(g)
     }
 
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
@@ -147,11 +148,11 @@ sealed trait Options[+A] extends Parameter { self =>
 
   final def isBool: Boolean =
     asInstanceOf[Options[_]] match {
-      case Options.Empty                   => false
+      case Options.Empty => false
       case Options.WithDefault(options, _) => options.isBool
-      case Single(_, _, primType, _, _)    => primType.isBool
-      case Options.Map(value, _)           => value.isBool
-      case _                               => false
+      case Single(_, _, primType, _, _) => primType.isBool
+      case Options.Map(value, _) => value.isBool
+      case _ => false
     }
 
   final def map[B](f: A => B): Options[B] = Options.Map(self, (a: A) => Right(f(a)))
@@ -247,13 +248,14 @@ object Options extends OptionsPlatformSpecific {
   }
 
   final case class Single[+A](
-    name: String,
-    aliases: Vector[String],
-    primType: PrimType[A],
-    description: HelpDoc = HelpDoc.Empty,
-    pseudoName: Option[String] = None
-  ) extends Options[A]
-      with Input { self =>
+                               name: String,
+                               aliases: Vector[String],
+                               primType: PrimType[A],
+                               description: HelpDoc = HelpDoc.Empty,
+                               pseudoName: Option[String] = None
+                             ) extends Options[A]
+    with Input {
+    self =>
 
     override lazy val shortDesc: String = s"""Option "$name". ${description.getSpan.text}"""
 
@@ -347,45 +349,22 @@ object Options extends OptionsPlatformSpecific {
         .validate(args, conf)
         .foldZIO(
           err1 =>
-            right
-              .validate(args, conf)
-              .foldZIO[Any, ValidationError, (List[String], Either[A, B])](
-                err2 =>
-                  ZIO.fail(
-                    // orElse option is only missing in case neither option was given
-                    (err1.validationErrorType, err2.validationErrorType) match {
-                      case (ValidationErrorType.MissingValue, ValidationErrorType.MissingValue) =>
-                        ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)
-                      case _ =>
-                        ValidationError(ValidationErrorType.InvalidValue, err1.error + err2.error)
-                    }
-                  ),
-                success => ZIO.succeed((success._1, Right(success._2)))
-              ),
+            err1.validationErrorType match {
+              case ValidationErrorType.MissingValue =>
+                right.validate(args, conf).map({
+                  case (list, b) => (list, Right(b))
+                })
+              case _ =>
+                ZIO.fail(ValidationError(ValidationErrorType.InvalidValue, err1.error))
+            },
           r =>
-            right
-              .validate(r._1, conf)
-              .foldZIO(
-                _ => ZIO.succeed((r._1, Left(r._2))),
-                _ => {
-                  // `uid` will only be None for Options.Empty. Which means the user would
-                  // have had to purposefully compose Options.Empty | otherArgument.
-                  val leftUid  = left.uid.getOrElse("???")
-                  val rightUid = right.uid.getOrElse("???")
-                  ZIO.fail(
-                    ValidationError(
-                      ValidationErrorType.InvalidValue,
-                      p(error(s"Options collision detected. You can only specify either $leftUid or $rightUid."))
-                    )
-                  )
-                }
-              )
+            ZIO.succeed((r._1, Left(r._2)))
         )
 
     override lazy val helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
     override lazy val uid: Option[String] = left.uid.toList ++ right.uid.toList match {
-      case Nil  => None
+      case Nil => None
       case list => Some(list.mkString(", "))
     }
 
@@ -401,24 +380,24 @@ object Options extends OptionsPlatformSpecific {
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], (A, B))] =
       for {
         tuple <- left
-                   .validate(args, conf)
-                   .catchAll(err1 =>
-                     right
-                       .validate(args, conf)
-                       .foldZIO(
-                         err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
-                         _ => ZIO.fail(err1)
-                       )
-                   )
+          .validate(args, conf)
+          .catchAll(err1 =>
+            right
+              .validate(args, conf)
+              .foldZIO(
+                err2 => ZIO.fail(ValidationError(ValidationErrorType.MissingValue, err1.error + err2.error)),
+                _ => ZIO.fail(err1)
+              )
+          )
         (args, a) = tuple
-        tuple    <- right.validate(args, conf)
+        tuple <- right.validate(args, conf)
         (args, b) = tuple
       } yield args -> (a -> b)
 
     override lazy val helpDoc: HelpDoc = left.helpDoc + right.helpDoc
 
     override lazy val uid: Option[String] = left.uid.toList ++ right.uid.toList match {
-      case Nil  => None
+      case Nil => None
       case list => Some(list.mkString(", "))
     }
 
@@ -427,7 +406,7 @@ object Options extends OptionsPlatformSpecific {
   }
 
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B])
-      extends Options[B]
+    extends Options[B]
       with Pipeline
       with Wrap {
 
@@ -450,7 +429,7 @@ object Options extends OptionsPlatformSpecific {
   }
 
   final case class KeyValueMap(argumentOption: Options.Single[String])
-      extends Options[Predef.Map[String, String]]
+    extends Options[Predef.Map[String, String]]
       with Input {
 
     override lazy val shortDesc: String = argumentOption.shortDesc
@@ -462,14 +441,14 @@ object Options extends OptionsPlatformSpecific {
     override def uid: Option[String] = argumentOption.uid
 
     override def validate(
-      args: List[String],
-      conf: CliConfig
-    ): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
+                           args: List[String],
+                           conf: CliConfig
+                         ): IO[ValidationError, (List[String], Predef.Map[String, String])] = {
 
       def extractArgOptKeyValuePairs(
-        input: List[String],
-        conf: CliConfig
-      ): (List[String], List[(String, String)]) = {
+                                      input: List[String],
+                                      conf: CliConfig
+                                    ): (List[String], List[(String, String)]) = {
 
         val caseSensitive = conf.caseSensitive
 
@@ -492,8 +471,8 @@ object Options extends OptionsPlatformSpecific {
 
         @tailrec
         def loop(
-          acc: (List[String], List[(String, String)])
-        ): (List[String], List[(String, String)]) = {
+                  acc: (List[String], List[(String, String)])
+                ): (List[String], List[(String, String)]) = {
           val (input, pairs) = acc
           input match {
             case Nil => acc
@@ -522,10 +501,10 @@ object Options extends OptionsPlatformSpecific {
       }
 
       def processArguments(
-        input: List[String],
-        first: String,
-        conf: CliConfig
-      ): IO[ValidationError, (List[String], Predef.Map[String, String])] = (
+                            input: List[String],
+                            first: String,
+                            conf: CliConfig
+                          ): IO[ValidationError, (List[String], Predef.Map[String, String])] = (
         first.trim.split("=") match {
           case Array(key, value) =>
             ZIO.succeed(key -> value)
@@ -537,7 +516,7 @@ object Options extends OptionsPlatformSpecific {
               )
             )
         }
-      ).map { first =>
+        ).map { first =>
         val (remains, pairs) = extractArgOptKeyValuePairs(input, conf)
 
         (remains, (first :: pairs).toMap)
@@ -560,19 +539,24 @@ object Options extends OptionsPlatformSpecific {
   }
 
   final case class OAuth2Options(
-    provider: OAuth2Provider,
-    scope: List[String],
-    auxiliaryOptions: Options[OAuth2AuxiliaryOptions]
-  ) extends Options[OAuth2Token]
-      with Wrap {
+                                  provider: OAuth2Provider,
+                                  scope: List[String],
+                                  auxiliaryOptions: Options[OAuth2AuxiliaryOptions]
+                                ) extends Options[OAuth2Token]
+    with Wrap {
     override lazy val shortDesc: String = auxiliaryOptions.shortDesc
 
-    override val wrapped                 = auxiliaryOptions
-    override def helpDoc: HelpDoc        = auxiliaryOptions.helpDoc
+    override val wrapped = auxiliaryOptions
+
+    override def helpDoc: HelpDoc = auxiliaryOptions.helpDoc
+
     override def synopsis: UsageSynopsis = auxiliaryOptions.synopsis
-    override def uid: Option[String]     = auxiliaryOptions.uid
+
+    override def uid: Option[String] = auxiliaryOptions.uid
+
     override def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], OAuth2Token)] =
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
+
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =
       OAuth2Options(provider, scope, auxiliaryOptions.modifySingle(f))
   }
