@@ -114,13 +114,23 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
+     println("hereR????")
+
       self.command
         .parse(prefix(self.command) ++ args, self.config)
         .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(e),
+          e => {
+            println("here??")
+            printDocs(e.error) *> ZIO.fail(e)
+          },
           {
-            case CommandDirective.UserDefined(_, value) => self.execute(value)
+            case CommandDirective.UserDefined(_, value) =>
+
+              println("here??2")
+
+              self.execute(value)
             case CommandDirective.BuiltIn(x) =>
+              println(s"here??11... ${x}")
               executeBuiltIn(x).catchSome { case e: ValidationError =>
                 printDocs(e.error) *> ZIO.fail(e)
               }

@@ -195,7 +195,7 @@ object Command {
   }
 
   final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives {
-    lazy val helpDoc: HelpDoc = left.helpDoc + right.helpDoc
+    lazy val helpDoc: HelpDoc = left.helpDoc addAlternative right.helpDoc
 
     lazy val names: Set[String] = left.names ++ right.names
 

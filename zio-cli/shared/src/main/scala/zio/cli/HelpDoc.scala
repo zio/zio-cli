@@ -9,14 +9,23 @@ package zio.cli
  *
  * A `HelpDoc` can be converted into plaintext, JSON, and HTML.
  */
-sealed trait HelpDoc { self =>
+sealed trait HelpDoc {
+  self =>
+
   import HelpDoc._
 
   def +(that: HelpDoc): HelpDoc =
     (self, that) match {
       case (self, that) if self.isEmpty => that
       case (self, that) if that.isEmpty => self
-      case _                            => HelpDoc.Sequence(self, that)
+      case _ => HelpDoc.Sequence(self, that)
+    }
+
+  def addAlternative(that: HelpDoc): HelpDoc =
+    (self, that) match {
+      case (self, that) if self.isEmpty => that
+      case (self, that) if that.isEmpty => self
+      case _ => HelpDoc.FallBack(self, that)
     }
 
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
@@ -25,56 +34,56 @@ sealed trait HelpDoc { self =>
     self match {
       case HelpDoc.Header(value, _) => value
       case HelpDoc.Paragraph(value) => value
-      case _                        => HelpDoc.Span.empty
+      case _ => HelpDoc.Span.empty
     }
 
   def isEmpty: Boolean =
     self match {
-      case HelpDoc.Empty                 => true
-      case HelpDoc.DescriptionList(xs)   => xs.forall(_._2.isEmpty)
+      case HelpDoc.Empty => true
+      case HelpDoc.DescriptionList(xs) => xs.forall(_._2.isEmpty)
       case HelpDoc.Sequence(left, right) => left.isEmpty && right.isEmpty
-      case HelpDoc.Enumeration(xs)       => xs.forall(_.isEmpty)
-      case _                             => false
+      case HelpDoc.Enumeration(xs) => xs.forall(_.isEmpty)
+      case _ => false
     }
 
   def isHeader: Boolean =
     self match {
-      case HelpDoc.Header(_, _)      => true
+      case HelpDoc.Header(_, _) => true
       case HelpDoc.Sequence(left, _) => left.isHeader
-      case _                         => false
+      case _ => false
     }
 
   def isParagraph: Boolean =
     self match {
-      case HelpDoc.Paragraph(_)      => true
+      case HelpDoc.Paragraph(_) => true
       case HelpDoc.Sequence(left, _) => left.isParagraph
-      case _                         => false
+      case _ => false
     }
 
   def isDescriptionList: Boolean =
     self match {
       case HelpDoc.DescriptionList(_) => true
-      case HelpDoc.Sequence(left, _)  => left.isDescriptionList
-      case _                          => false
+      case HelpDoc.Sequence(left, _) => left.isDescriptionList
+      case _ => false
     }
 
   def isEnumeration: Boolean =
     self match {
-      case HelpDoc.Enumeration(_)    => true
+      case HelpDoc.Enumeration(_) => true
       case HelpDoc.Sequence(left, _) => left.isEnumeration
-      case _                         => false
+      case _ => false
     }
 
   def isSequence: Boolean =
     self match {
       case HelpDoc.Sequence(_, _) => true
-      case _                      => false
+      case _ => false
     }
 
   def mapDescriptionList(f: (HelpDoc.Span, HelpDoc) => (HelpDoc.Span, HelpDoc)): HelpDoc =
     self match {
       case HelpDoc.DescriptionList(list) => HelpDoc.DescriptionList(list.map(f.tupled))
-      case x                             => x
+      case x => x
     }
 
   def toHTML: String = {
@@ -88,7 +97,7 @@ sealed trait HelpDoc { self =>
     def renderSpan: Span => StringBuilder = {
       case Span.Text(value) => w.append(escape(value))
       case Span.Code(value) => w.append(s"<pre><code>${escape(value)}</code></pre>")
-      case Span.URI(value)  => w.append(s"""<a href="$value">$value</a>""")
+      case Span.URI(value) => w.append(s"""<a href="$value">$value</a>""")
       case Span.Weak(value) => renderSpan(value)
 
       case Span.Strong(value) =>
@@ -137,6 +146,11 @@ sealed trait HelpDoc { self =>
       case HelpDoc.Sequence(left, right) =>
         render(left)
         w.append("<br/>")
+        render(right)
+
+      case HelpDoc.FallBack(left, right) =>
+        render(left)
+        w.append("</br>")
         render(right)
     }
 
@@ -217,10 +231,10 @@ sealed trait HelpDoc { self =>
   def toPlaintext(columnWidth: Int = 100, color: Boolean = true): String = {
     val _ = color
 
-    val writer     = DocWriter(0, columnWidth)
-    var uppercase  = false
-    var styles     = List.empty[String]
-    var lastStyle  = Console.RESET
+    val writer = DocWriter(0, columnWidth)
+    var uppercase = false
+    var styles = List.empty[String]
+    var lastStyle = Console.RESET
     var printedSep = 0
 
     def setStyle(style: String): Unit = styles = style :: styles
@@ -281,6 +295,13 @@ sealed trait HelpDoc { self =>
           renderHelpDoc(left)
           renderNewline()
           renderHelpDoc(right)
+
+        case HelpDoc.FallBack(left, right) =>
+          renderHelpDoc(left)
+          renderNewline()
+          renderText("or-else")
+          renderNewline()
+          renderHelpDoc(right)
       }
 
     def renderSpan(span: Span): Unit = {
@@ -330,20 +351,28 @@ sealed trait HelpDoc { self =>
     writer.toString() + (if (color) Console.RESET else "")
   }
 }
+
 object HelpDoc {
-  case object Empty                                                    extends HelpDoc
-  final case class Header(value: Span, level: Int)                     extends HelpDoc
-  final case class Paragraph(value: Span)                              extends HelpDoc
+  case object Empty extends HelpDoc
+
+  final case class Header(value: Span, level: Int) extends HelpDoc
+
+  final case class Paragraph(value: Span) extends HelpDoc
+
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
-  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc { self =>
+
+  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc {
+    self =>
     def flatten: Enumeration =
       Enumeration(
         self.elements.flatMap {
           case Enumeration(elements) => elements
-          case other                 => List(other)
+          case other => List(other)
         }
       )
   }
+
+  final case class FallBack(left: HelpDoc, right: HelpDoc) extends HelpDoc
 
   final case class Sequence(left: HelpDoc, right: HelpDoc) extends HelpDoc
 
@@ -360,52 +389,64 @@ object HelpDoc {
   def enumeration(elements: HelpDoc*): HelpDoc =
     HelpDoc.Enumeration(elements.toList).flatten
 
-  def h1(t: String): HelpDoc  = h1(Span.text(t))
+  def h1(t: String): HelpDoc = h1(Span.text(t))
+
   def h1(span: Span): HelpDoc = HelpDoc.Header(span, 1)
 
-  def h2(t: String): HelpDoc  = h2(Span.text(t))
+  def h2(t: String): HelpDoc = h2(Span.text(t))
+
   def h2(span: Span): HelpDoc = HelpDoc.Header(span, 2)
 
-  def h3(t: String): HelpDoc  = h3(Span.text(t))
+  def h3(t: String): HelpDoc = h3(Span.text(t))
+
   def h3(span: Span): HelpDoc = HelpDoc.Header(span, 3)
 
-  def p(t: String): HelpDoc  = HelpDoc.Paragraph(Span.text(t))
+  def p(t: String): HelpDoc = HelpDoc.Paragraph(Span.text(t))
+
   def p(span: Span): HelpDoc = HelpDoc.Paragraph(span)
 
-  sealed trait Span { self =>
+  sealed trait Span {
+    self =>
     final def +(that: Span): Span = Span.Sequence(self, that)
 
     final def isEmpty: Boolean = self.size == 0
 
     final def size: Int =
       self match {
-        case Span.Text(value)           => value.length
-        case Span.Code(value)           => value.length
-        case Span.Error(value)          => value.size
-        case Span.Weak(value)           => value.size
-        case Span.Strong(value)         => value.size
-        case Span.URI(value)            => value.toString.length
+        case Span.Text(value) => value.length
+        case Span.Code(value) => value.length
+        case Span.Error(value) => value.size
+        case Span.Weak(value) => value.size
+        case Span.Strong(value) => value.size
+        case Span.URI(value) => value.toString.length
         case Span.Sequence(left, right) => left.size + right.size
       }
 
     final def text: String =
       self match {
-        case Span.Text(value)           => value
-        case Span.Code(value)           => value
-        case Span.Error(value)          => value.text
-        case Span.Weak(value)           => value.text
-        case Span.Strong(value)         => value.text
-        case Span.URI(value)            => value.toString
+        case Span.Text(value) => value
+        case Span.Code(value) => value
+        case Span.Error(value) => value.text
+        case Span.Weak(value) => value.text
+        case Span.Strong(value) => value.text
+        case Span.URI(value) => value.toString
         case Span.Sequence(left, right) => left.text + right.text
       }
   }
+
   object Span {
-    final case class Text(value: String)               extends Span
-    final case class Code(value: String)               extends Span
-    final case class Error(value: Span)                extends Span
-    final case class Weak(value: Span)                 extends Span
-    final case class Strong(value: Span)               extends Span
-    final case class URI(value: java.net.URI)          extends Span
+    final case class Text(value: String) extends Span
+
+    final case class Code(value: String) extends Span
+
+    final case class Error(value: Span) extends Span
+
+    final case class Weak(value: Span) extends Span
+
+    final case class Strong(value: Span) extends Span
+
+    final case class URI(value: java.net.URI) extends Span
+
     final case class Sequence(left: Span, right: Span) extends Span
 
     def code(t: String): Span = Span.Code(t)
@@ -439,7 +480,8 @@ object HelpDoc {
   }
 }
 
-private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) { self =>
+private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, columnWidth: Int) {
+  self =>
   private var marginStack: List[Int] = List(self.startOffset)
 
   def append(s: String): DocWriter = {
@@ -457,7 +499,7 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
             }
 
             val before = s.take(lastSpace)
-            val after  = s.drop(lastSpace).dropWhile(_ == ' ')
+            val after = s.drop(lastSpace).dropWhile(_ == ' ')
 
             append(before)
             append("\n")
@@ -493,8 +535,10 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
 
   def unindent(): Unit = self.marginStack = self.marginStack.drop(1)
 }
+
 private[cli] object DocWriter {
   private def margin(n: Int): String = if (n <= 0) "" else List.fill(n)(" ").mkString
+
   def splitNewlines(s: String): Option[Array[String]] = {
     val count = s.count(_ == '\n')
 
@@ -508,7 +552,7 @@ private[cli] object DocWriter {
         var i = 0
         var j = 0
         while (i < s.length) {
-          val search   = s.indexOf('\n', i)
+          val search = s.indexOf('\n', i)
           val endIndex = if (search == -1) s.length else search
 
           array(j) = s.substring(i, endIndex)
