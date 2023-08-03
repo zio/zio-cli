@@ -553,7 +553,7 @@ object Options extends OptionsPlatformSpecific {
             right
               .validate(args, conf)
               .foldZIO(
-                _ => ZIO.succeed((r._1, Left(r._2))),
+                _ => ZIO.succeed(Left(a)),
                 _ => {
                   // `uid` will only be None for Options.Empty. Which means the user would
                   // have had to purposefully compose Options.Empty | otherArgument.
