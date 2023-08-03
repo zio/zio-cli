@@ -64,7 +64,10 @@ object CliApp {
 
             val header = p(text(self.name) + text(self.version) + text(" -- ") + self.summary)
 
-            val synopsisHelpDoc = h1("usage") + HelpDoc.p(text("$ ") + synopsis.helpDoc.getSpan)
+            val synopsisHelpDoc = h1("usage") + synopsis.enumerate
+              .map(span => text("$ ") + span)
+              .map(HelpDoc.p)
+              .foldRight(HelpDoc.empty)(_ + _)
 
             // TODO add rendering of built-in options such as help
             printLine((fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300))
