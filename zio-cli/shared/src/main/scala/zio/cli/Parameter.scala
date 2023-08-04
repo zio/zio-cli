@@ -45,6 +45,8 @@ private[cli] trait Alternatives extends Parameter {
  */
 private[cli] trait Input extends Parameter {
 
+  def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])]
+
   def isValid(input: String, conf: CliConfig): IO[ValidationError, List[String]]
 }
 

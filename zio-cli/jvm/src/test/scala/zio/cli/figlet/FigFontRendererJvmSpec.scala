@@ -9,9 +9,8 @@ object FigFontRendererJvmSpec extends ZIOSpecDefault {
   def spec = suite("FigFontRendererJvmSpec")(
     test("ZIO-CLI!!! with standard.flf") {
       for {
-        font_        <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
-        font: FigFont = font_ // TODO IJ cross-platform projects issue
-        r             = render(font, "ZIO-\nCLI!!!")
+        font <- FigFont.fromResource("standard.flf", getClass.getClassLoader)
+        r     = render(font, "ZIO-\nCLI!!!")
       } yield {
         assertTextBlock(
           r,

@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.cli.BuiltInOption.ShowHelp
 import zio.cli.HelpDoc.Span.error
-import zio.cli.HelpDoc.{Sequence, p}
+import zio.cli.HelpDoc.p
 import zio.test.Assertion._
 import zio.test._
 
@@ -10,6 +10,18 @@ import scala.language.postfixOps
 import zio.test.ZIOSpecDefault
 
 object CommandSpec extends ZIOSpecDefault {
+
+  def directiveType[A](dir: CommandDirective[A]): String =
+    dir match {
+      case CommandDirective.BuiltIn(option) =>
+        option match {
+          case BuiltInOption.ShowHelp(_, _)             => "help"
+          case BuiltInOption.ShowWizard(_)              => "wizard"
+          case BuiltInOption.ShowCompletionScript(_, _) => "script"
+          case BuiltInOption.ShowCompletions(_, _)      => "completions"
+        }
+      case CommandDirective.UserDefined(_, _) => "user"
+    }
 
   def spec = suite("Command Spec")(
     suite("Toplevel Command Spec")(
@@ -47,10 +59,7 @@ object CommandSpec extends ZIOSpecDefault {
             )(
               equalTo(
                 Left(
-                  Sequence(
-                    p(error("""The flag "--afte" is not recognized. Did you mean --after?""")),
-                    p(error("""The flag "--efore" is not recognized. Did you mean --before?"""))
-                  )
+                  p(error("""The flag "--afte" is not recognized. Did you mean --after?"""))
                 )
               )
             )
@@ -62,7 +71,7 @@ object CommandSpec extends ZIOSpecDefault {
               .either
               .map(_.left.map(_.error))
           )(
-            equalTo(Left(p(error("Expected to find --after option."))))
+            equalTo(Left(p(error("Expected to find --after option.")) + p(error("Expected to find --before option."))))
           )
         }
       )
@@ -91,6 +100,24 @@ object CommandSpec extends ZIOSpecDefault {
 
         assertZIO(clustered)(equalTo(commandDirective))
         assertZIO(unClustered)(equalTo(commandDirective))
+      },
+      test("Not uncluster wrong clusters") {
+        val wrongCluster =
+          WC.command
+            .parse(List("wc", "-clk"), CliConfig.default)
+
+        val commandDirective = CommandDirective.UserDefined(Nil, ((false, false, false, true), List("-clk")))
+
+        assertZIO(wrongCluster)(equalTo(commandDirective))
+      },
+      test(""""-" unaltered """) {
+        val wrongCluster =
+          WC.command
+            .parse(List("wc", "-"), CliConfig.default)
+
+        val commandDirective = CommandDirective.UserDefined(Nil, ((false, false, false, true), List("-")))
+
+        assertZIO(wrongCluster)(equalTo(commandDirective))
       }
     ),
     suite("SubCommand Suite")(
@@ -262,6 +289,39 @@ object CommandSpec extends ZIOSpecDefault {
         )
       }
     ),
+    suite("BuiltInOptions proccessing") {
+      val command = Command("command", Options.text("a"))
+      val params1 = List("command", "--help")
+      val params2 = List("command", "-h")
+      val params3 = List("command", "--wizard")
+      val params4 = List("command", "--shell-completion-index", "1", "--shell-type", "sh")
+
+      val params5 = List("command", "-a", "--help")
+
+      val params6 = List("command", "--help", "--wizard", "-b")
+      val params7 = List("command", "--hdf", "--help")
+
+      val params8 = List("command", "-af", "asdgf", "--wizard")
+
+      Vector(
+        test("trigger built-in options that are alone")(
+          assertZIO(command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params2, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params3, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
+            assertZIO(command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("completions"))
+        ),
+        test("not trigger help if matches")(
+          assertZIO(command.parse(params5, CliConfig.default).map(directiveType _))(equalTo("user"))
+        ),
+        test("trigger help not alone")(
+          assertZIO(command.parse(params6, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help"))
+        ),
+        test("triggering wizard not alone")(
+          assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("wizard"))
+        )
+      )
+    },
     test("cmd opts -- args") {
       val command =
         Command("cmd", Options.text("something").optional ++ Options.boolean("verbose").alias("v"), Args.text.*)

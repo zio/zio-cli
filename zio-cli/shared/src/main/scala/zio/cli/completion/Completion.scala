@@ -18,15 +18,7 @@ object Completion {
      * 1. The chunk that is strictly before the cursor, and
      * 2. The chunk that is at or after the cursor.
      */
-    val (beforeCursor, _) = words.splitAt(index)
-
-    /*
-     * Uncluster any flags that are clustered. For example:
-     *   "-abc"
-     * becomes
-     *   "-a" "-b" "-c"
-     */
-    val unclustered = Command.unCluster(beforeCursor)
+    val (splitted, _) = words.splitAt(index)
 
     /*
      * Calculate the `RegularLanguage` corresponding to the input command.
@@ -44,7 +36,7 @@ object Completion {
      * occur before the cursor.
      */
     val derivative: UIO[RegularLanguage] =
-      ZIO.foldLeft(unclustered)(language)((lang, word) => lang.derive(word, cliConfig))
+      ZIO.foldLeft(splitted)(language)((lang, word) => lang.derive(word, cliConfig))
 
     val wordToComplete = if (index < words.size) words(index) else ""
 

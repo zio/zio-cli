@@ -62,15 +62,6 @@ sealed trait Command[+A] extends Parameter with Named { self =>
 }
 
 object Command {
-  def unCluster(args: List[String]): List[String] = {
-    def isClusteredOption(value: String): Boolean = value.trim.matches("^-{1}([^-]{2,}|$)")
-
-    args.flatMap { arg =>
-      if (isClusteredOption(arg))
-        arg.substring(1).map(c => s"-$c")
-      else arg :: Nil
-    }
-  }
 
   private def splitForcedArgs(args: List[String]): (List[String], List[String]) = {
     val (remainingArgs, forcedArgs) = args.span(_ != "--")
@@ -121,15 +112,27 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] = {
-      val parseBuiltInArgs =
-        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(name)))
-          BuiltInOption
-            .builtInOptions(self, synopsis, helpDoc)
-            .validate(args, conf)
-            .mapBoth(_.error, _._2)
-            .some
+      def parseBuiltInArgs(args: List[String]): IO[ValidationError, CommandDirective[Nothing]] =
+        if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) {
+          val options = BuiltInOption
+            .builtInOptions(self, self.synopsis, self.helpDoc)
+          Options
+            .validate(options, args.tail, conf)
+            .map(_._3)
+            .someOrFail(
+              ValidationError(
+                ValidationErrorType.NoBuiltInMatch,
+                HelpDoc.p(s"No built-in option was matched")
+              )
+            )
             .map(CommandDirective.BuiltIn)
-        else ZIO.fail(None)
+        } else
+          ZIO.fail(
+            ValidationError(
+              ValidationErrorType.CommandMismatch,
+              HelpDoc.p(s"Missing command name: ${name}")
+            )
+          )
 
       val parseUserDefinedArgs =
         for {
@@ -155,13 +158,36 @@ object Command {
                                    }
           tuple1                              = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs) = tuple1
-          tuple2                             <- options.validate(unCluster(optionsAndArgs), conf)
-          (commandArgs, optionsType)          = tuple2
-          tuple                              <- self.args.validate(commandArgs ++ forcedCommandArgs, conf)
-          (argsLeftover, argsType)            = tuple
+          tuple2                             <- Options.validate(options, optionsAndArgs, conf)
+          (error, commandArgs, optionsType)   = tuple2
+          tuple <- self.args.validate(commandArgs ++ forcedCommandArgs, conf).catchSome { case e =>
+                     error match {
+                       case None      => ZIO.fail(e)
+                       case Some(err) => ZIO.fail(err)
+                     }
+                   }
+          (argsLeftover, argsType) = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
-      parseBuiltInArgs orElse parseUserDefinedArgs
+      val exhaustiveSearch: IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
+        if (args.contains("--help") || args.contains("-h")) parseBuiltInArgs(List(name, "--help"))
+        else if (args.contains("--wizard") || args.contains("-w")) parseBuiltInArgs(List(name, "--wizard"))
+        else
+          ZIO.fail(
+            ValidationError(
+              ValidationErrorType.CommandMismatch,
+              HelpDoc.p(s"Missing command name: ${name}")
+            )
+          )
+
+      val first = parseBuiltInArgs(args) orElse parseUserDefinedArgs
+
+      first.catchSome { case e: ValidationError =>
+        if (conf.finalCheckBuiltIn) exhaustiveSearch.catchSome { case _: ValidationError =>
+          ZIO.fail(e)
+        }
+        else ZIO.fail(e)
+      }
     }
 
     lazy val synopsis: UsageSynopsis =

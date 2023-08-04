@@ -10,13 +10,12 @@ private[cli] object OAuth2PlatformSpecific {
     provider: OAuth2Provider,
     scope: List[String],
     auxiliaryOptions: Options[OAuth2AuxiliaryOptions],
-    args: List[String],
+    args: Predef.Map[String, List[String]],
     conf: CliConfig
-  ): IO[ValidationError, (List[String], OAuth2Token)] =
-    auxiliaryOptions.validate(args, conf).flatMap { case (args, aux) =>
+  ): IO[ValidationError, OAuth2Token] =
+    auxiliaryOptions.validate(args, conf).flatMap { case aux =>
       new OAuth2(provider, aux.file, scope).loadOrAuthorize
         .mapError(ex => ValidationError(ValidationErrorType.InvalidValue, p(ex.getMessage)))
-        .map(token => (args, token))
     }
 
   def findProvider(opt: Options[Any]): Option[OAuth2Provider] =
