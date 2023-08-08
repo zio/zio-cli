@@ -43,7 +43,7 @@ sealed trait UsageSynopsis { self =>
             else if (names.length > 1)
               names.filter(_.startsWith("--")).headOption match {
                 case Some(value) => value :: Nil
-                case Option.None => names
+                case _ => names
               }
             else names
           val nameInfo = Span.text(namesToShow.mkString(", "))
