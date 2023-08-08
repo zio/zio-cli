@@ -96,7 +96,7 @@ sealed trait UsageSynopsis { self =>
     render(simplify(self))
   }
 
-  final def helpDoc(config: CliConfig): HelpDoc = enumerate(config) match {
+  final def helpDoc: HelpDoc = enumerate(CliConfig.default) match {
     case Nil         => HelpDoc.empty
     case head :: Nil => p(head)
     case list        => list.map(p).foldRight(HelpDoc.empty)(_ + _)
