@@ -41,10 +41,11 @@ sealed trait UsageSynopsis { self =>
           val namesToShow =
             if (config.showAllNames) names
             else if (names.length > 1)
-              names.filter(_.startsWith("--")).headOption match {
-                case Some(value) => value :: Nil
-                case _ => names
-              }
+              names
+                .filter(_.startsWith("--"))
+                .headOption
+                .map(_ :: Nil)
+                .getOrElse(names)
             else names
           val nameInfo = Span.text(namesToShow.mkString(", "))
           if (config.showAllNames && names.length > 1)
