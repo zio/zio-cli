@@ -11,11 +11,15 @@ You can construct directly a `CliConfig`:
 ```scala mdoc:silent
 final case class CliConfig(
   caseSensitive: Boolean,
-  autoCorrectLimit: Int
+  autoCorrectLimit: Int,
+  finalCheckBuiltIn: Boolean = true,
+  showAllNames: Boolean = true,
+  showTypes: Boolean = true
 )
 ```
 
-There are two parameters controlled by `CliConfig`: case sensitivity and autocorrection behaviour.
+`CliConfig` allows to control case sensitivity, autocorrection behaviour, command processing and
+help appearance.
 ### Case sensitivity
 It is controlled by field `caseSensitive`. If it is `true`, then a `CliApp` will determine as distinct uppercase and lowercase versions of a letter in a command. On the other hand, `caseSensitive = false` implies that the `CliApp` will treat uppercase and lowercase letters as the same. In the Git example, we would have:
 
@@ -45,6 +49,23 @@ Expected to find --branch option.
 ```
 
 
+## Command processing
+`finalCheckBuiltIn` controls whether after an invalid command is entered by the user, there is a final check searching for a flag like `--help`, `-h` or `--wizard`. In this case, the corresponding Help or Wizard Mode of the parent command is triggered. Note that this can only trigger the parent command predefined option because the entered command is not valid, so it is an "emergency" check.
+
+## Help appearance
+`showAllNames` controls whether all the names of an option are shown in the usage synopsis of a command:
+```
+command (-o, --option text)      # showAllNames = true
+```
+`showTypes` controls whether the type of the option is shown in the usage synopsis of a command.
+```
+command (-o, --option text)      # showAllNames = true,  showTypes = true
+command --option text            # showAllNames = false, showTypes = true
+command (-o, --option )          # showAllNames = true,  showTypes = false
+command --option                 # showAllNames = false, showTypes = false
+```
+
+
 ## Default configuration
 
 The default configuration is given by
@@ -54,6 +75,8 @@ object CliConfig {
 }
 ```
 This means that a `CliApp` that does not specify any `CliConfig` and uses `CliConfig.default` will:
-- ignore if the letters of a command are written in uppercase or lowercase and
-- correct automatically up to two mistakes when writing the name of an option in a command of `CliApp`.
+- ignore if the letters of a command are written in uppercase or lowercase,
+- correct automatically up to two mistakes when writing the name of an option in a command of `CliApp`,
+- trigger Help or Wizard Mode if the corresponding option is found after an invalid command was entered and
+- show full usage synopsis of commands.
 
