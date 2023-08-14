@@ -64,7 +64,8 @@ object CliApp {
 
             val header = p(text(self.name) + text(self.version) + text(" -- ") + self.summary)
 
-            val synopsisHelpDoc = h1("usage") + synopsis.enumerate
+            val synopsisHelpDoc = h1("usage") + synopsis
+              .enumerate(config)
               .map(span => text("$ ") + span)
               .map(HelpDoc.p)
               .foldRight(HelpDoc.empty)(_ + _)

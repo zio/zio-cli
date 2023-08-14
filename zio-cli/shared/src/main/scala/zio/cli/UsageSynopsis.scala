@@ -5,7 +5,7 @@ import zio.cli.HelpDoc._
 sealed trait UsageSynopsis { self =>
   final def +(that: UsageSynopsis): UsageSynopsis = UsageSynopsis.Sequence(self, that)
 
-  final def enumerate: List[Span] = {
+  final def enumerate(config: CliConfig): List[Span] = {
     import UsageSynopsis._
 
     def simplify(g: UsageSynopsis): UsageSynopsis =
@@ -35,9 +35,23 @@ sealed trait UsageSynopsis { self =>
     def render(g: UsageSynopsis): List[Span] =
       g match {
         case Named(names, acceptedValues) =>
-          val mainSpan =
-            Span.text(names.mkString(", ")) + acceptedValues.fold(Span.empty)(c => Span.space + Span.text(c))
-          if (names.length > 1) Span.text("(") + mainSpan + Span.text(")") :: Nil else mainSpan :: Nil
+          val typeInfo =
+            if (config.showTypes) acceptedValues.fold(Span.empty)(c => Span.space + Span.text(c))
+            else Span.empty
+          val namesToShow =
+            if (config.showAllNames) names
+            else if (names.length > 1)
+              names
+                .filter(_.startsWith("--"))
+                .headOption
+                .map(_ :: Nil)
+                .getOrElse(names)
+            else names
+          val nameInfo = Span.text(namesToShow.mkString(", "))
+          if (config.showAllNames && names.length > 1)
+            Span.text("(") + nameInfo + typeInfo + Span.text(")") :: Nil
+          else
+            nameInfo + typeInfo :: Nil
 
         case Optional(value) =>
           render(value).map(synopsis => Span.text("[") + synopsis + Span.text("]"))
@@ -82,7 +96,7 @@ sealed trait UsageSynopsis { self =>
     render(simplify(self))
   }
 
-  final def helpDoc: HelpDoc = enumerate match {
+  final def helpDoc: HelpDoc = enumerate(CliConfig.default) match {
     case Nil         => HelpDoc.empty
     case head :: Nil => p(head)
     case list        => list.map(p).foldRight(HelpDoc.empty)(_ + _)
