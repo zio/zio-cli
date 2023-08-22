@@ -17,12 +17,6 @@ object CliAssertionSpec extends ZIOSpecDefault {
     suite("Access methods")(
       test("accessCommand") {
 
-        /*def equal(command: Command[_]): Boolean = {
-            println(command.toString())
-            println(Command("command", Options.text("opt1")).toString())
-            command.toString() == Command("command", Options.text("opt1")).toString()
-        }*/
-
         val assertion: Assertion[Command[_]] =
           Assertion(TestArrow.fromFunction { case command =>
             command.names.contains("command")

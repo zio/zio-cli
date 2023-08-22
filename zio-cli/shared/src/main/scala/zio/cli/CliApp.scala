@@ -21,12 +21,6 @@ sealed trait CliApp[-R, +E, +A] { self =>
 
   def config(newConfig: CliConfig): CliApp[R, E, A]
 
-  /* def clean: CliApp[Any, Nothing, Unit] =
-    self match {
-      case CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
-        CliApp.CliAppImpl(name, version, summary, command, _ => ZIO.unit, footer, config, figFont)
-    }*/
-
   final def map[B](f: A => B): CliApp[R, E, B] =
     self match {
       case CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
