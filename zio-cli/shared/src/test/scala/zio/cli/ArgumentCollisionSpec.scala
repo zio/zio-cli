@@ -2,6 +2,7 @@ package zio.cli
 
 import zio._
 import zio.test._
+import java.io.IOException
 
 object ArgumentCollisionSpec extends ZIOSpecDefault {
   def spec = suite("ArgumentCollisionSpec")(
@@ -9,7 +10,7 @@ object ArgumentCollisionSpec extends ZIOSpecDefault {
       val a = Options.text("a").map(identity)
       val b = Options.text("b").map(identity)
 
-      val argumentCollisionApp: CliApp[Any, Nothing, String] =
+      val argumentCollisionApp: CliApp[Any, IOException, Unit] =
         CliApp.make(
           "test",
           "0.1.0",
