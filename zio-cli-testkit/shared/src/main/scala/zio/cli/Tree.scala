@@ -10,7 +10,7 @@ final case class Tree[A](
   atoms: List[Gen[Any, A]],
   mappers: List[Tree.Mapper[A, Any]],
   operators: List[((A, A) => A)],
-  depth: Int,
+  depth: Int
 ) {
 
   def gen: Gen[Any, A] = for {
@@ -24,7 +24,7 @@ final case class Tree[A](
     if (depth <= 0)
       anyAtom
     else {
-      val genMappers   = mappers.map { case Tree.Mapper(f, anyB) =>
+      val genMappers = mappers.map { case Tree.Mapper(f, anyB) =>
         anyTree(depth - 1).zip(anyB).map { case (a, b) =>
           f(a, b)
         }
@@ -34,7 +34,7 @@ final case class Tree[A](
           f(a, b)
         }
       }
-      val gens         = genMappers ++ genOperators
+      val gens = genMappers ++ genOperators
       Gen.oneOf(gens: _*)
     }
 }

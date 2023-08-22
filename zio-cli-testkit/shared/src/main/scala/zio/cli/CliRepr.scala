@@ -1,8 +1,7 @@
 package zio.cli.testkit
 
 /**
- * `CliRepr(a, repr)` represents a value `a` constructed using the cli package and
- * the correct representation `repr`. 
+ * `CliRepr(a, repr)` represents a value `a` constructed using the cli package and the correct representation `repr`.
  */
 
 final case class CliRepr[+A, +R](value: A, repr: R) {

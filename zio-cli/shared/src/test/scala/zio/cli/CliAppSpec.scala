@@ -20,7 +20,7 @@ object CliAppSpec extends ZIOSpecDefault {
 
     val exampleCmd: Command[Subcommand] = Command("example").subcommands(makeCmd)
 
-    def app(behavior: Task[Unit] = ZIO.unit) = CliApp.make(
+    def app(behavior: Task[Unit] = ZIO.unit): CliApp[Any, Throwable, Unit] = CliApp.make(
       name = "Grumpy",
       version = "0.0.1",
       summary = HelpDoc.Span.text("this is some doc"),

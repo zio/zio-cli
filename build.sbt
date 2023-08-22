@@ -43,7 +43,9 @@ lazy val root = project
     examplesJVM,
     examplesJS,
     docs,
-    sbtZioCli
+    sbtZioCli,
+    testkitJVM,
+    testkitJS
   )
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
@@ -125,9 +127,9 @@ lazy val testkit = crossProject(JSPlatform, JVMPlatform)
   .settings(skip / publish := true)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-test"     % zioVersion,
-      "dev.zio" %% "zio-test-sbt"     % zioVersion,
-      "dev.zio" %% "zio-test-magnolia"     % zioVersion
+      "dev.zio" %% "zio-test"          % zioVersion,
+      "dev.zio" %% "zio-test-sbt"      % zioVersion,
+      "dev.zio" %% "zio-test-magnolia" % zioVersion
     )
   )
   .dependsOn(zioCli)

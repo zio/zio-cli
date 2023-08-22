@@ -21,7 +21,7 @@ sealed trait CliApp[-R, +E, +A] { self =>
 
   def config(newConfig: CliConfig): CliApp[R, E, A]
 
- /* def clean: CliApp[Any, Nothing, Unit] =
+  /* def clean: CliApp[Any, Nothing, Unit] =
     self match {
       case CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
         CliApp.CliAppImpl(name, version, summary, command, _ => ZIO.unit, footer, config, figFont)
@@ -89,7 +89,7 @@ object CliApp {
             // TODO add rendering of built-in options such as help
             printLine(
               (fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300)
-              ).map(_ => None).mapError(CliError.IO(_))
+            ).map(_ => None).mapError(CliError.IO(_))
 
           case ShowCompletionScript(path, shellType) =>
             printLine(
@@ -114,8 +114,9 @@ object CliApp {
             val explanation = p(s"Wizard mode assist you in constructing commands for $name$version")
 
             (for {
-              parameters <- Wizard(command, config, fancyName + header + explanation).execute.mapError(CliError.BuiltIn(_))
-              output     <- run(parameters)
+              parameters <-
+                Wizard(command, config, fancyName + header + explanation).execute.mapError(CliError.BuiltIn(_))
+              output <- run(parameters)
             } yield output).catchSome { case CliError.BuiltIn(_) =>
               ZIO.succeed(None)
             }
@@ -138,10 +139,10 @@ object CliApp {
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {
-            case CommandDirective.UserDefined(_, value) => 
+            case CommandDirective.UserDefined(_, value) =>
               self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
             case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case err@CliError.Parsing(e) =>
+              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
                 printDocs(e.error) *> ZIO.fail(err)
               }
           }
@@ -150,11 +151,11 @@ object CliApp {
 
     override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =
       CliAppImpl[R1, E1, Model, B](
-        name, 
-        version, 
+        name,
+        version,
         summary,
         command,
-        {app: ZIO[R, E, A] => app.flatMap(f)} compose execute,
+        { (app: ZIO[R, E, A]) => app.flatMap(f) } compose execute,
         footer,
         config,
         figFont
