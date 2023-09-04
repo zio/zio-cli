@@ -8,7 +8,7 @@ addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          %
 addSbtPlugin("org.portable-scala"                % "sbt-scalajs-crossproject"  % "1.3.2")
 addSbtPlugin("org.scala-js"                      % "sbt-scalajs"               % "1.13.2")
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"                  % "2.3.2")
-addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              % "2.5.0")
+addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              % "2.5.2")
 addSbtPlugin("org.scoverage"                     % "sbt-scoverage"             % "1.6.1")
 addSbtPlugin("pl.project13.scala"                % "sbt-jmh"                   % "0.4.5")
 addSbtPlugin("org.scalameta"                     % "sbt-native-image"          % "0.3.2")
