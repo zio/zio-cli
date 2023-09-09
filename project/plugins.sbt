@@ -9,7 +9,7 @@ addSbtPlugin("org.portable-scala"                % "sbt-scalajs-crossproject"  %
 addSbtPlugin("org.scala-js"                      % "sbt-scalajs"               % "1.13.2")
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"                  % "2.3.2")
 addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              % "2.5.2")
-addSbtPlugin("org.scoverage"                     % "sbt-scoverage"             % "1.6.1")
+addSbtPlugin("org.scoverage"                     % "sbt-scoverage"             % "2.0.9")
 addSbtPlugin("pl.project13.scala"                % "sbt-jmh"                   % "0.4.5")
 addSbtPlugin("org.scalameta"                     % "sbt-native-image"          % "0.3.2")
 addSbtPlugin("dev.zio"                           % "zio-sbt-website"           % "0.3.6")
