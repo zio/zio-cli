@@ -97,8 +97,8 @@ object CliApp {
 
       // Read the contents of the files at the given file paths
       val options: List[String] = filePaths.flatMap { filePath =>
-        val source = Source.fromFile(filePath)
-        source.getLines.toList
+        val source = scala.io.Source.fromFile(filePath)
+        source.getLines().toList
       }
 
       /**
@@ -113,14 +113,19 @@ object CliApp {
        *   List of merged options.
        */
       def mergeOptionsBasedOnPriority(options: List[String]): List[String] = {
-        // Create a map from the list, using option name as key and its value as value
-        val mergedOptions = options.foldLeft(Map.empty[String, String]) { (acc, option) =>
-          val Array(key, value) = option.split("=")
-          acc + (key -> value)
+        val mergedOptions = options.flatMap { opt =>
+          opt.split('=') match {
+            case Array(key)        => Some(key -> None)
+            case Array(key, value) => Some(key -> value)
+            case _ =>
+              None // handles the case when there isn't exactly one '=' in the string
+          }
+        }.toMap.toList.map {
+          case (key, None)  => key
+          case (key, value) => s"$key=$value"
         }
 
-        // Convert the map back to a list
-        mergedOptions.map { case (key, value) => s"$key=$value" }.toList
+        mergedOptions
       }
 
       // Merge the read options
