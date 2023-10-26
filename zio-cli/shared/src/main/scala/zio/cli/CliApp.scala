@@ -101,17 +101,9 @@ object CliApp {
         source.getLines().toList
       }
 
-      /**
-       * Merges a list of options, removing any duplicate keys.
-       *
-       * If there are options with the same keys but different values, it will use the value from the last option in the
-       * list.
-       *
-       * @param options
-       *   List of options in the format `--key=value`.
-       * @return
-       *   List of merged options.
-       */
+      //  Merges a list of options, removing any duplicate keys.
+      //  If there are options with the same keys but different values, it will use the value from the last option in the
+      //  list.
       def mergeOptionsBasedOnPriority(options: List[String]): List[String] = {
         val mergedOptions = options.flatMap { opt =>
           opt.split('=') match {
