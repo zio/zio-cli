@@ -8,6 +8,7 @@ import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.HelpDoc.{h1, p}
 import zio.cli.completion.{Completion, CompletionScript}
 import zio.cli.figlet.FigFont
+import java.nio.file.{Files, Paths}
 
 import scala.annotation.tailrec
 
@@ -56,6 +57,78 @@ object CliApp {
     def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
+    def checkAndGetOptionsFilePaths(topLevelCommand: String): List[String] = {
+      val filename = s".$topLevelCommand"
+
+      val cwd        = java.lang.System.getProperty("user.dir")
+      val homeDirOpt = java.lang.System.getProperty("user.home")
+
+      def parentPaths(path: String): List[String] = {
+        val parts = path.split(java.io.File.separatorChar).filterNot(_.isEmpty)
+
+        (0 to parts.length)
+          .map(i =>
+            s"${java.io.File.separatorChar}${parts
+                .take(i)
+                .mkString(java.io.File.separator)}"
+          )
+          .toList
+      }
+
+      val paths        = parentPaths(cwd)
+      val pathsToCheck = homeDirOpt :: paths
+
+      val existingFiles = pathsToCheck.filter { path =>
+        val filePath = Paths.get(path, filename)
+        Files.exists(filePath)
+      }
+
+      // Print out the paths with existing files
+      existingFiles.foreach(println)
+
+      return existingFiles
+    }
+
+    def loadOptionsFromFile(
+      topLevelCommand: String
+    ): List[String] = {
+      // Get a list of file paths based on the top-level command
+      val filePaths = checkAndGetOptionsFilePaths(topLevelCommand)
+
+      // Read the contents of the files at the given file paths
+      val options: List[String] = filePaths.flatMap { filePath =>
+        val source = Source.fromFile(filePath)
+        source.getLines.toList
+      }
+
+      /**
+       * Merges a list of options, removing any duplicate keys.
+       *
+       * If there are options with the same keys but different values, it will use the value from the last option in the
+       * list.
+       *
+       * @param options
+       *   List of options in the format `--key=value`.
+       * @return
+       *   List of merged options.
+       */
+      def mergeOptionsBasedOnPriority(options: List[String]): List[String] = {
+        // Create a map from the list, using option name as key and its value as value
+        val mergedOptions = options.foldLeft(Map.empty[String, String]) { (acc, option) =>
+          val Array(key, value) = option.split("=")
+          acc + (key -> value)
+        }
+
+        // Convert the map back to a list
+        mergedOptions.map { case (key, value) => s"$key=$value" }.toList
+      }
+
+      // Merge the read options
+      val merged = mergeOptionsBasedOnPriority(options)
+
+      // Return the merged options
+      return merged
+    }
     def run(args: List[String]): ZIO[R, Any, Any] = {
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, Any, Any] =
         builtInOption match {
@@ -115,8 +188,9 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
+      val arg_from_config_files = loadOptionsFromFile(self.name)
       self.command
-        .parse(prefix(self.command) ++ args, self.config)
+        .parse(prefix(self.command) ++ arg_from_config_files ++ args, self.config)
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(e),
           {
