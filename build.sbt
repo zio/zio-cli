@@ -43,7 +43,9 @@ lazy val root = project
     examplesJVM,
     examplesJS,
     docs,
-    sbtZioCli
+    sbtZioCli,
+    testkitJVM,
+    testkitJS
   )
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
@@ -116,5 +118,26 @@ lazy val sbtZioCli = project
     addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.3.2")
   )
   .enablePlugins(SbtPlugin)
+
+lazy val testkit = crossProject(JSPlatform, JVMPlatform)
+  .in(file("zio-cli-testkit"))
+  .settings(stdSettings("zio-cli-testkit"))
+  .settings(buildInfoSettings("zio.cli.testkit"))
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(skip / publish := true)
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio-test"          % zioVersion,
+      "dev.zio" %% "zio-test-sbt"      % zioVersion,
+      "dev.zio" %% "zio-test-magnolia" % zioVersion
+    )
+  )
+  .dependsOn(zioCli)
+
+lazy val testkitJVM = testkit.jvm
+  .settings(dottySettings)
+
+lazy val testkitJS = testkit.js
+  .settings(scalaJSUseMainModuleInitializer := true)
 
 Global / onChangedBuildSource := ReloadOnSourceChanges

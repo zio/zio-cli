@@ -15,19 +15,29 @@ import scala.annotation.tailrec
  * A `CliApp[R, E]` is a complete description of a command-line application, which requires environment `R`, and may
  * fail with a value of type `E`.
  */
-sealed trait CliApp[-R, +E, +Model] {
-  def run(args: List[String]): ZIO[R, Any, Any]
+sealed trait CliApp[-R, +E, +A] { self =>
 
-  def config(newConfig: CliConfig): CliApp[R, E, Model]
+  def run(args: List[String]): ZIO[R, CliError[E], Option[A]]
 
-  def footer(newFooter: HelpDoc): CliApp[R, E, Model]
+  def config(newConfig: CliConfig): CliApp[R, E, A]
 
-  def summary(s: HelpDoc.Span): CliApp[R, E, Model]
+  final def map[B](f: A => B): CliApp[R, E, B] =
+    self match {
+      case CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
+        CliApp.CliAppImpl(name, version, summary, command, execute.andThen(_.map(f)), footer, config, figFont)
+    }
+
+  def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B]
+
+  def footer(newFooter: HelpDoc): CliApp[R, E, A]
+
+  def summary(s: HelpDoc.Span): CliApp[R, E, A]
+
 }
 
 object CliApp {
 
-  def make[R, E, Model](
+  def make[R, E, Model, A](
     name: String,
     version: String,
     summary: HelpDoc.Span,
@@ -35,29 +45,29 @@ object CliApp {
     footer: HelpDoc = HelpDoc.Empty,
     config: CliConfig = CliConfig.default,
     figFont: FigFont = FigFont.Default
-  )(execute: Model => ZIO[R, E, Any]): CliApp[R, E, Model] =
+  )(execute: Model => ZIO[R, E, A]): CliApp[R, E, A] =
     CliAppImpl(name, version, summary, command, execute, footer, config, figFont)
 
-  private case class CliAppImpl[-R, +E, Model](
+  private[cli] case class CliAppImpl[-R, +E, Model, +A](
     name: String,
     version: String,
     summary: HelpDoc.Span,
     command: Command[Model],
-    execute: Model => ZIO[R, E, Any],
+    execute: Model => ZIO[R, E, A],
     footer: HelpDoc = HelpDoc.Empty,
     config: CliConfig = CliConfig.default,
     figFont: FigFont = FigFont.Default
-  ) extends CliApp[R, E, Model] { self =>
-    def config(newConfig: CliConfig): CliApp[R, E, Model] = copy(config = newConfig)
+  ) extends CliApp[R, E, A] { self =>
+    def config(newConfig: CliConfig): CliApp[R, E, A] = copy(config = newConfig)
 
-    def footer(newFooter: HelpDoc): CliApp[R, E, Model] =
+    def footer(newFooter: HelpDoc): CliApp[R, E, A] =
       copy(footer = self.footer + newFooter)
 
     def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
-    def run(args: List[String]): ZIO[R, Any, Any] = {
-      def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, Any, Any] =
+    def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
+      def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
         builtInOption match {
           case ShowHelp(synopsis, helpDoc) =>
             val fancyName = p(code(self.figFont.render(self.name)))
@@ -71,12 +81,14 @@ object CliApp {
               .foldRight(HelpDoc.empty)(_ + _)
 
             // TODO add rendering of built-in options such as help
-            printLine((fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300))
+            printLine(
+              (fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300)
+            ).map(_ => None).mapError(CliError.IO(_))
 
           case ShowCompletionScript(path, shellType) =>
             printLine(
               CompletionScript(path, if (self.command.names.nonEmpty) self.command.names else Set(self.name), shellType)
-            )
+            ).map(_ => None).mapError(CliError.IO(_))
           case ShowCompletions(index, _) =>
             envs.flatMap { envMap =>
               val compWords = envMap.collect {
@@ -89,17 +101,18 @@ object CliApp {
                 .flatMap { completions =>
                   ZIO.foreachDiscard(completions)(word => printLine(word))
                 }
-            }
+            }.map(_ => None).mapError(CliError.BuiltIn(_))
           case ShowWizard(command) => {
             val fancyName   = p(code(self.figFont.render(self.name)))
             val header      = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
             val explanation = p(s"Wizard mode assist you in constructing commands for $name$version")
 
             (for {
-              parameters <- Wizard(command, config, fancyName + header + explanation).execute
-              _          <- run(parameters)
-            } yield ()).catchSome { case Wizard.QuitException() =>
-              ZIO.unit
+              parameters <-
+                Wizard(command, config, fancyName + header + explanation).execute.mapError(CliError.BuiltIn(_))
+              output <- run(parameters)
+            } yield output).catchSome { case CliError.BuiltIn(_) =>
+              ZIO.succeed(None)
             }
           }
 
@@ -118,18 +131,31 @@ object CliApp {
       self.command
         .parse(prefix(self.command) ++ args, self.config)
         .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(e),
+          e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {
-            case CommandDirective.UserDefined(_, value) => self.execute(value)
+            case CommandDirective.UserDefined(_, value) =>
+              self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
             case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case e: ValidationError =>
-                printDocs(e.error) *> ZIO.fail(e)
+              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
+                printDocs(e.error) *> ZIO.fail(err)
               }
           }
         )
     }
 
-    def summary(s: HelpDoc.Span): CliApp[R, E, Model] =
+    override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =
+      CliAppImpl[R1, E1, Model, B](
+        name,
+        version,
+        summary,
+        command,
+        { (app: ZIO[R, E, A]) => app.flatMap(f) } compose execute,
+        footer,
+        config,
+        figFont
+      )
+
+    override def summary(s: HelpDoc.Span): CliApp[R, E, A] =
       copy(summary = self.summary + s)
   }
 }
