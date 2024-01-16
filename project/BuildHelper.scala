@@ -212,38 +212,6 @@ object BuildHelper {
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
 
-  def macroExpansionSettings = Seq(
-    scalacOptions ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 13)) => Seq("-Ymacro-annotations")
-        case _             => Seq.empty
-      }
-    },
-    libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, x)) if x <= 12 =>
-          Seq(compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)))
-        case _ => Seq.empty
-      }
-    }
-  )
-
-  def macroDefinitionSettings = Seq(
-    scalacOptions += "-language:experimental.macros",
-    libraryDependencies ++= {
-      if (scalaVersion.value == Scala3) Seq()
-      else
-        Seq(
-          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
-          "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
-        )
-    }
-  )
-
-  def testJsSettings = Seq(
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.0.0-RC5" % Test
-  )
-
   implicit class ModuleHelper(p: Project) {
     def module: Project = p.in(file(p.id)).settings(stdSettings(p.id))
   }
