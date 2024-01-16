@@ -103,12 +103,12 @@ lazy val docs = project
     libraryDependencies ++= Seq("dev.zio" %% "zio" % zioVersion),
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm),
     projectName                                := "ZIO CLI",
-    mainModuleName                             := (zioCliJVM / moduleName).value,
+    mainModuleName                             := (zioCli.jvm / moduleName).value,
     projectStage                               := ProjectStage.Experimental,
     docsPublishBranch                          := "master",
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM)
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm)
   )
-  .dependsOn(zioCliJVM)
+  .dependsOn(zioCli.jvm)
   .enablePlugins(WebsitePlugin)
 
 lazy val sbtZioCli = project
