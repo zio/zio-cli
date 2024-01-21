@@ -7,3 +7,9 @@ private[cli] trait PathPlatformSpecific {
   type JPath = Path
   
 }
+
+private[cli] object PathPlatformSpecific {
+
+  type JPath = Path
+  
+}
