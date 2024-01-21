@@ -1,8 +1,8 @@
 package zio.cli.completion
 import zio.cli.ShellType
-import java.nio.file.{Path => JPath}
+import zio.cli.PathPlatformSpecific
 
-object CompletionScript {
+object CompletionScript extends PathPlatformSpecific {
   def apply(pathToExecutable: JPath, programNames: Set[String], shellType: ShellType): String = shellType match {
     case ShellType.Bash   => bash(pathToExecutable, programNames)
     case ShellType.ZShell => ???

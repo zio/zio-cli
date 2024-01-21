@@ -5,7 +5,6 @@ import zio.cli.HelpDoc.p
 import zio.{IO, ZIO, Zippable}
 import zio.cli.oauth2._
 
-import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
   LocalDate => JLocalDate,
@@ -814,18 +813,6 @@ object Options extends OptionsPlatformSpecific {
    */
   def enumeration[A](name: String)(cases: (String, A)*): Options[A] =
     Single(name, Vector.empty, PrimType.Enumeration(cases: _*))
-
-  /**
-   * Creates a parameter expecting path to the file.
-   */
-  def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
-    Single(name, Vector.empty, PrimType.Path(PathType.File, exists))
-
-  /**
-   * Creates a parameter expecting path to the directory.
-   */
-  def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
-    Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists))
 
   /**
    * Creates a parameter expecting an arbitrary text.

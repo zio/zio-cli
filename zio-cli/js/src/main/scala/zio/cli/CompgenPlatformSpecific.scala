@@ -8,7 +8,7 @@ import scala.annotation.nowarn
  * `Compgen` simplifies the process of calling Bash's built-in `compgen` command.
  */
 
-trait CompgenPlatformSpecific {
+private[cli] trait CompgenPlatformSpecific {
   def live: Compgen                         = create(None)
   def test(workingDirectory: File): Compgen = create(Some(workingDirectory))
 

@@ -395,7 +395,7 @@ object CompletionSpec extends ZIOSpecDefault {
                 )
             )
           )
-        ),
+        ) @@ TestAspect.jvmOnly,
         suite("PrimType.ZoneId")(
           test("'US/' prefix provided")(
             assertZIO(
@@ -423,7 +423,7 @@ object CompletionSpec extends ZIOSpecDefault {
                 )
               )
             )
-          )
+          ) @@ TestAspect.jvmOnly
         )
       ),
       suite("Command with no Options, multiple Args")(
@@ -464,7 +464,7 @@ object CompletionSpec extends ZIOSpecDefault {
                 )
               )
             )
-          ),
+          ) @@ TestAspect.jvmOnly,
           test("Completing ['foo', 'baz', 'US/'] at position 1 should complete with 'baz' and 'bazinga'")(
             assertZIO(
               Completion.complete(
@@ -804,7 +804,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     )(equalTo(List("foo.txt ", "fooDir/")))
                 )
             )
-          )
+          ) @@ TestAspect.jvmOnly
         ),
         suite("WC")(
           test("Complete the option names")(
@@ -842,7 +842,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     )(equalTo(List("foo.txt ", "fooDir/")))
                 )
             )
-          ),
+          ) @@ TestAspect.jvmOnly,
           test("Complete the second file name")(
             ZIO.scoped[CompletionSpec.Environment](
               Files
@@ -867,7 +867,7 @@ object CompletionSpec extends ZIOSpecDefault {
                     )(equalTo(List("foo.txt ", "fooDir/")))
                 )
             )
-          )
+          ) @@ TestAspect.jvmOnly
         )
       )
     )
