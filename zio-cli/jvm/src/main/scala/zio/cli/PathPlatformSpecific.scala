@@ -11,5 +11,5 @@ private[cli] trait PathPlatformSpecific {
 private[cli] object PathPlatformSpecific {
 
   type JPath = Path
-  
+
 }

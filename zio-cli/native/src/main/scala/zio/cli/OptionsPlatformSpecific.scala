@@ -3,9 +3,9 @@ package cli
 
 import java.nio.file.{Path => JPath}
 
-private[cli] trait OptionsPlatformSpecific { self: Options.type => 
-    
-    /**
+private[cli] trait OptionsPlatformSpecific { self: Options.type =>
+
+  /**
    * Creates a parameter expecting path to the file.
    */
   def file(name: String, exists: Exists = Exists.Either): Options[JPath] =

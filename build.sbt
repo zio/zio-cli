@@ -66,7 +66,7 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
     )
   )
   .jvmSettings(
-    libraryDependencies += "dev.zio" %% "zio-process"  % "0.7.1",
+    libraryDependencies += "dev.zio" %% "zio-process" % "0.7.1"
   )
   .nativeSettings(Test / fork := false)
   .nativeSettings(
@@ -123,7 +123,7 @@ lazy val sbtZioCli = project
   )
   .enablePlugins(SbtPlugin)
 
-  lazy val testkit = crossProject(JSPlatform, JVMPlatform, NativePlatform)
+lazy val testkit = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .in(file("zio-cli-testkit"))
   .settings(stdSettings("zio-cli-testkit"))
   .settings(buildInfoSettings("zio.cli.testkit"))

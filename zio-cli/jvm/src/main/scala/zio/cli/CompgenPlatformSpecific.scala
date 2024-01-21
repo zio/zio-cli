@@ -15,7 +15,7 @@ trait CompgenPlatformSpecific {
   private def create(workingDirectory: Option[File]): Compgen = new Compgen {
 
     type CommandError = zio.process.CommandError
-    
+
     def completeFileNames(word: String): ZIO[Any, CommandError, List[String]] =
       /*
        * For file names, we want the cursor to skip forward to the next argument

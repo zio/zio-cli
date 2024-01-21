@@ -16,7 +16,7 @@ trait CompgenPlatformSpecific {
   private def create(workingDirectory: Option[File]): Compgen = new Compgen {
 
     type CommandError = Nothing
-    
+
     def completeFileNames(word: String): ZIO[Any, CommandError, List[String]] = ZIO.succeed(Nil)
 
     def completeDirectoryNames(word: String): ZIO[Any, CommandError, List[String]] = ZIO.succeed(Nil)

@@ -1,12 +1,11 @@
 package zio.cli
 
-import java.nio.file.{ Path => JPath }
-
+import java.nio.file.{Path => JPath}
 
 /**
  * A `Args` represents arguments that can be passed to a command-line application.
  */
-private[cli] trait ArgsPlatformSpecific { 
+private[cli] trait ArgsPlatformSpecific {
 
   import zio.cli.Args._
 
@@ -68,7 +67,7 @@ private[cli] trait ArgsPlatformSpecific {
    */
   val directory: Args[JPath] = directory(Exists.Either)
 
-    /**
+  /**
    * Creates a path argument with a custom argument name
    *
    * @param name
