@@ -7,7 +7,6 @@ private[cli] trait FileSystemPlatformSpecific extends PathPlatformSpecific {
 
   val live: FileSystem = new FileSystem {
 
-    type JPath = String
     override def parsePath(path: String): IO[String, JPath] =
       ZIO.fail("FileSystem is not available in ScalaJS")
 

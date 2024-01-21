@@ -1,6 +1,6 @@
 package zio.cli
 
-import java.nio.file.{Path => JPath, Paths => JPaths}
+import java.nio.file.{Paths => JPaths}
 import java.time._
 
 import zio.cli.files.FileSystem
