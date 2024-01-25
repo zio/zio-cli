@@ -4,7 +4,6 @@ import zio._
 import zio.cli.HelpDoc.Span.text
 import zio.cli.files.FileSystem
 
-import java.nio.file.{Path => JPath}
 import java.time.{
   Instant => JInstant,
   LocalDate => JLocalDate,
@@ -42,7 +41,7 @@ sealed trait PrimType[+A] { self =>
   def validate(value: Option[String], conf: CliConfig): IO[String, A]
 }
 
-object PrimType {
+object PrimType extends PathPlatformSpecific {
 
   /**
    * Type representing file system path.

@@ -27,4 +27,16 @@ private[cli] trait OptionsPlatformSpecific { self: Options.type =>
     OAuth2Options(provider, scope, auxiliaryOptions)
   }
 
+  /**
+   * Creates a parameter expecting path to the file.
+   */
+  def file(name: String, exists: Exists = Exists.Either): Options[JPath] =
+    Single(name, Vector.empty, PrimType.Path(PathType.File, exists))
+
+  /**
+   * Creates a parameter expecting path to the directory.
+   */
+  def directory(name: String, exists: Exists = Exists.Either): Options[JPath] =
+    Single(name, Vector.empty, PrimType.Path(PathType.Directory, exists))
+
 }

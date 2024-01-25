@@ -73,12 +73,11 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           check-latest: true
+      - name: Install libuv
+        if: matrix.platform == 'Native'
+        run: sudo apt-get update && sudo apt-get install -y libuv1-dev
       - name: Run tests
-        if: ${{ !startsWith(matrix.scala, '3.') }}
-        run: sbt "++${{ matrix.scala }} test"
-      - name: Run dotty tests
-        if: ${{ startsWith(matrix.scala, '3.') && matrix.platform == 'JVM' }}
-        run: sbt "++${{ matrix.scala }} test"
+        run: sbt ++${{ matrix.scala }} zioCli${{ matrix.platform }}/test
 
   publish:
     runs-on: ubuntu-20.04

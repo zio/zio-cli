@@ -38,46 +38,48 @@ lazy val root = project
     crossScalaVersions := Nil
   )
   .aggregate(
-    zioCliJVM,
-    zioCliJS,
-    examplesJVM,
-    examplesJS,
+    zioCli.jvm,
+    zioCli.js,
+    zioCli.native,
+    examples.jvm,
+    examples.js,
+    examples.native,
     docs,
     sbtZioCli,
-    testkitJVM,
-    testkitJS
+    testkit.jvm,
+    testkit.js,
+    testkit.native
   )
 
-lazy val zioCli = crossProject(JSPlatform, JVMPlatform)
+lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .in(file("zio-cli"))
   .settings(stdSettings("zio-cli"))
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.cli"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-json"     % "0.6.2",
-      "dev.zio" %% "zio-process"  % "0.7.1",
-      "dev.zio" %% "zio-streams"  % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+      "dev.zio" %%% "zio"          % zioVersion,
+      "dev.zio" %%% "zio-json"     % "0.6.2",
+      "dev.zio" %%% "zio-streams"  % zioVersion,
+      "dev.zio" %%% "zio-test"     % zioVersion % Test,
+      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
     )
   )
+  .jvmSettings(
+    libraryDependencies += "dev.zio" %% "zio-process" % "0.7.1"
+  )
+  .nativeSettings(Test / fork := false)
+  .nativeSettings(
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.5.0" % Test
+  )
+  .jsSettings(
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.5.0" % Test
+  )
+  .jvmSettings(dottySettings)
+  .jsSettings(scalaJSUseMainModuleInitializer := true)
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
-lazy val zioCliJVM = zioCli.jvm
-  .settings(dottySettings)
-
-lazy val zioCliJS = zioCli.js
-  .settings(scalaJSUseMainModuleInitializer := true)
-
-lazy val examplesJVM = examples.jvm
-  .settings(dottySettings)
-
-lazy val examplesJS = examples.js
-  .settings(scalaJSUseMainModuleInitializer := true)
-
-lazy val examples = crossProject(JSPlatform, JVMPlatform)
+lazy val examples = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .in(file("examples"))
   .settings(stdSettings("examples"))
   .settings(crossProjectSettings)
@@ -88,6 +90,8 @@ lazy val examples = crossProject(JSPlatform, JVMPlatform)
       "dev.zio" %% "zio-streams" % zioVersion
     )
   )
+  .jvmSettings(dottySettings)
+  .jsSettings(scalaJSUseMainModuleInitializer := true)
   .dependsOn(zioCli)
 
 lazy val docs = project
@@ -99,12 +103,12 @@ lazy val docs = project
     libraryDependencies ++= Seq("dev.zio" %% "zio" % zioVersion),
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm),
     projectName                                := "ZIO CLI",
-    mainModuleName                             := (zioCliJVM / moduleName).value,
+    mainModuleName                             := (zioCli.jvm / moduleName).value,
     projectStage                               := ProjectStage.Experimental,
     docsPublishBranch                          := "master",
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCliJVM)
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm)
   )
-  .dependsOn(zioCliJVM)
+  .dependsOn(zioCli.jvm)
   .enablePlugins(WebsitePlugin)
 
 lazy val sbtZioCli = project
@@ -119,7 +123,7 @@ lazy val sbtZioCli = project
   )
   .enablePlugins(SbtPlugin)
 
-lazy val testkit = crossProject(JSPlatform, JVMPlatform)
+lazy val testkit = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .in(file("zio-cli-testkit"))
   .settings(stdSettings("zio-cli-testkit"))
   .settings(buildInfoSettings("zio.cli.testkit"))
@@ -132,12 +136,14 @@ lazy val testkit = crossProject(JSPlatform, JVMPlatform)
       "dev.zio" %% "zio-test-magnolia" % zioVersion
     )
   )
+  .nativeSettings(Test / fork := false)
+  .nativeSettings(
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.5.0" % Test
+  )
+  .jsSettings(
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.5.0" % Test
+  )
+  .jvmSettings(dottySettings)
+  .jsSettings(scalaJSUseMainModuleInitializer := true)
   .dependsOn(zioCli)
-
-lazy val testkitJVM = testkit.jvm
-  .settings(dottySettings)
-
-lazy val testkitJS = testkit.js
-  .settings(scalaJSUseMainModuleInitializer := true)
-
 Global / onChangedBuildSource := ReloadOnSourceChanges

@@ -1,10 +1,9 @@
 package zio.cli.files
 
-import zio.{IO, UIO, ZIO}
+import zio.{IO, UIO}
+import zio.cli.PathPlatformSpecific
 
-import java.nio.file.{Files => JFiles, Path => JPath, Paths => JPaths}
-
-trait FileSystem {
+trait FileSystem extends PathPlatformSpecific {
 
   def parsePath(path: String): IO[String, JPath]
 
@@ -16,20 +15,4 @@ trait FileSystem {
 
 }
 
-object FileSystem {
-
-  val live: FileSystem = new FileSystem {
-    override def parsePath(path: String): IO[String, JPath] =
-      ZIO.attempt(JPaths.get(path)) orElseFail s"'$path' is not a recognized path."
-
-    override def exists(path: JPath): UIO[Boolean] =
-      ZIO.attempt(JFiles.exists(path)) orElse ZIO.succeed(false)
-
-    override def isDirectory(path: JPath): UIO[Boolean] =
-      ZIO.attempt(JFiles.isDirectory(path)) orElse ZIO.succeed(false)
-
-    override def isRegularFile(path: JPath): UIO[Boolean] =
-      ZIO.attempt(JFiles.isRegularFile(path)) orElse ZIO.succeed(false)
-  }
-
-}
+object FileSystem extends FileSystemPlatformSpecific {}

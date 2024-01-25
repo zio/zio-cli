@@ -7,17 +7,15 @@ import java.io.File
 /**
  * `Compgen` simplifies the process of calling Bash's built-in `compgen` command.
  */
-trait Compgen {
-  def completeFileNames(word: String): ZIO[Any, CommandError, List[String]]
 
-  def completeDirectoryNames(word: String): ZIO[Any, CommandError, List[String]]
-}
-
-object Compgen {
+trait CompgenPlatformSpecific {
   def live: Compgen                         = create(None)
   def test(workingDirectory: File): Compgen = create(Some(workingDirectory))
 
   private def create(workingDirectory: Option[File]): Compgen = new Compgen {
+
+    type CommandError = zio.process.CommandError
+
     def completeFileNames(word: String): ZIO[Any, CommandError, List[String]] =
       /*
        * For file names, we want the cursor to skip forward to the next argument
