@@ -303,6 +303,13 @@ object CommandSpec extends ZIOSpecDefault {
 
       val params8 = List("command", "-af", "asdgf", "--wizard")
 
+      val commandWithSubcommand = Command("test", Options.text("param")).subcommands(
+        Command("a")
+          .subcommands(
+            Command("b")
+          )
+      )
+
       Vector(
         test("trigger built-in options that are alone")(
           assertZIO(command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
@@ -319,7 +326,23 @@ object CommandSpec extends ZIOSpecDefault {
         ),
         test("triggering wizard not alone")(
           assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("wizard"))
-        )
+        ),
+        test("trigger child command's help if parent command is correct") {
+
+          def extractHelp(d: CommandDirective[String]): Option[(String, String)] = d match {
+            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, doc)) =>
+              Some((synopsis.helpDoc.toPlaintext(), doc.toPlaintext()))
+            case _ => None
+          }
+
+          for {
+            help1 <- commandWithSubcommand
+                       .parse(List("test", "--param", "text", "a", "--help"), CliConfig.default)
+                       .map(extractHelp)
+            help2 <- commandWithSubcommand.parse(List("test", "a", "--help"), CliConfig.default).map(extractHelp)
+
+          } yield assertTrue(help1 == help2)
+        }
       )
     },
     test("cmd opts -- args") {

@@ -293,13 +293,9 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
-      val helpDirectiveForChild = {
-        val safeTail = args match {
-          case Nil       => Nil
-          case _ :: tail => tail
-        }
+      val helpDirectiveForChild =
         child
-          .parse(safeTail, conf)
+          .parse(args.tail, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
               val parentName = names.headOption.getOrElse("")
@@ -310,22 +306,16 @@ object Command {
                 )
               }
           }
-      }
 
       val helpDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(synopsis, helpDoc)))
 
-      val wizardDirectiveForChild = {
-        val safeTail = args match {
-          case Nil       => Nil
-          case _ :: tail => tail
-        }
+      val wizardDirectiveForChild =
         child
-          .parse(safeTail, conf)
+          .parse(args.tail, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
           }
-      }
 
       val wizardDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowWizard(self)))
@@ -355,7 +345,15 @@ object Command {
                     )
                   case other: ValidationError => other
                 },
-                _.map((a, _))
+                _.map((a, _)).mapBuiltIn {
+                  case BuiltInOption.ShowHelp(synopsis, helpDoc) =>
+                    val parentName = names.headOption.getOrElse("")
+                    BuiltInOption.ShowHelp(
+                      UsageSynopsis.Named(List(parentName), None) + synopsis,
+                      helpDoc
+                    )
+                  case builtIn => builtIn
+                }
               )
           case _ =>
             helpDirectiveForParent
