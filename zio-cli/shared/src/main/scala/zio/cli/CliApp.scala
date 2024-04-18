@@ -10,6 +10,8 @@ import zio.cli.completion.{Completion, CompletionScript}
 import zio.cli.figlet.FigFont
 
 import scala.annotation.tailrec
+import zio.nio.file.{Files, Path}
+import java.io.IOException
 
 /**
  * A `CliApp[R, E]` is a complete description of a command-line application, which requires environment `R`, and may
@@ -65,6 +67,59 @@ object CliApp {
 
     def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
+
+    def checkAndGetOptionsFilePaths(topLevelCommand: String): Task[List[String]] = {
+      val filename   = s".$topLevelCommand"
+      val cwd        = java.lang.System.getProperty("user.dir")
+      val homeDirOpt = java.lang.System.getProperty("user.home")
+
+      def parentPaths(path: String): List[String] = {
+        val parts = path.split(java.io.File.separatorChar).filterNot(_.isEmpty)
+        (0 to parts.length)
+          .map(i => s"${java.io.File.separatorChar}${parts.take(i).mkString(java.io.File.separator)}")
+          .toList
+      }
+
+      val paths        = parentPaths(cwd)
+      val pathsToCheck = homeDirOpt :: paths
+
+      // Use ZIO to filter the paths
+      ZIO
+        .foreach(pathsToCheck) { path =>
+          Files.exists(Path(path, filename))
+        }
+        .map(_.zip(pathsToCheck).collect { case (exists, path) if exists => path })
+    }
+
+    //  Merges a list of options, removing any duplicate keys.
+    //  If there are options with the same keys but different values, it will use the value from the last option in the
+    //  list.
+    def mergeOptionsBasedOnPriority(options: List[String]): List[String] = {
+      val mergedOptions = options.flatMap { opt =>
+        opt.split('=') match {
+          case Array(key)        => Some(key -> None)
+          case Array(key, value) => Some(key -> value)
+          case _ =>
+            None // handles the case when there isn't exactly one '=' in the string
+        }
+      }.toMap.toList.map {
+        case (key, None)  => key
+        case (key, value) => s"$key=$value"
+      }
+
+      mergedOptions
+    }
+
+    def loadOptionsFromFile(topLevelCommand: String): ZIO[Any, IOException, List[String]] =
+      checkAndGetOptionsFilePaths(topLevelCommand).flatMap { filePaths =>
+        ZIO.foreach(filePaths) { filePath =>
+          readFileAsString(Path(filePath, s".$topLevelCommand"))
+        }
+      }.map(_.flatten).refineToOrDie[IOException]
+
+    def readFileAsString(path: zio.nio.file.Path): Task[List[String]] =
+      Files
+        .readAllLines(path)
 
     def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
@@ -128,19 +183,27 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
-        .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
-          {
-            case CommandDirective.UserDefined(_, value) =>
-              self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
-            case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
-                printDocs(e.error) *> ZIO.fail(err)
-              }
-          }
-        )
+      // Reading args from config files and combining with provided args
+      val combinedArgs: ZIO[R, CliError[E], List[String]] =
+        loadOptionsFromFile(self.command.names.head).flatMap { configArgs =>
+          ZIO.succeed(configArgs ++ args)
+        }.mapError(e => CliError.IO(e)) // Convert any IO errors into CliError.IO
+
+      combinedArgs.flatMap { allArgs =>
+        self.command
+          .parse(prefix(self.command) ++ allArgs, self.config)
+          .foldZIO(
+            e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
+            {
+              case CommandDirective.UserDefined(_, value) =>
+                self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
+              case CommandDirective.BuiltIn(x) =>
+                executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
+                  printDocs(e.error) *> ZIO.fail(err)
+                }
+            }
+          )
+      }
     }
 
     override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =
