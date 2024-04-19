@@ -72,6 +72,8 @@ object CliApp {
     ZIO
       .foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
       .map(_.zip(pathsToCheck).collect { case (exists, path) if exists => path })
+      .map(_.distinct) // Remove them duplicates
+
   }
 
   //  Merges a list of options, removing any duplicate keys.
