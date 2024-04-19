@@ -22,7 +22,7 @@ inThisBuild(
     scmInfo := Some(
       ScmInfo(url("https://github.com/zio/zio-cli/"), "scm:git:git@github.com:zio/zio-cli.git")
     ),
-    dependencyOverrides += "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0" 
+    dependencyOverrides += "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0"
   )
 )
 
@@ -59,12 +59,12 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(buildInfoSettings("zio.cli"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"               %%% "zio"          % zioVersion,
-      "dev.zio"               %%% "zio-json"     % "0.6.2",
-      "dev.zio"               %%% "zio-streams"  % zioVersion,
-      "dev.zio"               %%% "zio-test"     % zioVersion % Test,
-      "dev.zio"               %%% "zio-test-sbt" % zioVersion % Test,
-      "dev.zio"                %% "zio-nio"      % "2.0.0"
+      "dev.zio" %%% "zio"          % zioVersion,
+      "dev.zio" %%% "zio-json"     % "0.6.2",
+      "dev.zio" %%% "zio-streams"  % zioVersion,
+      "dev.zio" %%% "zio-test"     % zioVersion % Test,
+      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test,
+      "dev.zio"  %% "zio-nio"      % "2.0.0"
     )
   )
   .jvmSettings(
