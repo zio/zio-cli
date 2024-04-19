@@ -10,8 +10,11 @@ import zio.cli.completion.{Completion, CompletionScript}
 import zio.cli.figlet.FigFont
 
 import scala.annotation.tailrec
-import zio.nio.file.{Files, Path}
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import scala.io.Source
+import java.nio.file.Paths
 
 /**
  * A `CliApp[R, E]` is a complete description of a command-line application, which requires environment `R`, and may
@@ -86,7 +89,7 @@ object CliApp {
       // Use ZIO to filter the paths
       ZIO
         .foreach(pathsToCheck) { path =>
-          Files.exists(Path(path, filename))
+          ZIO.succeed(Files.exists(Path.of(path, filename)))
         }
         .map(_.zip(pathsToCheck).collect { case (exists, path) if exists => path })
     }
@@ -111,15 +114,24 @@ object CliApp {
     }
 
     def loadOptionsFromFile(topLevelCommand: String): ZIO[Any, IOException, List[String]] =
-      checkAndGetOptionsFilePaths(topLevelCommand).flatMap { filePaths =>
-        ZIO.foreach(filePaths) { filePath =>
-          readFileAsString(Path(filePath, s".$topLevelCommand"))
-        }
-      }.map(_.flatten).refineToOrDie[IOException]
-
-    def readFileAsString(path: zio.nio.file.Path): Task[List[String]] =
-      Files
-        .readAllLines(path)
+      for {
+        filePaths <- self
+                       .checkAndGetOptionsFilePaths(topLevelCommand)
+                       .refineToOrDie[IOException]
+        lines <- ZIO
+                   .foreach(filePaths) { filePath =>
+                     ZIO.acquireReleaseWith(
+                       ZIO.attempt(
+                         Source.fromFile(Paths.get(filePath, "." + topLevelCommand).toFile)
+                       )
+                     )(source => ZIO.attempt(source.close()).orDie
+                     ) { source =>
+                       ZIO.attempt(source.getLines().toList.filter(_.trim.nonEmpty))
+                     }
+                   }
+                   .map(_.flatten)
+                   .refineToOrDie[IOException]
+      } yield lines
 
     def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =

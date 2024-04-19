@@ -63,8 +63,7 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
       "dev.zio" %%% "zio-json"     % "0.6.2",
       "dev.zio" %%% "zio-streams"  % zioVersion,
       "dev.zio" %%% "zio-test"     % zioVersion % Test,
-      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test,
-      "dev.zio"  %% "zio-nio"      % "2.0.0"
+      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
     )
   )
   .jvmSettings(
