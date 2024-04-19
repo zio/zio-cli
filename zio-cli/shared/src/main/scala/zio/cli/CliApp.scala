@@ -69,11 +69,10 @@ object CliApp {
     val pathsToCheck = homeDirOpt :: paths
 
     // Use ZIO to filter the paths
-    ZIO
-      .foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
-      .map(_.zip(pathsToCheck).collect { case (exists, path) if exists => path })
-      .map(_.distinct) // Remove them duplicates
-
+    for {
+      do_path_exist   <- ZIO.foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
+      existing_paths = do_path_exist.zip(pathsToCheck).collect { case (exists, path) if exists => path }
+    } yield existing_paths.distinct // Use distinct to remove duplicates at the end
   }
 
   //  Merges a list of options, removing any duplicate keys.
