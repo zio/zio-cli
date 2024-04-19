@@ -124,8 +124,7 @@ object CliApp {
                        ZIO.attempt(
                          Source.fromFile(Paths.get(filePath, "." + topLevelCommand).toFile)
                        )
-                     )(source => ZIO.attempt(source.close()).orDie
-                     ) { source =>
+                     )(source => ZIO.attempt(source.close()).orDie) { source =>
                        ZIO.attempt(source.getLines().toList.filter(_.trim.nonEmpty))
                      }
                    }
