@@ -28,22 +28,6 @@ object ConfigFileArgsPlatformSpecific extends ConfigFilePlatformSpecific {
     } yield existing_paths.distinct // Use distinct to remove duplicates at the end
   }
 
-  def mergeOptionsBasedOnPriority(options: List[String]): List[String] = {
-    val mergedOptions = options.flatMap { opt =>
-      opt.split('=') match {
-        case Array(key)        => Some(key -> None)
-        case Array(key, value) => Some(key -> value)
-        case _ =>
-          None // handles the case when there isn't exactly one '=' in the string
-      }
-    }.toMap.toList.map {
-      case (key, None)  => key
-      case (key, value) => s"$key=$value"
-    }
-
-    mergedOptions
-  }
-
   def loadOptionsFromConfigFiles(topLevelCommand: String): ZIO[Any, IOException, List[String]] =
     for {
       filePaths <- findPathsOfCliConfigFiles(topLevelCommand)

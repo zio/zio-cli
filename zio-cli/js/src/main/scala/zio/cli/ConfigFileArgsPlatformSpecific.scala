@@ -7,10 +7,6 @@ object ConfigFileArgsPlatformSpecific extends ConfigFilePlatformSpecific {
   def findPathsOfCliConfigFiles(topLevelCommand: String): Task[List[String]] =
     ZIO.succeed(Nil) // Always return empty for JS
 
-  def mergeOptionsBasedOnPriority(options: List[String]): List[String] =
-    Nil // Always return empty for JS
-
   def loadOptionsFromConfigFiles(topLevelCommand: String): ZIO[Any, IOException, List[String]] =
     ZIO.succeed(Nil) // Always return empty for JS
 }
-

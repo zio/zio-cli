@@ -133,7 +133,7 @@ object CliApp {
         ConfigFileArgsPlatformSpecific
           .loadOptionsFromConfigFiles(self.command.names.head)
           .flatMap { configArgs =>
-            ZIO.succeed(ConfigFileArgsPlatformSpecific.mergeOptionsBasedOnPriority(configArgs ++ args))
+            ZIO.succeed(configArgs ++ args)
           }
           .mapError(e => CliError.IO(e))
 
