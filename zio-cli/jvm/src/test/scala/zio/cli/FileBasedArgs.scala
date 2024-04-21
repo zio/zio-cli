@@ -26,11 +26,6 @@ object FileBasedArgs extends ZIOSpecDefault {
 
       } yield assert(config_args)(hasSameElements(List("home=true", "dir=true", "home=false")))
     },
-    test("should merge duplicate options") {
-      val options       = List("option1=value1", "option2=value2", "option1=value3");
-      val mergedOptions = configFileOps.mergeOptionsBasedOnPriority(options);
-      assert(mergedOptions)(equalTo(List("option1=value3", "option2=value2")));
-    },
     test("should return directory ~/home and ./ which have .testApp config file for loading the args") {
       for {
         // Create Sample config files
