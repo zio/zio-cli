@@ -10,11 +10,6 @@ import zio.cli.completion.{Completion, CompletionScript}
 import zio.cli.figlet.FigFont
 
 import scala.annotation.tailrec
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Path
-import scala.io.Source
-import java.nio.file.Paths
 
 /**
  * A `CliApp[R, E]` is a complete description of a command-line application, which requires environment `R`, and may
@@ -52,65 +47,6 @@ object CliApp {
     figFont: FigFont = FigFont.Default
   )(execute: Model => ZIO[R, E, A]): CliApp[R, E, A] =
     CliAppImpl(name, version, summary, command, execute, footer, config, figFont)
-
-  def findPathsOfCliConfigFiles(topLevelCommand: String): Task[List[String]] = {
-    val filename   = s".$topLevelCommand"
-    val cwd        = java.lang.System.getProperty("user.dir")
-    val homeDirOpt = java.lang.System.getProperty("user.home")
-
-    def parentPaths(path: String): List[String] = {
-      val parts = path.split(java.io.File.separatorChar).filterNot(_.isEmpty)
-      (0 to parts.length)
-        .map(i => s"${java.io.File.separatorChar}${parts.take(i).mkString(java.io.File.separator)}")
-        .toList
-    }
-
-    val paths        = parentPaths(cwd)
-    val pathsToCheck = homeDirOpt :: paths
-
-    // Use ZIO to filter the paths
-    for {
-      do_path_exist   <- ZIO.foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
-      existing_paths = do_path_exist.zip(pathsToCheck).collect { case (exists, path) if exists => path }
-    } yield existing_paths.distinct // Use distinct to remove duplicates at the end
-  }
-
-  //  Merges a list of options, removing any duplicate keys.
-  //  If there are options with the same keys but different values, it will use the value from the last option in the
-  //  list.
-  def mergeOptionsBasedOnPriority(options: List[String]): List[String] = {
-    val mergedOptions = options.flatMap { opt =>
-      opt.split('=') match {
-        case Array(key)        => Some(key -> None)
-        case Array(key, value) => Some(key -> value)
-        case _ =>
-          None // handles the case when there isn't exactly one '=' in the string
-      }
-    }.toMap.toList.map {
-      case (key, None)  => key
-      case (key, value) => s"$key=$value"
-    }
-
-    mergedOptions
-  }
-
-  def loadOptionsFromConfigFiles(topLevelCommand: String): ZIO[Any, IOException, List[String]] =
-    for {
-      filePaths <- findPathsOfCliConfigFiles(topLevelCommand)
-                     .refineToOrDie[IOException]
-      lines <- ZIO
-                 .foreach(filePaths) { filePath =>
-                   ZIO.acquireReleaseWith(
-                     ZIO.attempt(
-                       Source.fromFile(Paths.get(filePath, "." + topLevelCommand).toFile)
-                     )
-                   )(source => ZIO.attempt(source.close()).orDie) { source =>
-                     ZIO.attempt(source.getLines().toList.filter(_.trim.nonEmpty))
-                   }
-                 }
-                 .map(_.flatten)
-                 .refineToOrDie[IOException]
-    } yield lines
 
   private[cli] case class CliAppImpl[-R, +E, Model, +A](
     name: String,
@@ -194,9 +130,12 @@ object CliApp {
 
       // Reading args from config files and combining with provided args
       val combinedArgs: ZIO[R, CliError[E], List[String]] =
-        loadOptionsFromConfigFiles(self.command.names.head).flatMap { configArgs =>
-          ZIO.succeed(mergeOptionsBasedOnPriority(configArgs ++ args))
-        }.mapError(e => CliError.IO(e))
+        ConfigFileArgsPlatformSpecific
+          .loadOptionsFromConfigFiles(self.command.names.head)
+          .flatMap { configArgs =>
+            ZIO.succeed(ConfigFileArgsPlatformSpecific.mergeOptionsBasedOnPriority(configArgs ++ args))
+          }
+          .mapError(e => CliError.IO(e))
 
       combinedArgs.flatMap { allArgs =>
         self.command
