@@ -23,9 +23,9 @@ object ConfigFileArgsPlatformSpecific extends ConfigFilePlatformSpecific {
 
     // Use ZIO to filter the paths
     for {
-      do_path_exist <- ZIO.foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
-      existing_paths = do_path_exist.zip(pathsToCheck).collect { case (exists, path) if exists => path }
-    } yield existing_paths.distinct // Use distinct to remove duplicates at the end
+      doPathExist  <- ZIO.foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
+      existingPaths = doPathExist.zip(pathsToCheck).collect { case (exists, path) if exists => path }
+    } yield existingPaths.distinct // Use distinct to remove duplicates at the end
   }
 
   def loadOptionsFromConfigFiles(topLevelCommand: String): ZIO[Any, IOException, List[String]] =

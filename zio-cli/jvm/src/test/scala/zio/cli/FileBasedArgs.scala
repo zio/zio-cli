@@ -20,11 +20,11 @@ object FileBasedArgs extends ZIOSpecDefault {
         _       <- createSampleConfigFiles(cwd, homeDir, command)
 
         // Check if the func checkAndGetOptionsFilePaths can
-        config_args <- configFileOps.loadOptionsFromConfigFiles(command)
+        configArgs <- configFileOps.loadOptionsFromConfigFiles(command)
 
         _ <- cleanUpSampleConfigFiles(cwd: Path, homeDir: Path, command)
 
-      } yield assert(config_args)(hasSameElements(List("home=true", "dir=true", "home=false")))
+      } yield assert(configArgs)(hasSameElements(List("home=true", "dir=true", "home=false")))
     },
     test("should return directory ~/home and ./ which have .testApp config file for loading the args") {
       for {
