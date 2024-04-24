@@ -21,8 +21,7 @@ inThisBuild(
     pgpSecretRing := file("/tmp/secret.asc"),
     scmInfo := Some(
       ScmInfo(url("https://github.com/zio/zio-cli/"), "scm:git:git@github.com:zio/zio-cli.git")
-    ),
-    dependencyOverrides += "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0"
+    )
   )
 )
 

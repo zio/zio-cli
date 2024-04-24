@@ -23,7 +23,7 @@ object ConfigFileArgsPlatformSpecific extends ConfigFilePlatformSpecific {
 
     // Use ZIO to filter the paths
     for {
-      doPathExist <- ZIO.foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
+      doPathExist  <- ZIO.foreach(pathsToCheck)(path => ZIO.succeed(Files.exists(Path.of(path, filename))))
       existingPaths = doPathExist.zip(pathsToCheck).collect { case (exists, path) if exists => path }
     } yield existingPaths.distinct // Use distinct to remove duplicates at the end
   }
