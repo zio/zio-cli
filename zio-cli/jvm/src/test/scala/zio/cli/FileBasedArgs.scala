@@ -21,7 +21,7 @@ object FileBasedArgs extends ZIOSpecDefault {
   val configFileOps: ConfigFilePlatformSpecific = ConfigFileArgsPlatformSpecific
 
   def spec = suite("FileBasedArgs")(
-    test("") {
+    test("Full CLI App output test") {
       for {
         // Create Sample config files
         cwd     <- ZIO.succeed(Paths.get(java.lang.System.getProperty("user.dir")))
@@ -81,7 +81,7 @@ object FileBasedArgs extends ZIOSpecDefault {
       Files.write(Paths.get(cwd.toString(), s"$file_name"), java.util.Arrays.asList(content));
       ()
     }.refineToOrDie[IOException]
-  
+
   def cleanupLineCountTestFile(cwd: Path, file_name: String = "sample_file"): IO[IOException, Unit] =
     ZIO.attempt {
       Files.delete(Paths.get(cwd.toString(), s"$file_name"));
@@ -188,7 +188,7 @@ object FileBasedArgs extends ZIOSpecDefault {
     }
   }
 
-  val cliApp = CliApp.make(
+  val cliApp = CliApp.make[Any, Throwable, (WcOptions, ::[Path]), Unit](
     "ZIO Word Count",
     "0.1.2",
     text("counts words in the file"),
