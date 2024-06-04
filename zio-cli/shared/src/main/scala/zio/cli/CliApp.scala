@@ -128,19 +128,30 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
-        .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
-          {
-            case CommandDirective.UserDefined(_, value) =>
-              self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
-            case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
-                printDocs(e.error) *> ZIO.fail(err)
-              }
+      // Reading args from config files and combining with provided args
+      val combinedArgs: ZIO[R, CliError[E], List[String]] =
+        ConfigFileArgsPlatformSpecific
+          .loadOptionsFromConfigFiles(self.command.names.head)
+          .flatMap { configArgs =>
+            ZIO.succeed(configArgs ++ args)
           }
-        )
+          .mapError(e => CliError.IO(e))
+
+      combinedArgs.flatMap { allArgs =>
+        self.command
+          .parse(prefix(self.command) ++ allArgs, self.config)
+          .foldZIO(
+            e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
+            {
+              case CommandDirective.UserDefined(_, value) =>
+                self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
+              case CommandDirective.BuiltIn(x) =>
+                executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
+                  printDocs(e.error) *> ZIO.fail(err)
+                }
+            }
+          )
+      }
     }
 
     override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =
