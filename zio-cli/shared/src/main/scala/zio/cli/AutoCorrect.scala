@@ -17,7 +17,7 @@ private[cli] object AutoCorrect {
         for {
           row <- 1 to rowCount
           col <- 1 to columnCount
-        } yield {
+        } {
           val cost = if (normalFirst.charAt(row - 1) == normalSecond.charAt(col - 1)) 0 else 1
 
           matrix(row)(col) = Seq(

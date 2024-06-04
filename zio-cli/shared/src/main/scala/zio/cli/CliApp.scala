@@ -63,7 +63,7 @@ object CliApp {
     def footer(newFooter: HelpDoc): CliApp[R, E, A] =
       copy(footer = self.footer + newFooter)
 
-    def printDocs(helpDoc: HelpDoc): UIO[Unit] =
+    private def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
     def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
@@ -83,12 +83,11 @@ object CliApp {
             // TODO add rendering of built-in options such as help
             printLine(
               (fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300)
-            ).map(_ => None).mapError(CliError.IO(_))
-
+            ).mapBoth(CliError.IO(_), _ => None)
           case ShowCompletionScript(path, shellType) =>
             printLine(
               CompletionScript(path, if (self.command.names.nonEmpty) self.command.names else Set(self.name), shellType)
-            ).map(_ => None).mapError(CliError.IO(_))
+            ).mapBoth(CliError.IO(_), _ => None)
           case ShowCompletions(index, _) =>
             envs.flatMap { envMap =>
               val compWords = envMap.collect {
@@ -101,8 +100,8 @@ object CliApp {
                 .flatMap { completions =>
                   ZIO.foreachDiscard(completions)(word => printLine(word))
                 }
-            }.map(_ => None).mapError(CliError.BuiltIn(_))
-          case ShowWizard(command) => {
+            }.mapBoth(CliError.BuiltIn(_), _ => None)
+          case ShowWizard(command) =>
             val fancyName   = p(code(self.figFont.render(self.name)))
             val header      = p(text("WIZARD of ") + text(self.name) + text(self.version) + text(" -- ") + self.summary)
             val explanation = p(s"Wizard mode assist you in constructing commands for $name$version")
@@ -112,10 +111,8 @@ object CliApp {
                 Wizard(command, config, fancyName + header + explanation).execute.mapError(CliError.BuiltIn(_))
               output <- run(parameters)
             } yield output).catchSome { case CliError.BuiltIn(_) =>
-              ZIO.succeed(None)
+              ZIO.none
             }
-          }
-
         }
 
       // prepend a first argument in case the CliApp's command is expected to consume it
@@ -134,7 +131,7 @@ object CliApp {
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {
             case CommandDirective.UserDefined(_, value) =>
-              self.execute(value).map(Some(_)).mapError(CliError.Execution(_))
+              self.execute(value).mapBoth(CliError.Execution(_), Some(_))
             case CommandDirective.BuiltIn(x) =>
               executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
                 printDocs(e.error) *> ZIO.fail(err)

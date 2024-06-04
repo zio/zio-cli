@@ -69,7 +69,7 @@ object Command {
   }
 
   final case class Single[OptionsType, ArgsType](
-    val name: String,
+    name: String,
     help: HelpDoc,
     options: Options[OptionsType],
     args: Args[ArgsType]
@@ -130,43 +130,38 @@ object Command {
           ZIO.fail(
             ValidationError(
               ValidationErrorType.CommandMismatch,
-              HelpDoc.p(s"Missing command name: ${name}")
+              HelpDoc.p(s"Missing command name: $name")
             )
           )
 
       val parseUserDefinedArgs =
         for {
-          commandOptionsAndArgs <- args match {
-                                     case head :: tail =>
-                                       ZIO
-                                         .succeed(tail)
-                                         .when(conf.normalizeCase(head) == conf.normalizeCase(name))
-                                         .some
-                                         .orElseFail {
-                                           ValidationError(
-                                             ValidationErrorType.CommandMismatch,
-                                             HelpDoc.p(s"Missing command name: ${name}")
-                                           )
-                                         }
-                                     case Nil =>
-                                       ZIO.fail {
-                                         ValidationError(
-                                           ValidationErrorType.CommandMismatch,
-                                           HelpDoc.p(s"Missing command name: ${name}")
-                                         )
-                                       }
-                                   }
-          tuple1                              = splitForcedArgs(commandOptionsAndArgs)
-          (optionsAndArgs, forcedCommandArgs) = tuple1
-          tuple2                             <- Options.validate(options, optionsAndArgs, conf)
-          (error, commandArgs, optionsType)   = tuple2
-          tuple <- self.args.validate(commandArgs ++ forcedCommandArgs, conf).catchSome { case e =>
-                     error match {
-                       case None      => ZIO.fail(e)
-                       case Some(err) => ZIO.fail(err)
-                     }
-                   }
-          (argsLeftover, argsType) = tuple
+          commandOptionsAndArgs <-
+            args match {
+              case head :: tail =>
+                ZIO
+                  .succeed(tail)
+                  .when(conf.normalizeCase(head) == conf.normalizeCase(name))
+                  .someOrFail {
+                    ValidationError(
+                      ValidationErrorType.CommandMismatch,
+                      HelpDoc.p(s"Missing command name: $name")
+                    )
+                  }
+              case Nil =>
+                ZIO.fail {
+                  ValidationError(
+                    ValidationErrorType.CommandMismatch,
+                    HelpDoc.p(s"Missing command name: $name")
+                  )
+                }
+            }
+          tuple1                                   = splitForcedArgs(commandOptionsAndArgs)
+          (optionsAndArgs, forcedCommandArgs)      = tuple1
+          tuple2                                  <- Options.validate(options, optionsAndArgs, conf)
+          (optionsError, commandArgs, optionsType) = tuple2
+          tuple                                   <- self.args.validate(commandArgs ++ forcedCommandArgs, conf).mapError(optionsError.getOrElse(_))
+          (argsLeftover, argsType)                 = tuple
         } yield CommandDirective.userDefined(argsLeftover, (optionsType, argsType))
 
       val exhaustiveSearch: IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] =
@@ -176,7 +171,7 @@ object Command {
           ZIO.fail(
             ValidationError(
               ValidationErrorType.CommandMismatch,
-              HelpDoc.p(s"Missing command name: ${name}")
+              HelpDoc.p(s"Missing command name: $name")
             )
           )
 
