@@ -8,6 +8,13 @@ sealed trait CommandDirective[+A] { self =>
       case x @ BuiltIn(_)               => x
       case UserDefined(leftover, value) => CommandDirective.UserDefined(leftover, f(value))
     }
+
+  def mapBuiltIn(f: BuiltInOption => BuiltInOption): CommandDirective[A] =
+    self match {
+      case BuiltIn(x)            => BuiltIn(f(x))
+      case x @ UserDefined(_, _) => x
+    }
+
 }
 object CommandDirective {
   final case class BuiltIn(option: BuiltInOption)                   extends CommandDirective[Nothing]
