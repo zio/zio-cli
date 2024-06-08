@@ -23,7 +23,7 @@ object OptionsSpec extends ZIOSpecDefault {
   val options: Options[(String, String, BigInt)] = f ++ l ++ a
 
   def validation[A](options: Options[A], args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
-    Options.validate(options, args, conf).flatMap { case (err, rest, a) =>
+    Options.validate(options, args, Nil, conf).flatMap { case (err, rest, a) =>
       err match {
         case None    => ZIO.succeed((rest, a))
         case Some(e) => ZIO.fail(e)

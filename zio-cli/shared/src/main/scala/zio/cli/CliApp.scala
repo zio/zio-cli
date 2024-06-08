@@ -17,7 +17,10 @@ import scala.annotation.tailrec
  */
 sealed trait CliApp[-R, +E, +A] { self =>
 
-  def run(args: List[String]): ZIO[R, CliError[E], Option[A]]
+  def runWithFileArgs(args: List[String]): ZIO[R & FileArgs, CliError[E], Option[A]]
+
+  final def run(args: List[String]): ZIO[R, CliError[E], Option[A]] =
+    runWithFileArgs(args).provideSomeLayer[R](ZLayer.succeed(FileArgs.default))
 
   def config(newConfig: CliConfig): CliApp[R, E, A]
 
@@ -66,7 +69,7 @@ object CliApp {
     private def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
-    def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
+    override def runWithFileArgs(args: List[String]): ZIO[R & FileArgs, CliError[E], Option[A]] = {
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
         builtInOption match {
           case ShowHelp(synopsis, helpDoc) =>
@@ -125,8 +128,11 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
+      (self.command.names.headOption match {
+        case Some(name) => ZIO.serviceWithZIO[FileArgs](_.getArgsFromFile(name))
+        case None       => ZIO.succeed(Nil)
+      })
+        .flatMap(self.command.parse(prefix(self.command) ++ args, _, self.config))
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {

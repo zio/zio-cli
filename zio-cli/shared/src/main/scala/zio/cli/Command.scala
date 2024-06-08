@@ -46,7 +46,11 @@ sealed trait Command[+A] extends Parameter with Named { self =>
 
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = map(Left(_)) | that.map(Right(_))
 
-  def parse(args: List[String], conf: CliConfig): IO[ValidationError, CommandDirective[A]]
+  def parse(
+    args: List[String],
+    fromFiles: List[FileArgs.ArgsFromFile],
+    conf: CliConfig
+  ): IO[ValidationError, CommandDirective[A]]
 
   final def subcommands[B](that: Command[B])(implicit ev: Reducable[A, B]): Command[ev.Out] =
     Command.Subcommands(self, that).map(ev.fromTuple2(_))
@@ -110,6 +114,7 @@ object Command {
 
     def parse(
       args: List[String],
+      fromFiles: List[FileArgs.ArgsFromFile],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(OptionsType, ArgsType)]] = {
       def parseBuiltInArgs(args: List[String]): IO[ValidationError, CommandDirective[Nothing]] =
@@ -117,7 +122,7 @@ object Command {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
           Options
-            .validate(options, args.tail, conf)
+            .validate(options, args.tail, Nil, conf)
             .map(_._3)
             .someOrFail(
               ValidationError(
@@ -158,7 +163,7 @@ object Command {
             }
           tuple1                                   = splitForcedArgs(commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs)      = tuple1
-          tuple2                                  <- Options.validate(options, optionsAndArgs, conf)
+          tuple2                                  <- Options.validate(options, optionsAndArgs, fromFiles, conf)
           (optionsError, commandArgs, optionsType) = tuple2
           tuple                                   <- self.args.validate(commandArgs ++ forcedCommandArgs, conf).mapError(optionsError.getOrElse(_))
           (argsLeftover, argsType)                 = tuple
@@ -202,9 +207,10 @@ object Command {
 
     def parse(
       args: List[String],
+      fromFiles: List[FileArgs.ArgsFromFile],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[B]] =
-      command.parse(args, conf).map(_.map(f))
+      command.parse(args, fromFiles, conf).map(_.map(f))
 
     lazy val synopsis: UsageSynopsis = command.synopsis
 
@@ -222,9 +228,12 @@ object Command {
 
     def parse(
       args: List[String],
+      fromFiles: List[FileArgs.ArgsFromFile],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[A]] =
-      left.parse(args, conf).catchSome { case ValidationError(CommandMismatch, _) => right.parse(args, conf) }
+      left.parse(args, fromFiles, conf).catchSome { case ValidationError(CommandMismatch, _) =>
+        right.parse(args, fromFiles, conf)
+      }
 
     lazy val synopsis: UsageSynopsis = UsageSynopsis.Mixed
 
@@ -286,6 +295,7 @@ object Command {
 
     def parse(
       args: List[String],
+      fromFiles: List[FileArgs.ArgsFromFile],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
       val helpDirectiveForChild = {
@@ -294,7 +304,7 @@ object Command {
           case _ :: tail => tail
         }
         child
-          .parse(safeTail, conf)
+          .parse(safeTail, fromFiles, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
               val parentName = names.headOption.getOrElse("")
@@ -316,7 +326,7 @@ object Command {
           case _ :: tail => tail
         }
         child
-          .parse(safeTail, conf)
+          .parse(safeTail, fromFiles, conf)
           .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
             case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
           }
@@ -326,7 +336,7 @@ object Command {
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowWizard(self)))
 
       parent
-        .parse(args, conf)
+        .parse(args, fromFiles, conf)
         .flatMap {
           case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(_, _)) =>
             helpDirectiveForChild orElse helpDirectiveForParent
@@ -335,7 +345,7 @@ object Command {
           case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             child
-              .parse(leftover, conf)
+              .parse(leftover, fromFiles, conf)
               .mapBoth(
                 {
                   case ValidationError(CommandMismatch, _) =>
