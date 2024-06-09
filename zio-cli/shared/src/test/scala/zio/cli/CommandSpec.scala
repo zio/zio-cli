@@ -27,11 +27,11 @@ object CommandSpec extends ZIOSpecDefault {
     suite("Toplevel Command Spec")(
       suite("Command with options followed by args")(
         test("Should validate successfully") {
-          assertZIO(Tail.command.parse(List("tail", "-n", "100", "foo.log"), Nil, CliConfig.default))(
+          assertZIO(Tail.command.parse(List("tail", "-n", "100", "foo.log"), CliConfig.default, Nil))(
             equalTo(CommandDirective.UserDefined(List.empty[String], (BigInt(100), "foo.log")))
           ) *>
             assertZIO(
-              Ag.command.parse(List("grep", "--after", "2", "--before", "3", "fooBar"), Nil, CliConfig.default)
+              Ag.command.parse(List("grep", "--after", "2", "--before", "3", "fooBar"), CliConfig.default)
             )(
               equalTo(CommandDirective.UserDefined(List.empty[String], ((BigInt(2), BigInt(3)), "fooBar")))
             )
@@ -39,7 +39,7 @@ object CommandSpec extends ZIOSpecDefault {
         test("Should provide auto correct suggestions for misspelled options") {
           assertZIO(
             Ag.command
-              .parse(List("grep", "--afte", "2", "--before", "3", "fooBar"), Nil, CliConfig.default)
+              .parse(List("grep", "--afte", "2", "--before", "3", "fooBar"), CliConfig.default)
               .either
               .map(_.left.map(_.error))
           )(
@@ -47,7 +47,7 @@ object CommandSpec extends ZIOSpecDefault {
           ) *>
             assertZIO(
               Ag.command
-                .parse(List("grep", "--after", "2", "--efore", "3", "fooBar"), Nil, CliConfig.default)
+                .parse(List("grep", "--after", "2", "--efore", "3", "fooBar"), CliConfig.default)
                 .either
                 .map(_.left.map(_.error))
             )(
@@ -55,7 +55,7 @@ object CommandSpec extends ZIOSpecDefault {
             ) *>
             assertZIO(
               Ag.command
-                .parse(List("grep", "--afte", "2", "--efore", "3", "fooBar"), Nil, CliConfig.default)
+                .parse(List("grep", "--afte", "2", "--efore", "3", "fooBar"), CliConfig.default)
                 .either
                 .map(_.left.map(_.error))
             )(
@@ -69,7 +69,7 @@ object CommandSpec extends ZIOSpecDefault {
         test("Shows an error if an option is missing") {
           assertZIO(
             Ag.command
-              .parse(List("grep", "--a", "2", "--before", "3", "fooBar"), Nil, CliConfig.default)
+              .parse(List("grep", "--a", "2", "--before", "3", "fooBar"), CliConfig.default)
               .either
               .map(_.left.map(_.error))
           )(
@@ -83,7 +83,7 @@ object CommandSpec extends ZIOSpecDefault {
         val orElseCommand =
           Command("remote", Options.Empty, Args.none) | Command("log", Options.Empty, Args.none)
 
-        assertZIO(orElseCommand.parse(List("log"), Nil, CliConfig.default))(
+        assertZIO(orElseCommand.parse(List("log"), CliConfig.default, Nil))(
           equalTo(CommandDirective.UserDefined(Nil, ()))
         )
       }
@@ -92,11 +92,11 @@ object CommandSpec extends ZIOSpecDefault {
       test("Clustered boolean options are equal to un-clustered options") {
         val clustered =
           WC.command
-            .parse(List("wc", "-clw", "filename"), Nil, CliConfig.default)
+            .parse(List("wc", "-clw", "filename"), CliConfig.default)
 
         val unClustered =
           WC.command
-            .parse(List("wc", "-c", "-l", "-w", "filename"), Nil, CliConfig.default)
+            .parse(List("wc", "-c", "-l", "-w", "filename"), CliConfig.default)
 
         val commandDirective = CommandDirective.UserDefined(Nil, ((true, true, true, true), List("filename")))
 
@@ -106,7 +106,7 @@ object CommandSpec extends ZIOSpecDefault {
       test("Not uncluster wrong clusters") {
         val wrongCluster =
           WC.command
-            .parse(List("wc", "-clk"), Nil, CliConfig.default)
+            .parse(List("wc", "-clk"), CliConfig.default)
 
         val commandDirective = CommandDirective.UserDefined(Nil, ((false, false, false, true), List("-clk")))
 
@@ -115,7 +115,7 @@ object CommandSpec extends ZIOSpecDefault {
       test(""""-" unaltered """) {
         val wrongCluster =
           WC.command
-            .parse(List("wc", "-"), Nil, CliConfig.default)
+            .parse(List("wc", "-"), CliConfig.default)
 
         val commandDirective = CommandDirective.UserDefined(Nil, ((false, false, false, true), List("-")))
 
@@ -133,22 +133,22 @@ object CommandSpec extends ZIOSpecDefault {
 
         Vector(
           test("match first sub command without any surplus arguments") {
-            assertZIO(git.parse(List("git", "remote"), Nil, CliConfig.default))(
+            assertZIO(git.parse(List("git", "remote"), CliConfig.default, Nil))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           },
           test("match first sub command with a surplus options") {
-            assertZIO(git.parse(List("git", "remote", "-v"), Nil, CliConfig.default))(
+            assertZIO(git.parse(List("git", "remote", "-v"), CliConfig.default, Nil))(
               equalTo(CommandDirective.UserDefined(List("-v"), ()))
             )
           },
           test("match second sub command without any surplus arguments") {
-            assertZIO(git.parse(List("git", "log"), Nil, CliConfig.default))(
+            assertZIO(git.parse(List("git", "log"), CliConfig.default, Nil))(
               equalTo(CommandDirective.UserDefined(Nil, ()))
             )
           },
           test("test unknown sub command error message") {
-            assertZIO(git.parse(List("git", "abc"), Nil, CliConfig.default).flip.map { e =>
+            assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map { e =>
               e.error
             })(
               equalTo(HelpDoc.p("Invalid subcommand for git. Use one of 'remote', 'log'"))
@@ -169,35 +169,31 @@ object CommandSpec extends ZIOSpecDefault {
 
         Vector(
           test("test sub command with required options and arguments") {
-            assertZIO(git.parse(List("git", "rebase", "-i", "upstream", "branch"), Nil, CliConfig.default))(
+            assertZIO(git.parse(List("git", "rebase", "-i", "upstream", "branch"), CliConfig.default, Nil))(
               equalTo(CommandDirective.UserDefined(Nil, ((true, "drop"), ("upstream", "branch"))))
             )
           },
           test("test sub command with required and optional options and arguments") {
             assertZIO(
-              git.parse(
-                List("git", "rebase", "-i", "--empty", "ask", "upstream", "branch"),
-                Nil,
-                CliConfig.default
-              )
+              git.parse(List("git", "rebase", "-i", "--empty", "ask", "upstream", "branch"), CliConfig.default)
             )(
               equalTo(CommandDirective.UserDefined(Nil, ((true, "ask"), ("upstream", "branch"))))
             )
           },
           test("test unknown sub command") {
-            assertZIO(git.parse(List("git", "abc"), Nil, CliConfig.default).flip.map(_.validationErrorType))(
+            assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map(_.validationErrorType))(
               equalTo(ValidationErrorType.CommandMismatch)
             )
           },
           test("test unknown sub command error message") {
-            assertZIO(git.parse(List("git", "abc"), Nil, CliConfig.default).flip.map { e =>
+            assertZIO(git.parse(List("git", "abc"), CliConfig.default).flip.map { e =>
               e.error
             })(
               equalTo(HelpDoc.p("Invalid subcommand for git. Use 'rebase'"))
             )
           },
           test("test without sub command") {
-            git.parse(List("git"), Nil, CliConfig.default).map { result =>
+            git.parse(List("git"), CliConfig.default).map { result =>
               assertTrue {
                 result match {
                   case CommandDirective.BuiltIn(ShowHelp(_, _)) => true
@@ -218,7 +214,7 @@ object CommandSpec extends ZIOSpecDefault {
           )
 
         test("sub sub command with option and argument")(
-          assertZIO(command.parse(List("command", "sub", "subsub", "-i", "text"), Nil, CliConfig.default))(
+          assertZIO(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default, Nil))(
             equalTo(CommandDirective.UserDefined(Nil, (true, "text")))
           )
         )
@@ -228,7 +224,7 @@ object CommandSpec extends ZIOSpecDefault {
       suite("test adding helpdoc to commands")(
         test("add text helpdoc to Single") {
           val command = Command("tldr").withHelp("this is some help")
-          assertZIO(command.parse(List("tldr"), Nil, CliConfig.default))(
+          assertZIO(command.parse(List("tldr"), CliConfig.default, Nil))(
             equalTo(CommandDirective.UserDefined(Nil, ()))
           )
         },
@@ -311,20 +307,20 @@ object CommandSpec extends ZIOSpecDefault {
 
       Vector(
         test("trigger built-in options that are alone")(
-          assertZIO(command.parse(params1, Nil, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-            assertZIO(command.parse(params2, Nil, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-            assertZIO(command.parse(params3, Nil, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
-            assertZIO(command.parse(params4, Nil, CliConfig.default).map(directiveType _))(equalTo("completions"))
+          assertZIO(command.parse(params1, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params2, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params3, CliConfig.default).map(directiveType _))(equalTo("wizard")) &&
+            assertZIO(command.parse(params4, CliConfig.default).map(directiveType _))(equalTo("completions"))
         ),
         test("not trigger help if matches")(
-          assertZIO(command.parse(params5, Nil, CliConfig.default).map(directiveType _))(equalTo("user"))
+          assertZIO(command.parse(params5, CliConfig.default).map(directiveType _))(equalTo("user"))
         ),
         test("trigger help not alone")(
-          assertZIO(command.parse(params6, Nil, CliConfig.default).map(directiveType _))(equalTo("help")) &&
-            assertZIO(command.parse(params7, Nil, CliConfig.default).map(directiveType _))(equalTo("help"))
+          assertZIO(command.parse(params6, CliConfig.default).map(directiveType _))(equalTo("help")) &&
+            assertZIO(command.parse(params7, CliConfig.default).map(directiveType _))(equalTo("help"))
         ),
         test("triggering wizard not alone")(
-          assertZIO(command.parse(params8, Nil, CliConfig.default).map(directiveType _))(equalTo("wizard"))
+          assertZIO(command.parse(params8, CliConfig.default).map(directiveType _))(equalTo("wizard"))
         )
       )
     },
@@ -333,9 +329,9 @@ object CommandSpec extends ZIOSpecDefault {
         Command("cmd", Options.text("something").optional ++ Options.boolean("verbose").alias("v"), Args.text.*)
 
       for {
-        r1 <- command.parse(List("cmd", "-v", "--something", "abc", "something"), Nil, CliConfig.default)
-        r2 <- command.parse(List("cmd", "-v", "--", "--something", "abc", "something"), Nil, CliConfig.default)
-        r3 <- command.parse(List("cmd", "--", "-v", "--something", "abc", "something"), Nil, CliConfig.default)
+        r1 <- command.parse(List("cmd", "-v", "--something", "abc", "something"), CliConfig.default)
+        r2 <- command.parse(List("cmd", "-v", "--", "--something", "abc", "something"), CliConfig.default)
+        r3 <- command.parse(List("cmd", "--", "-v", "--something", "abc", "something"), CliConfig.default)
       } yield assertTrue(
         r1 == CommandDirective.UserDefined(Nil, ((Some("abc"), true), List("something"))),
         r2 == CommandDirective.UserDefined(Nil, ((None, true), List("--something", "abc", "something"))),

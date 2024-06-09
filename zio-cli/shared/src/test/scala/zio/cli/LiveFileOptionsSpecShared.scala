@@ -6,7 +6,7 @@ import zio.test._
 
 import java.nio.file.{Files, Path}
 
-object LiveFileArgsSpec extends ZIOSpecDefault {
+abstract class LiveFileOptionsSpecShared extends ZIOSpecDefault {
 
   private val createTempDirectory: RIO[Scope, Path] =
     for {
@@ -34,13 +34,13 @@ object LiveFileArgsSpec extends ZIOSpecDefault {
                val writePath  = resolvePath(dir, paths :+ s".$cmd")
                val parentFile = writePath.getParent.toFile
                ZIO.attempt(parentFile.mkdirs()).unlessZIO(ZIO.attempt(parentFile.exists())) *>
-                 ZIO.writeFile(writePath, contents)
+                 ZIO.writeFile(writePath.toString, contents)
              }
 
         // test
-        result <- FileArgs.Live.getArgsFromFile(cmd)
+        result <- FileOptions.Live.getOptionsFromFiles(cmd)
         resolvedExp = exp.toList.map { case (paths, args) =>
-                        FileArgs.ArgsFromFile(resolvePath(dir, paths :+ s".$cmd").toString, args)
+                        FileOptions.OptionsFromFile(resolvePath(dir, paths :+ s".$cmd").toString, args)
                       }
 
       } yield assertTrue(result == resolvedExp)

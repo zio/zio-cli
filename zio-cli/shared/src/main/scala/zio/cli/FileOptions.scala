@@ -3,27 +3,28 @@ package zio.cli
 import zio._
 import java.nio.file.Path
 
-trait FileArgs {
-  def getArgsFromFile(command: String): UIO[List[FileArgs.ArgsFromFile]]
+trait FileOptions {
+  def getOptionsFromFiles(command: String): UIO[List[FileOptions.OptionsFromFile]]
 }
-object FileArgs extends FileArgsPlatformSpecific {
+object FileOptions extends FileOptionsPlatformSpecific {
 
-  final case class ArgsFromFile(path: String, args: List[String])
+  final case class OptionsFromFile(path: String, rawArgs: List[String])
 
-  case object Noop extends FileArgs {
-    override def getArgsFromFile(command: String): UIO[List[ArgsFromFile]] = ZIO.succeed(Nil)
+  case object Noop extends FileOptions {
+    override def getOptionsFromFiles(command: String): UIO[List[OptionsFromFile]] = ZIO.succeed(Nil)
   }
 
-  case object Live extends FileArgs {
+  case object Live extends FileOptions {
 
-    private def optReadPath(path: Path): UIO[Option[FileArgs.ArgsFromFile]] =
+    private def optReadPath(path: Path): UIO[Option[FileOptions.OptionsFromFile]] =
       (for {
+        _         <- ZIO.logDebug(s"Searching for file options in '$path'")
         exists    <- ZIO.attempt(path.toFile.exists())
         pathString = path.toString
         optContents <-
           ZIO
             .readFile(pathString)
-            .map(c => FileArgs.ArgsFromFile(pathString, c.split('\n').map(_.trim).filter(_.nonEmpty).toList))
+            .map(c => FileOptions.OptionsFromFile(pathString, c.split('\n').map(_.trim).filter(_.nonEmpty).toList))
             .when(exists)
       } yield optContents)
         .catchAllCause(ZIO.logErrorCause(s"Error reading options from file '$path', skipping...", _).as(None))
@@ -37,7 +38,7 @@ object FileArgs extends FileArgsPlatformSpecific {
                    }
       } yield path :: parents
 
-    override def getArgsFromFile(command: String): UIO[List[ArgsFromFile]] =
+    override def getOptionsFromFiles(command: String): UIO[List[OptionsFromFile]] =
       (for {
         cwd        <- System.property("user.dir")
         home       <- System.property("user.home")

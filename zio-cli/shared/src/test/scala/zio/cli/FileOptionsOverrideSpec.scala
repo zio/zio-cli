@@ -5,10 +5,10 @@ import zio.internal.stacktracer.SourceLocation
 import zio.test._
 import zio.test.Assertion._
 
-object FileArgsOverrideSpec extends ZIOSpecDefault {
+object FileOptionsOverrideSpec extends ZIOSpecDefault {
 
-  private final case class Const(fileArgs: List[FileArgs.ArgsFromFile]) extends FileArgs {
-    override def getArgsFromFile(command: String): UIO[List[FileArgs.ArgsFromFile]] = ZIO.succeed(fileArgs)
+  private final case class Const(fileArgs: List[FileOptions.OptionsFromFile]) extends FileOptions {
+    override def getOptionsFromFiles(command: String): UIO[List[FileOptions.OptionsFromFile]] = ZIO.succeed(fileArgs)
   }
 
   private final case class Result(
@@ -41,11 +41,11 @@ object FileArgsOverrideSpec extends ZIOSpecDefault {
       cliApp
         .runWithFileArgs(cmdLine.toList)
         .map(assert(_)(isSome(equalTo(exp))))
-        .provideLayer(ZLayer.succeed(Const(fromFiles.toList.map { case (p, a) => FileArgs.ArgsFromFile(p, a) })))
+        .provideLayer(ZLayer.succeed(Const(fromFiles.toList.map { case (p, a) => FileOptions.OptionsFromFile(p, a) })))
     }
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    suite("FileArgsOverrideSpec")(
+    suite("FileOptionsOverrideSpec")(
       suite("option+param together")(
         makeTest("all file args overridden")("--arg-1=arg", "--arg-2=arg", "--arg-3=arg", "--arg-4=arg")(
           "/a/b/c/.cmd" -> List("--arg-1=/a/b/c.cmd"),

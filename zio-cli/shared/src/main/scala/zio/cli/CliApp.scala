@@ -17,10 +17,40 @@ import scala.annotation.tailrec
  */
 sealed trait CliApp[-R, +E, +A] { self =>
 
-  def runWithFileArgs(args: List[String]): ZIO[R & FileArgs, CliError[E], Option[A]]
+  /**
+   * [[CliApp]] will use [[FileOptions]] to look for [[Options]] in the file system (on JVM/Native).
+   *
+   * TODO : Add support for JS
+   *
+   * Example:
+   *   - given:
+   *     - base command: `git`
+   *     - current working directory: `/path/cwd/a/b/c`
+   *     - home directory: `/path/home`
+   *   - then: [[FileOptions]] will look for [[Options]] in the following places:
+   *     - provided command line args
+   *     - `/path/cwd/a/b/c/.git`
+   *     - `/path/cwd/a/b/.git`
+   *     - `/path/cwd/a/.git`
+   *     - `/path/cwd/.git`
+   *     - `/path/.git`
+   *     - `/path/home/.git`
+   */
+  def runWithFileArgs(args: List[String]): ZIO[R & FileOptions, CliError[E], Option[A]]
 
+  /**
+   * Calls [[runWithFileArgs]] with the default [[FileOptions]] for the current platform.
+   */
   final def run(args: List[String]): ZIO[R, CliError[E], Option[A]] =
-    runWithFileArgs(args).provideSomeLayer[R](ZLayer.succeed(FileArgs.default))
+    runWithFileArgs(args).provideSomeLayer[R](ZLayer.succeed(FileOptions.default))
+
+  /**
+   * Calls [[runWithFileArgs]] with the [[FileOptions.Noop]].
+   *
+   * This means no attempt will be made to pull [[Options]] from the file system.
+   */
+  final def runWithoutFileArgs(args: List[String]): ZIO[R, CliError[E], Option[A]] =
+    runWithFileArgs(args).provideSomeLayer[R](ZLayer.succeed(FileOptions.Noop))
 
   def config(newConfig: CliConfig): CliApp[R, E, A]
 
@@ -69,7 +99,7 @@ object CliApp {
     private def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
-    override def runWithFileArgs(args: List[String]): ZIO[R & FileArgs, CliError[E], Option[A]] = {
+    override def runWithFileArgs(args: List[String]): ZIO[R & FileOptions, CliError[E], Option[A]] = {
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
         builtInOption match {
           case ShowHelp(synopsis, helpDoc) =>
@@ -129,10 +159,12 @@ object CliApp {
         }
 
       (self.command.names.headOption match {
-        case Some(name) => ZIO.serviceWithZIO[FileArgs](_.getArgsFromFile(name))
+        case Some(name) => ZIO.serviceWithZIO[FileOptions](_.getOptionsFromFiles(name))
         case None       => ZIO.succeed(Nil)
       })
-        .flatMap(self.command.parse(prefix(self.command) ++ args, _, self.config))
+        .flatMap((fromFiles: List[FileOptions.OptionsFromFile]) =>
+          self.command.parse(prefix(self.command) ++ args, self.config, fromFiles)
+        )
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {

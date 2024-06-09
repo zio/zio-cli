@@ -298,13 +298,13 @@ object Options extends OptionsPlatformSpecific {
     }
 
   private def mergeFileOptions(
-    queue: List[FileArgs.ArgsFromFile],
+    queue: List[FileOptions.OptionsFromFile],
     acc: Predef.Map[String, (String, List[String])],
     options: List[Options[_] with Input],
     conf: CliConfig
   ): IO[ValidationError, Predef.Map[String, (String, List[String])]] =
     queue match {
-      case FileArgs.ArgsFromFile(path, args) :: tail =>
+      case FileOptions.OptionsFromFile(path, args) :: tail =>
         for {
           tuple1 <- matchOptions(args, options, conf)
           newMap <-
@@ -369,8 +369,8 @@ object Options extends OptionsPlatformSpecific {
   def validate[A](
     options: Options[A],
     args: List[String],
-    fromFiles: List[FileArgs.ArgsFromFile],
-    conf: CliConfig
+    conf: CliConfig,
+    fromFiles: List[FileOptions.OptionsFromFile] = Nil
   ): IO[ValidationError, (Option[ValidationError], List[String], A)] =
     for {
       matched                             <- matchOptions(args, options.flatten, conf)

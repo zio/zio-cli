@@ -87,7 +87,7 @@ object CliAssertion {
   )(implicit cliConfig: CliConfig): ZIO[R, Throwable, TestResult] =
     check(pairs) { case CliRepr(params, assertion) =>
       command
-        .parse(params, Nil, cliConfig)
+        .parse(params, cliConfig, Nil)
         .map(Right(_))
         .catchAll { case e: ValidationError =>
           ZIO.succeed(Left(e))
@@ -110,7 +110,7 @@ object CliAssertion {
   )(implicit cliConfig: CliConfig): ZIO[R, Throwable, TestResult] =
     check(pairs) { case CliRepr(params, assertion) =>
       command
-        .parse(params, Nil, cliConfig)
+        .parse(params, cliConfig, Nil)
         .map(TestReturn.convert)
         .map(Right(_))
         .catchSome { case e: ValidationError =>
