@@ -74,6 +74,10 @@ Args.integer(name)
 
 ### Date/Time Args
 The following methods produce `Args` whose type parameter is a Date/Time type of the `java.time` library.
+- Produces `Args[java.time.Duration]`. The input must be a time-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'.
+```scala mdoc:silent
+Args.duration(name)
+```
 - Produces `Args[java.time.Instant]`. The input must be an instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.
 ```scala mdoc:silent
 Args.instant(name)
