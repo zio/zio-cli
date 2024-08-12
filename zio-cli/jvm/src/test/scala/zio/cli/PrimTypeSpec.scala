@@ -182,7 +182,7 @@ object PrimTypeSpec extends ZIOSpecDefault {
   val anyBoolean: Gen[Any, Boolean] =
     Gen.fromIterable(List(true, false))
   val anyDuration = Gen.finiteDuration
-  val anyInstant = Gen.instant.map(_.atZone(ZoneOffset.UTC))
+  val anyInstant  = Gen.instant.map(_.atZone(ZoneOffset.UTC))
   val anyPeriod = for {
     first  <- Gen.localDateTime.map(_.toLocalDate)
     second <- Gen.localDateTime.map(_.toLocalDate)
