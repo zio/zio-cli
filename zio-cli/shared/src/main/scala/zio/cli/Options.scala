@@ -299,7 +299,7 @@ object Options extends OptionsPlatformSpecific {
     }
 
   /**
-   * `Options.validate` parses `args` for `options and returns an `Option[ValidationError]`, the leftover arguments and
+   * `Options.validate` parses `args` for options and returns an `Option[ValidationError]`, the leftover arguments and
    * the constructed value of type `A`. The possible error inside `Option[ValidationError]` would only be triggered if
    * there is an error when parsing the `Args` of a `Command`. This is because `ValidationErrors` are used to control
    * the end of the args corresponding to options.
