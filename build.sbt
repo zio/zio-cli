@@ -107,7 +107,6 @@ lazy val docs = project
     projectName                                := "ZIO CLI",
     mainModuleName                             := (zioCli.jvm / moduleName).value,
     projectStage                               := ProjectStage.Experimental,
-    docsPublishBranch                          := "master",
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm)
   )
   .dependsOn(zioCli.jvm)
