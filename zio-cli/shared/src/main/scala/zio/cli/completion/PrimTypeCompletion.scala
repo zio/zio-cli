@@ -14,6 +14,8 @@ object PrimTypeCompletion {
         ZIO.succeed(Set("true", "false").filter(_.startsWith(prefix))).map(appendSpaces)
       case PrimType.Decimal =>
         ZIO.succeed(Set.empty)
+      case PrimType.Duration =>
+        ZIO.succeed(Set.empty)
       case PrimType.Enumeration(cases @ _*) =>
         ZIO
           .succeed(cases.collect {

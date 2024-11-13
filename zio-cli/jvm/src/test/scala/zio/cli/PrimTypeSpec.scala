@@ -125,6 +125,7 @@ object PrimTypeSpec extends ZIOSpecDefault {
       Gen.bigDecimal(BigDecimal("1.41421356237309504880168"), BigDecimal("50.4")),
       "BigDecimal"
     ),
+    simplePrimTypeSuite(PrimType.Duration, anyDuration, "Duration"),
     simplePrimTypeSuite(PrimType.Integer, anyBigInt, "Integer"),
     simplePrimTypeSuite(PrimType.Instant, Gen.instant, "Instant"),
     simplePrimTypeSuite(PrimType.LocalDateTime, anyLocalDateTime, "LocalDateTime"),
@@ -180,7 +181,8 @@ object PrimTypeSpec extends ZIOSpecDefault {
   val anyBigInt: Gen[Any, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
   val anyBoolean: Gen[Any, Boolean] =
     Gen.fromIterable(List(true, false))
-  val anyInstant = Gen.instant.map(_.atZone(ZoneOffset.UTC))
+  val anyDuration = Gen.finiteDuration
+  val anyInstant  = Gen.instant.map(_.atZone(ZoneOffset.UTC))
   val anyPeriod = for {
     first  <- Gen.localDateTime.map(_.toLocalDate)
     second <- Gen.localDateTime.map(_.toLocalDate)

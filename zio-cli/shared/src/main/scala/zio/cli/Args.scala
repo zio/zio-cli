@@ -4,6 +4,7 @@ import zio._
 import zio.cli.HelpDoc.{Span, p}
 
 import java.time.{
+  Duration => JDuration,
   Instant => JInstant,
   LocalDate => JLocalDate,
   LocalDateTime => JLocalDateTime,
@@ -324,6 +325,23 @@ object Args extends ArgsPlatformSpecific {
    */
   val decimal: Args[BigDecimal] =
     Single(None, PrimType.Decimal)
+
+  /**
+   * Creates a duration argument with a custom argument name
+   *
+   * @param name
+   *   Argument name
+   * @return
+   *   Duration argument
+   */
+  def duration(name: String): Args[JDuration] =
+    Single(Some(name), PrimType.Duration)
+
+  /**
+   * Creates a duration argument with 'duration' as argument name
+   */
+  val duration: Args[JDuration] =
+    Single(None, PrimType.Duration)
 
   /**
    * Creates an integer argument with a custom argument name

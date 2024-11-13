@@ -5,6 +5,7 @@ import zio.cli.HelpDoc.Span.text
 import zio.cli.files.FileSystem
 
 import java.time.{
+  Duration => JDuration,
   Instant => JInstant,
   LocalDate => JLocalDate,
   LocalDateTime => JLocalDateTime,
@@ -203,6 +204,23 @@ object PrimType extends PathPlatformSpecific {
   object Bool {
     lazy val TrueValues: Set[String]  = Set("true", "1", "y", "yes", "on")
     lazy val FalseValues: Set[String] = Set("false", "0", "n", "no", "off")
+  }
+
+  /**
+   * Type representing a time-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'.
+   */
+  case object Duration extends PrimType[JDuration] { self =>
+    lazy val isBool: Boolean = false
+
+    lazy val typeName: String = "duration"
+
+    lazy val choices: Option[String] = None
+
+    def validate(value: Option[String], conf: CliConfig): IO[String, JDuration] =
+      attempt(value, JDuration.parse, self.typeName)
+
+    lazy val helpDoc: HelpDoc.Span =
+      text("A time-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'.")
   }
 
   /**

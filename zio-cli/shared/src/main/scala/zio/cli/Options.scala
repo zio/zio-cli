@@ -6,6 +6,7 @@ import zio.{IO, UIO, ZIO, Zippable}
 import zio.cli.oauth2._
 
 import java.time.{
+  Duration => JDuration,
   Instant => JInstant,
   LocalDate => JLocalDate,
   LocalDateTime => JLocalDateTime,
@@ -810,6 +811,12 @@ object Options extends OptionsPlatformSpecific {
    */
   def decimal(name: String): Options[BigDecimal] =
     Single(name, Vector.empty, PrimType.Decimal)
+
+  /**
+   * Creates a parameter excepting a date-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'.
+   */
+  def duration(name: String): Options[JDuration] =
+    Single(name, Vector.empty, PrimType.Duration)
 
   /**
    * Creates a parameter expecting an integer.
