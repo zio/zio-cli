@@ -178,7 +178,7 @@ object BuildHelper {
       "com.github.liancheng" %% "organize-imports" % "0.5.0",
       "com.github.vovapolu"  %% "scaluzzi"         % "0.1.16"
     ),
-    Test / parallelExecution := false,
+    Test / parallelExecution := scalaVersion.value != Scala3,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
     autoAPIMappings := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
