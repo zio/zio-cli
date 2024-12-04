@@ -77,7 +77,6 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .jsSettings(
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % scalaJavaTimeVersion % Test
   )
-  .jvmSettings(dottySettings)
   .jsSettings(scalaJSUseMainModuleInitializer := true)
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
@@ -92,7 +91,6 @@ lazy val examples = crossProject(JSPlatform, JVMPlatform, NativePlatform)
       "dev.zio" %% "zio-streams" % zioVersion
     )
   )
-  .jvmSettings(dottySettings)
   .jsSettings(scalaJSUseMainModuleInitializer := true)
   .dependsOn(zioCli)
 
@@ -144,7 +142,6 @@ lazy val testkit = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .jsSettings(
     libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % scalaJavaTimeVersion % Test
   )
-  .jvmSettings(dottySettings)
   .jsSettings(scalaJSUseMainModuleInitializer := true)
   .dependsOn(zioCli)
 Global / onChangedBuildSource := ReloadOnSourceChanges
