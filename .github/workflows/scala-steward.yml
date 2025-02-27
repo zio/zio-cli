@@ -25,3 +25,4 @@ jobs:
           github-app-installation-id: ${{ secrets.SCALA_STEWARD_GITHUB_APP_INSTALLATION_ID }}
           github-app-key: ${{ secrets.SCALA_STEWARD_GITHUB_APP_PRIVATE_KEY }}
           github-app-auth-only: true
+
