@@ -12,7 +12,7 @@ addSbtPlugin("org.scala-native"                  % "sbt-scala-native"           
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"                      % "2.3.2")
 addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"                  % "2.5.2")
 addSbtPlugin("org.scoverage"                     % "sbt-scoverage"                 % "2.0.9")
-addSbtPlugin("pl.project13.scala"                % "sbt-jmh"                       % "0.4.6")
+addSbtPlugin("pl.project13.scala"                % "sbt-jmh"                       % "0.4.7")
 addSbtPlugin("org.scalameta"                     % "sbt-native-image"              % "0.3.2")
 addSbtPlugin("dev.zio"                           % "zio-sbt-website"               % "0.4.0-alpha.30")
 
