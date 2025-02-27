@@ -2,9 +2,7 @@ package zio
 package cli
 package oauth2
 
-import com.github.ghik.silencer.silent
-
-@silent("never used")
+@annotation.nowarn("msg=never used")
 private[cli] object OAuth2PlatformSpecific {
   def validate(
     provider: OAuth2Provider,
