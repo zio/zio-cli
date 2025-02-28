@@ -60,9 +60,11 @@ object WcApp extends ZIOCliDefault {
     (opts, paths) => {
       zio.Console.printLine(s"executing wc with args: $opts $paths").! *>
         ZIO
-          .foreachPar[Any, Throwable, Path, WcResult, List](paths)({ path =>
-            def option(bool: Boolean, sink: ZSink[Any, Throwable, Byte, Byte, Long])
-              : ZSink[Any, Throwable, Byte, Byte, Option[Long]] =
+          .foreachPar[Any, Throwable, Path, WcResult, List](paths) { path =>
+            def option(
+              bool: Boolean,
+              sink: ZSink[Any, Throwable, Byte, Byte, Long]
+            ): ZSink[Any, Throwable, Byte, Byte, Option[Long]] =
               if (bool) sink.map(Some(_)) else ZSink.succeed(None)
 
             val byteCount = option(opts.bytes, ZSink.count)
@@ -83,7 +85,7 @@ object WcApp extends ZIOCliDefault {
               .fromFile(path.toFile)
               .run(zippedSinks)
               .map(t => WcResult(path.getFileName.toString, t._1, t._2, t._3, t._4))
-          })
+          }
           .withParallelism(4)
           .orDie
           .flatMap(res => printResult(res))
