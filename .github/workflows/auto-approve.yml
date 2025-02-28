@@ -1,0 +1,17 @@
+name: Auto-approve Bot PRs
+
+on: pull_request_target
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    if: github.actor == 'scala-steward' || github.actor == 'renovate[bot]'
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: '0'
+      - name: Approve PR
+        run: gh pr review --approve ${{ github.event.number }}
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
