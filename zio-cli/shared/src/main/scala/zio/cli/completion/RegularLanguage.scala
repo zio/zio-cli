@@ -69,7 +69,6 @@ sealed trait RegularLanguage extends Product with Serializable {
    *
    *   - Do not append a space to the end of a directory name (e.g., "foo/"). This is because we want the user to be
    *     able to press tab again to gradually complete a lengthy file path.
-   *
    *   - Append a space to the ends of string tokens.
    *
    * You may be asking why we don't try to use the `-o nospace` setting of `compgen` and `complete`. The answer is they
