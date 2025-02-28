@@ -11,7 +11,7 @@ addSbtPlugin("org.portable-scala"                % "sbt-scala-native-crossprojec
 addSbtPlugin("org.scala-native"                  % "sbt-scala-native"              % "0.5.7")
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"                      % "2.3.2")
 addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"                  % "2.5.4")
-addSbtPlugin("org.scoverage"                     % "sbt-scoverage"                 % "2.0.9")
+addSbtPlugin("org.scoverage"                     % "sbt-scoverage"                 % "2.0.12")
 addSbtPlugin("pl.project13.scala"                % "sbt-jmh"                       % "0.4.7")
 addSbtPlugin("org.scalameta"                     % "sbt-native-image"              % "0.3.2")
 addSbtPlugin("dev.zio"                           % "zio-sbt-website"               % "0.4.0-alpha.30")
