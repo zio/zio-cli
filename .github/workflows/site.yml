@@ -18,10 +18,12 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3.3.0
+      uses: actions/checkout@v4
       with:
         fetch-depth: '0'
-    - name: Setup Scala
+    - name: Cache scala dependencies
+      uses: coursier/cache-action@v6
+    - name: Setup Java
       uses: actions/setup-java@v4.7.0
       with:
         distribution: temurin
@@ -37,10 +39,12 @@ jobs:
     if: ${{ ((github.event_name == 'release') && (github.event.action == 'published')) || (github.event_name == 'workflow_dispatch') }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3.3.0
+      uses: actions/checkout@v4
       with:
         fetch-depth: '0'
-    - name: Setup Scala
+    - name: Cache scala dependencies
+      uses: coursier/cache-action@v6
+    - name: Setup Java
       uses: actions/setup-java@v4.7.0
       with:
         distribution: temurin
@@ -61,11 +65,13 @@ jobs:
     if: ${{ (github.event_name == 'push') || ((github.event_name == 'release') && (github.event_name == 'published')) }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3.3.0
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.head_ref }}
         fetch-depth: '0'
-    - name: Setup Scala
+    - name: Cache scala dependencies
+      uses: coursier/cache-action@v6
+    - name: Setup Java
       uses: actions/setup-java@v4.7.0
       with:
         distribution: temurin
