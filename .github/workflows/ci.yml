@@ -23,14 +23,11 @@ jobs:
           fetch-depth: 0
       - name: Cache scala dependencies
         uses: coursier/cache-action@v6
-      - name: Setup Java
-        uses: actions/setup-java@v4.7.1
+      - name: Setup Action
+        uses: coursier/setup-action@v1
         with:
-          distribution: temurin
-          java-version: 17
-          check-latest: true
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
+          jvm: temurin:21
+          apps: sbt
       - name: Lint code
         run: sbt check
 
@@ -44,14 +41,11 @@ jobs:
           fetch-depth: 0
       - name: Cache scala dependencies
         uses: coursier/cache-action@v6
-      - name: Setup Java
-        uses: actions/setup-java@v4.7.1
+      - name: Setup Action
+        uses: coursier/setup-action@v1
         with:
-          distribution: temurin
-          java-version: 17
-          check-latest: true
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
+          jvm: temurin:21
+          apps: sbt
       - name: Check Document Generation
         run: sbt docs/compileDocs
 
@@ -61,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '11', '17' ]
+        java: [ '11', '17', '21' ]
         scala: [ '2.12.20', '2.13.16', '3.3.0' ]
         platform: [ 'JVM', 'JS', 'Native' ]
     steps:
@@ -71,14 +65,11 @@ jobs:
           fetch-depth: 0
       - name: Cache scala dependencies
         uses: coursier/cache-action@v6
-      - name: Setup Java
-        uses: actions/setup-java@v4.7.1
+      - name: Setup Action
+        uses: coursier/setup-action@v1
         with:
-          distribution: temurin
-          java-version: ${{ matrix.java }}
-          check-latest: true
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
+          jvm: temurin:${{ matrix.java }}
+          apps: sbt
       - name: Install libuv
         if: matrix.platform == 'Native'
         run: sudo apt-get update && sudo apt-get install -y libuv1-dev
@@ -97,14 +88,11 @@ jobs:
           fetch-depth: 0
       - name: Cache scala dependencies
         uses: coursier/cache-action@v6
-      - name: Setup Java
-        uses: actions/setup-java@v4.7.1
+      - name: Setup Action
+        uses: coursier/setup-action@v1
         with:
-          distribution: temurin
-          java-version: 17
-          check-latest: true
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
+          jvm: temurin:21
+          apps: sbt
       - name: Release artifacts
         run: sbt ci-release
         env:

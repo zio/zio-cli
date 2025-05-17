@@ -24,7 +24,7 @@ jobs:
     - name: Setup Action
       uses: coursier/setup-action@v1
       with:
-        jvm: temurin:17
+        jvm: temurin:21
         apps: sbt
     - name: Check artifacts build process
       run: sbt  +publishLocal
@@ -42,7 +42,7 @@ jobs:
     - name: Setup Action
       uses: coursier/setup-action@v1
       with:
-        jvm: temurin:17
+        jvm: temurin:21
         apps: sbt
     - name: Setup NodeJs
       uses: actions/setup-node@v4
@@ -66,7 +66,7 @@ jobs:
     - name: Setup Action
       uses: coursier/setup-action@v1
       with:
-        jvm: temurin:17
+        jvm: temurin:21
         apps: sbt
     - name: Commit Changes
       run: |
