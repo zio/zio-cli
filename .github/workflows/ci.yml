@@ -14,7 +14,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout current branch
@@ -29,11 +29,13 @@ jobs:
           distribution: temurin
           java-version: 17
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Lint code
         run: sbt check
 
   website:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - name: Checkout current branch
@@ -48,11 +50,13 @@ jobs:
           distribution: temurin
           java-version: 17
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Check Document Generation
         run: sbt docs/compileDocs
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -73,6 +77,8 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Install libuv
         if: matrix.platform == 'Native'
         run: sudo apt-get update && sudo apt-get install -y libuv1-dev
@@ -80,7 +86,7 @@ jobs:
         run: sbt ++${{ matrix.scala }} zioCli${{ matrix.platform }}/test
 
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [ lint, website, test ]
     if: github.event_name != 'pull_request'
@@ -97,6 +103,8 @@ jobs:
           distribution: temurin
           java-version: 17
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Release artifacts
         run: sbt ci-release
         env:
