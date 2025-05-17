@@ -29,6 +29,8 @@ jobs:
           distribution: temurin
           java-version: 17
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Lint code
         run: sbt check
 
@@ -48,6 +50,8 @@ jobs:
           distribution: temurin
           java-version: 17
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Check Document Generation
         run: sbt docs/compileDocs
 
@@ -73,6 +77,8 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Install libuv
         if: matrix.platform == 'Native'
         run: sudo apt-get update && sudo apt-get install -y libuv1-dev
@@ -97,6 +103,8 @@ jobs:
           distribution: temurin
           java-version: 17
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Release artifacts
         run: sbt ci-release
         env:
