@@ -29,19 +29,19 @@ object CliAppSpec extends ZIOSpecDefault {
 
     suite("exit code of the CLI")(
       test("should exit with 0 when the command is successful") {
-        val result = app().run(List("make", "1"))
+        val result = app().run(List("make", "1")).exit
 
-        assertZIO(result.exitCode)(equalTo(ExitCode.success))
+        assertZIO(result)(succeeds(anything))
       },
       test("should exit with a code <> 0 when the parsing of the command fails") {
-        val result = app().run(List("make", "this is not an integer"))
+        val result = app().run(List("make", "this is not an integer")).exit
 
-        assertZIO(result.exitCode)(equalTo(ExitCode.failure))
+        assertZIO(result)(fails(anything))
       },
       test("should exit with a code <> 0 when the command fails") {
-        val result = app(behavior = ZIO.fail(new RuntimeException("Boom"))).run(List("make", "1"))
+        val result = app(behavior = ZIO.fail(new RuntimeException("Boom"))).run(List("make", "1")).exit
 
-        assertZIO(result.exitCode)(equalTo(ExitCode.failure))
+        assertZIO(result)(fails(anything))
       }
     )
   }
