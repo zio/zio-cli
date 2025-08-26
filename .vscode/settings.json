@@ -1,6 +1,6 @@
 {
   "files.watcherExclude": {
     "**/target": true
-  },
+},
   "files.eol": "\n"
 }
