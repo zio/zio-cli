@@ -206,7 +206,7 @@ object Options extends OptionsPlatformSpecific {
     conf: CliConfig
   ): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
     options match {
-      case Nil => ZIO.succeed((input, Nil, Predef.Map.empty))
+      case Nil          => ZIO.succeed((input, Nil, Predef.Map.empty))
       case head :: tail =>
         head
           .parse(input, conf)
@@ -245,12 +245,12 @@ object Options extends OptionsPlatformSpecific {
     conf: CliConfig
   ): IO[ValidationError, (List[String], List[Options[_] with Input], Predef.Map[String, List[String]])] =
     input match {
-      case Nil => ZIO.succeed((tail, options, Predef.Map.empty))
+      case Nil                => ZIO.succeed((tail, options, Predef.Map.empty))
       case flag :: otherFlags =>
         for {
           tuple1          <- findOptions(flag :: Nil, options, conf)
           (_, opts1, map1) = tuple1
-          tuple2 <-
+          tuple2          <-
             if (map1.isEmpty) ZIO.fail(ValidationError(ValidationErrorType.UnclusteredFlag(Nil, tail), HelpDoc.empty))
             else matchUnclustered(otherFlags, tail, opts1, conf)
           (_, opts2, map2) = tuple2
@@ -284,13 +284,13 @@ object Options extends OptionsPlatformSpecific {
     conf: CliConfig
   ): UIO[(Option[ValidationError], List[String], Predef.Map[String, List[String]])] =
     (input, options) match {
-      case (Nil, _) => ZIO.succeed((None, Nil, Predef.Map.empty))
-      case (_, Nil) => ZIO.succeed((None, input, Predef.Map.empty))
+      case (Nil, _)         => ZIO.succeed((None, Nil, Predef.Map.empty))
+      case (_, Nil)         => ZIO.succeed((None, input, Predef.Map.empty))
       case (input, options) =>
         (for {
           tuple1                         <- findOptions(input, options, conf)
           (otherArgs, otherOptions, map1) = tuple1
-          tuple2 <-
+          tuple2                         <-
             if (map1.isEmpty) ZIO.succeed((None, input, map1))
             else matchOptions(otherArgs, otherOptions, conf)
           (error, otherArgs, map2) = tuple2
@@ -443,7 +443,7 @@ object Options extends OptionsPlatformSpecific {
               case _ =>
                 tail match {
                   case value :: tail => ZIO.succeed((List(head, value), tail))
-                  case Nil =>
+                  case Nil           =>
                     ZIO.fail(
                       ValidationError(ValidationErrorType.MissingValue, p(error(s"Expected some value.")))
                     )
@@ -474,7 +474,7 @@ object Options extends OptionsPlatformSpecific {
 
     private def processArgs(args: List[String]): IO[ValidationError, List[String]] =
       args match {
-        case Nil => ZIO.succeed(Nil)
+        case Nil          => ZIO.succeed(Nil)
         case head :: tail =>
           if (head.trim.matches("^-{1}([^-]{2,}$)"))
             ZIO.fail(
@@ -694,7 +694,7 @@ object Options extends OptionsPlatformSpecific {
             keyValueString.trim.span(_ != '=') match {
               case (_, "")  => acc
               case (_, "=") => acc
-              case _ =>
+              case _        =>
                 loop((keyValueString.trim :: pairs) -> tail)
             }
           // Or, it can be in the form of "-d key1=value1 key2=value2"
@@ -702,7 +702,7 @@ object Options extends OptionsPlatformSpecific {
             keyValueString.trim.span(_ != '=') match {
               case (_, "")  => acc
               case (_, "=") => acc
-              case _ =>
+              case _        =>
                 loop((keyValueString.trim :: pairs) -> tail)
             }
           // Otherwise we give up and keep what remains as the leftover.
@@ -738,11 +738,11 @@ object Options extends OptionsPlatformSpecific {
       with Wrap {
     override lazy val shortDesc: String = auxiliaryOptions.shortDesc
 
-    override val wrapped                              = auxiliaryOptions
-    override def helpDoc: HelpDoc                     = auxiliaryOptions.helpDoc
-    override def synopsis: UsageSynopsis              = auxiliaryOptions.synopsis
-    override def flatten: List[Options[_] with Input] = auxiliaryOptions.flatten
-    override def uid: Option[String]                  = auxiliaryOptions.uid
+    override val wrapped                                                                                             = auxiliaryOptions
+    override def helpDoc: HelpDoc                                                                                    = auxiliaryOptions.helpDoc
+    override def synopsis: UsageSynopsis                                                                             = auxiliaryOptions.synopsis
+    override def flatten: List[Options[_] with Input]                                                                = auxiliaryOptions.flatten
+    override def uid: Option[String]                                                                                 = auxiliaryOptions.uid
     override def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, OAuth2Token] =
       OAuth2PlatformSpecific.validate(provider, scope, auxiliaryOptions, args, conf)
     override private[cli] def modifySingle(f: SingleModifier): Options[OAuth2Token] =

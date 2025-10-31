@@ -13,7 +13,7 @@ import zio.test.ZIOSpecDefault
 
 object FigFontRendererSpec extends ZIOSpecDefault {
   private val header = FigHeader("flf2a", '$', 6, 5, 16, 15, Some(0), Some(24463))
-  private val font = testFigFont(
+  private val font   = testFigFont(
     """
       |J    T    -    |   |
       |  ** *****       | |

@@ -1,7 +1,7 @@
 package zio.cli
 
 sealed trait BuiltInOption extends Product with Serializable
-object BuiltInOption extends PathPlatformSpecific {
+object BuiltInOption       extends PathPlatformSpecific {
   // TODO add built-in option to show version
   final case class ShowHelp(synopsis: UsageSynopsis, helpDoc: HelpDoc)                 extends BuiltInOption
   final case class ShowCompletionScript(pathToExecutable: JPath, shellType: ShellType) extends BuiltInOption

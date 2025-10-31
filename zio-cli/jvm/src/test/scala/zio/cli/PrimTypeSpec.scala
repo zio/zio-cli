@@ -178,12 +178,12 @@ object PrimTypeSpec extends ZIOSpecDefault {
   val anyFalseBooleanString: Gen[Any, String] =
     Gen.fromIterable(List("false", "0", "n", "no", "off")).mapZIO(randomizeCharCases)
 
-  val anyBigInt: Gen[Any, BigInt] = Gen.long(0, Long.MaxValue).map(BigInt(_))
+  val anyBigInt: Gen[Any, BigInt]   = Gen.long(0, Long.MaxValue).map(BigInt(_))
   val anyBoolean: Gen[Any, Boolean] =
     Gen.fromIterable(List(true, false))
   val anyDuration = Gen.finiteDuration
   val anyInstant  = Gen.instant.map(_.atZone(ZoneOffset.UTC))
-  val anyPeriod = for {
+  val anyPeriod   = for {
     first  <- Gen.localDateTime.map(_.toLocalDate)
     second <- Gen.localDateTime.map(_.toLocalDate)
   } yield if (first isBefore second) Period.between(first, second) else Period.between(second, first)

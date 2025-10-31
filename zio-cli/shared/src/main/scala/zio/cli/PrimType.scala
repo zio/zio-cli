@@ -92,7 +92,7 @@ object PrimType extends PathPlatformSpecific {
     private def validatePathType(value: String, path: JPath): IO[String, Unit] =
       self.pathType match {
         case Either => ZIO.unit
-        case File =>
+        case File   =>
           ZIO.fail(s"Expected path '$value' to be a regular file.").unlessZIO(self.fileSystem.isRegularFile(path)).unit
         case Directory =>
           ZIO.fail(s"Expected path '$value' to be a directory.").unlessZIO(self.fileSystem.isDirectory(path)).unit
@@ -383,7 +383,7 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     def validate(value: Option[String], conf: CliConfig): IO[String, JYearMonth] = {
-      val AcceptedFormat = "^(-?\\d+)-(\\d{2})".r
+      val AcceptedFormat       = "^(-?\\d+)-(\\d{2})".r
       def parse(input: String) = input match {
         case AcceptedFormat(y, m) => ZIO.attempt(JYearMonth.of(y.toInt, m.toInt))
         case _                    => ZIO.fail(())

@@ -8,7 +8,7 @@ trait ZIOCli extends ZIOApp {
 
   override def run =
     for {
-      args <- ZIOAppArgs.getArgs
+      args   <- ZIOAppArgs.getArgs
       result <- cliApp.run(args.toList).catchSome[Environment with ZIOAppArgs with Scope, CliError[Any], Any] {
                   case CliError.Parsing(_) =>
                     // Validation errors are pretty printed by clipApp.run

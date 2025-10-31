@@ -51,7 +51,7 @@ private[cli] class OAuth2(provider: OAuth2Provider, file: Path, scope: List[Stri
       .map(ref =>
         new OAuth2Token {
           val refreshTokenNow = ref.updateZIO(refreshAccessToken)
-          val accessToken =
+          val accessToken     =
             ref.updateAndGetZIO { acc =>
               Clock.currentDateTime.flatMap { time =>
                 acc.expiresAt.map(_.isBefore(time)) match {

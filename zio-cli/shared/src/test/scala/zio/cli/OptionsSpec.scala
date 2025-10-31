@@ -208,7 +208,7 @@ object OptionsSpec extends ZIOSpecDefault {
         }
       },
       test("validate orElse using fold on 2 options") {
-        val o = Options.text("string").map(Left(_)) | Options.integer("integer").map(Right(_))
+        val o      = Options.text("string").map(Left(_)) | Options.integer("integer").map(Right(_))
         val output = o.fold(
           (s: String) => s,
           (n: BigInt) => n.toString

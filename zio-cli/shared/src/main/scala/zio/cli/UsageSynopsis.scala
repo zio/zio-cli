@@ -12,7 +12,7 @@ sealed trait UsageSynopsis { self =>
       g match {
         case named @ Named(_, _) =>
           if (render(named).head.isEmpty) None else named
-        case Optional(None) => None
+        case Optional(None)  => None
         case Optional(value) =>
           val syn = simplify(value)
           if (syn == None) None else Optional(syn)

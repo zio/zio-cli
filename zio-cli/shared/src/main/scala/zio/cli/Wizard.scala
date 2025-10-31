@@ -87,8 +87,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     else if (map.keys.size == 1) ZIO.succeed((map.keys.toList, map.values.head._2))
     else
       for {
-        _ <- printHeader
-        _ <- printInfo(invalidInput, s"Please, enter the ${param.tag} you would like to execute.", param, needHelp)
+        _     <- printHeader
+        _     <- printInfo(invalidInput, s"Please, enter the ${param.tag} you would like to execute.", param, needHelp)
         lines <- ZIO.foreach(keysIndex) { case (key, index) =>
                    map.get(key) match {
                      case Some(param) => ZIO.succeed(List(s"[${index + 1}]", "    ", key, "  ", param._2.shortDesc))
@@ -97,15 +97,15 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
                  }
         _     <- printLine(mkColumns(lines.toList).toPlaintext()).orDie
         input <- readLine(prompt).orDie
-        res <- input match {
+        res   <- input match {
                  case ""        => chooseParam(param, Some(input), false)
                  case "help"    => chooseParam(param, None, true)
                  case "quit"    => ZIO.fail(Wizard.QuitException())
                  case "restart" => ZIO.fail(Wizard.RestartException())
-                 case _ =>
+                 case _         =>
                    map.get(input) match {
                      case Some(command) => ZIO.succeed((List(command._1), command._2))
-                     case None =>
+                     case None          =>
                        {
                          for {
                            n   <- ZIO.attempt(input.toInt)
@@ -132,15 +132,15 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     needHelp: Boolean = false
   ): IO[Wizard.WizardException, List[String]] =
     for {
-      _     <- printHeader
-      _     <- printInfo(invalidInput, s"Please, specify the following ${param.tag}.", param, needHelp)
-      input <- readLine(prompt).orDie
+      _      <- printHeader
+      _      <- printInfo(invalidInput, s"Please, specify the following ${param.tag}.", param, needHelp)
+      input  <- readLine(prompt).orDie
       params <- input match {
                   case ""        => inputParam(param, Some(input), false)
                   case "help"    => inputParam(param, None, true)
                   case "quit"    => ZIO.fail(Wizard.QuitException())
                   case "restart" => ZIO.fail(Wizard.RestartException())
-                  case _ =>
+                  case _         =>
                     param.isValid(input, conf).catchAll { case _: ValidationError =>
                       inputParam(param, Some(input), false)
                     }
@@ -157,7 +157,7 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
           pair <- chooseParam(p)
           tail <- generateParams(pair._2)
         } yield pair._1 ++ tail
-      case p: Input => inputParam(p)
+      case p: Input    => inputParam(p)
       case p: Pipeline =>
         for {
           pipeline <- ZIO.foreach(p.pipeline._2) { case param =>

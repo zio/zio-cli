@@ -23,12 +23,12 @@ private[figlet] object FigFontRenderer {
     )
 
     def hAppend(b1: FigChar, b2: FigChar): FigChar = {
-      val f = measure(hb, hLayout, rtl, h, b1, b2)
+      val f     = measure(hb, hLayout, rtl, h, b1, b2)
       val lines = b1.lines.zipWith(b2.lines) { (l1, l2) =>
         (l1, l2) match {
-          case (Empty(r), Empty(l))         => Empty(r - f + l)
-          case (Empty(r), Chars(l, s2, r2)) => Chars(r - f + l, s2, r2)
-          case (Chars(l1, s1, r), Empty(l)) => Chars(l1, s1, r - f + l)
+          case (Empty(r), Empty(l))                 => Empty(r - f + l)
+          case (Empty(r), Chars(l, s2, r2))         => Chars(r - f + l, s2, r2)
+          case (Chars(l1, s1, r), Empty(l))         => Chars(l1, s1, r - f + l)
           case (Chars(l1, s1, r), Chars(l, s2, r2)) =>
             Chars(
               l1,
@@ -45,7 +45,7 @@ private[figlet] object FigFontRenderer {
     }
 
     def vAppend(b1: Chunk[String], b2: Chunk[String]): Chunk[String] = {
-      val f = measure(hb, vLayout, rtl = false, height = max(b1(0).length, b2(0).length), b1, b2)
+      val f     = measure(hb, vLayout, rtl = false, height = max(b1(0).length, b2(0).length), b1, b2)
       val merge = b1.takeRight(f).zipWith(b2.take(f)) { (l1, l2) =>
         val chars = Array.tabulate(min(l1.length, l2.length))(i =>
           (l1.charAt(i), l2.charAt(i)) match {
@@ -84,7 +84,7 @@ private[figlet] object FigFontRenderer {
     override def spaces(a: FigChar, row: Int, rtl: Boolean): Int = a.lines(row).spaces(rtl)
 
     override def charAt(a: FigChar, row: Int, n: Int, rtl: Boolean): Char = a.lines(row) match {
-      case Empty(w) => if (n < w) ' ' else MISSING
+      case Empty(w)       => if (n < w) ' ' else MISSING
       case Chars(l, s, r) =>
         val i = if (rtl) s.length - 1 - (n - r) else n - l
         if (0 <= i && i < s.length) s.charAt(i) else MISSING
@@ -111,18 +111,18 @@ private[figlet] object FigFontRenderer {
 
   private def measure[A](hb: Char, layout: Layout[_], rtl: Boolean, height: Int, b1: A, b2: A)(implicit ev: Block[A]) =
     layout match {
-      case FullWidth => 0
-      case Fitting   => (0 until height).map(r => ev.spaces(b1, r, rtl = true) + ev.spaces(b2, r, rtl = false)).min
+      case FullWidth       => 0
+      case Fitting         => (0 until height).map(r => ev.spaces(b1, r, rtl = true) + ev.spaces(b2, r, rtl = false)).min
       case Smushing(rules) =>
         (0 until height).foldLeft(ev.width(b1) + ev.width(b2)) { (fitting, r) =>
           val s1 = ev.spaces(b1, r, rtl = true)
           val s2 = ev.spaces(b2, r, rtl = false)
           s1 + s2 match {
             case f if f >= fitting => fitting
-            case f =>
+            case f                 =>
               (ev.charAt(b1, r, s1, rtl = true), ev.charAt(b2, r, s2, rtl = false)) match {
                 case (MISSING, _) | (_, MISSING) => f
-                case (c1, c2) =>
+                case (c1, c2)                    =>
                   smush(hb, rtl, rules, c1, c2) match {
                     case MISSING => f
                     // vertical line supersmushing can smush all vertically adjacent |
@@ -139,12 +139,12 @@ private[figlet] object FigFontRenderer {
     }
 
   private def smush(hb: Char, rtl: Boolean, rules: SmushingRule[_], a: Char, b: Char): Char = rules match {
-    case universal()                                              => if (a != hb && b != hb) if (rtl) a else b else MISSING
-    case equalCharacter() if a == b && a != hb                    => b
-    case hardblank() if a == hb && b == hb                        => hb
-    case underscore() if a == '_' && "|/\\[]{}()<>".contains(b)   => b
-    case bigX() if eq(pos(a, "/\\>"), pos(b, "\\/<"))             => "|YX".charAt(pos(a, "/\\>"))
-    case oppositePair() if eq(pos(a, "[]{}()"), pos(b, "][}{)(")) => '|'
+    case universal()                                                                    => if (a != hb && b != hb) if (rtl) a else b else MISSING
+    case equalCharacter() if a == b && a != hb                                          => b
+    case hardblank() if a == hb && b == hb                                              => hb
+    case underscore() if a == '_' && "|/\\[]{}()<>".contains(b)                         => b
+    case bigX() if eq(pos(a, "/\\>"), pos(b, "\\/<"))                                   => "|YX".charAt(pos(a, "/\\>"))
+    case oppositePair() if eq(pos(a, "[]{}()"), pos(b, "][}{)("))                       => '|'
     case hierarchy() if notEq(pos(a, "||/\\[]{}()<>") / 2, pos(b, "||/\\[]{}()<>") / 2) =>
       if (pos(a, "||/\\[]{}()<>") > pos(b, "||/\\[]{}()<>")) a else b // TODO review if rtl effects this case
     case horizontalLine() if a == '-' && b == '_' || a == '_' && b == '-' => '='

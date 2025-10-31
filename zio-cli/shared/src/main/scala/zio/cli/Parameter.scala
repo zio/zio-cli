@@ -28,7 +28,7 @@ private[cli] trait Alternatives extends Parameter {
       param match {
         case p: Alternatives => p.getSubparameters
         case p: Wrap         => extract(p.wrapped)
-        case p: Named =>
+        case p: Named        =>
           p.names.headOption match {
             case Some(value) => Map((value, (value, p)))
             case None        => Map(("-", ("", p)))

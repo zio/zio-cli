@@ -157,7 +157,7 @@ object HelpDocSpec extends ZIOSpecDefault {
   val testEmpty  = HelpDoc.Empty
   val hText      = "HEADER"
   val testHeader = HelpDoc.h1(s"${hText} level 1")
-  val pText =
+  val pText      =
     """
       |Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque facilisis sem id lacinia venenatis. 
       |Phasellus vestibulum magna eu sapien accumsan suscipit. Morbi vestibulum lobortis justo, ac pellentesque
@@ -172,7 +172,7 @@ object HelpDocSpec extends ZIOSpecDefault {
   val testEnumeration = HelpDoc.Enumeration(docs)
   val testSequence    = testParagraph + testEnumeration
   val anyString       = Gen.string
-  val anySpan = Gen.fromIterable(
+  val anySpan         = Gen.fromIterable(
     List(
       HelpDoc.Span.text(anyString.toString()),
       HelpDoc.Span.error(anyString.toString()),

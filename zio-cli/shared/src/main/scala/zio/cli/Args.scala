@@ -100,7 +100,7 @@ object Args extends ArgsPlatformSpecific {
     def validate(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], A)] =
       (args match {
         case head :: tail => primType.validate(Some(head), conf).mapBoth(text => HelpDoc.p(text), a => tail -> a)
-        case Nil =>
+        case Nil          =>
           val msg = (pseudoName, primType.choices) match {
             case (Some(pseudoName), Some(choices)) => s"Missing argument <$pseudoName> with values $choices."
             case (Some(pseudoName), _)             => s"Missing argument <$pseudoName>."
