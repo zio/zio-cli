@@ -10,6 +10,6 @@ addSbtPlugin("org.scalameta"      % "sbt-mdoc"                      % "2.7.2")
 addSbtPlugin("org.scalameta"      % "sbt-scalafmt"                  % "2.5.6")
 addSbtPlugin("org.scoverage"      % "sbt-scoverage"                 % "2.4.0")
 addSbtPlugin("org.scalameta"      % "sbt-native-image"              % "0.3.2")
-addSbtPlugin("dev.zio"            % "zio-sbt-website"               % "0.4.0-alpha.35")
+addSbtPlugin("dev.zio"            % "zio-sbt-website"               % "0.4.0-alpha.36")
 
 resolvers += Resolver.sonatypeRepo("public")
