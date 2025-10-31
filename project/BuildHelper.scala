@@ -6,11 +6,12 @@ import sbtcrossproject.CrossPlugin.autoImport._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbtbuildinfo._
 import BuildInfoKeys._
+import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
 
   val Scala212 = "2.12.20"
-  val Scala213 = "2.13.16"
+  val Scala213 = "2.13.17"
   val Scala3   = "3.3.7"
 
   def buildInfoSettings(packageName: String) =
@@ -125,8 +126,9 @@ object BuildHelper {
     crossScalaVersions       := Seq(Scala212, Scala213, Scala3),
     ThisBuild / scalaVersion := Scala213,
     scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-    semanticdbEnabled := scalaVersion.value != Scala3, // enable SemanticDB
+    semanticdbEnabled := scalaVersion.value == Scala213, // enable SemanticDB
     semanticdbOptions += "-P:semanticdb:synthetics:on",
+    semanticdbVersion        := scalafixSemanticdb.revision, // use Scalafix compatible version
     Test / parallelExecution := scalaVersion.value != Scala3,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
