@@ -1,8 +1,8 @@
 name: CI
 
 env:
-  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags # JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
-  JVM_OPTS: -XX:+PrintCommandLineFlags # for Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
+  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags -Xms2G -Xmx8G -Xss4M -XX:+UseG1GC -XX:ReservedCodeCacheSize=512M -XX:NonProfiledCodeHeapSize=256M # JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
+  SBT_OPTS: -XX:+PrintCommandLineFlags -Xms2G -Xmx8G -Xss4M -XX:+UseG1GC -XX:ReservedCodeCacheSize=512M -XX:NonProfiledCodeHeapSize=256M # Needed for sbt
 
 on:
   pull_request:
@@ -49,14 +49,14 @@ jobs:
       - name: Check Document Generation
         run: sbt docs/compileDocs
 
-  test:
+  testCross:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        java: [ '11', '17', '21' ]
-        scala: [ '2.12.20', '2.13.17', '3.3.0' ]
+        java: [ '17' ]
+        scala: [ '2.12.x', '2.13.x', '3.3.x' ]
         platform: [ 'JVM', 'JS', 'Native' ]
     steps:
       - name: Checkout current branch
@@ -76,10 +76,34 @@ jobs:
       - name: Run tests
         run: sbt ++${{ matrix.scala }} zioCli${{ matrix.platform }}/test
 
+  testJVMs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ '11', '21' ] # tests on 17 are done in testCross
+        scala: [ '2.12.x', '2.13.x', '3.3.x' ]
+        platform: [ 'JVM' ]
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Cache scala dependencies
+        uses: coursier/cache-action@v6
+      - name: Setup Action
+        uses: coursier/setup-action@v1
+        with:
+          jvm: temurin:${{ matrix.java }}
+          apps: sbt
+      - name: Run tests
+        run: sbt ++${{ matrix.scala }} zioCli${{ matrix.platform }}/test
+
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [ lint, website, test ]
+    needs: [ lint, website, testCross, testJVMs ]
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout current branch
