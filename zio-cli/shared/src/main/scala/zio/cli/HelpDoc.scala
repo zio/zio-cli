@@ -242,7 +242,7 @@ sealed trait HelpDoc { self =>
 
     def renderHelpDoc(helpDoc: HelpDoc): Unit =
       helpDoc match {
-        case Empty =>
+        case Empty                    =>
         case HelpDoc.Header(value, _) =>
           writer.unindent()
           renderNewline()
@@ -335,7 +335,7 @@ object HelpDoc {
   final case class Header(value: Span, level: Int)                     extends HelpDoc
   final case class Paragraph(value: Span)                              extends HelpDoc
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
-  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc { self =>
+  final case class Enumeration(elements: List[HelpDoc])                extends HelpDoc { self =>
     def flatten: Enumeration =
       Enumeration(
         self.elements.flatMap {
@@ -494,7 +494,7 @@ private[cli] class DocWriter(stringBuilder: StringBuilder, startOffset: Int, col
   def unindent(): Unit = self.marginStack = self.marginStack.drop(1)
 }
 private[cli] object DocWriter {
-  private def margin(n: Int): String = if (n <= 0) "" else List.fill(n)(" ").mkString
+  private def margin(n: Int): String                  = if (n <= 0) "" else List.fill(n)(" ").mkString
   def splitNewlines(s: String): Option[Array[String]] = {
     val count = s.count(_ == '\n')
 

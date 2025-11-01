@@ -21,7 +21,7 @@ object FigFontRenderReportSpec extends ZIOSpecDefault {
         fontDbHtml <- ZIO.acquireReleaseWith(attemptBlockingIO(Source.fromURL(fontDbUrl)))(source =>
                         ZIO.succeed(source.close())
                       )(s => attemptBlockingIO(s.getLines().mkString))
-        names = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
+        names  = "(?<=\\?font=)[\\w-]+\\.flf".r.findAllIn(fontDbHtml).toSeq
         items <- ZIO.foreachPar(names) { name =>
                    val url = s"$fontUrl$name"
                    FigFont

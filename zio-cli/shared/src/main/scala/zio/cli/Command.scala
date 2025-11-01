@@ -245,7 +245,7 @@ object Command {
           case OrElse(left, right) =>
             getSynopsis(left, precedent) ++ getSynopsis(right, precedent)
           case Single(_, desc, _, _) =>
-            val synopsisList = precedent ++ List(command.synopsis.helpDoc.getSpan)
+            val synopsisList  = precedent ++ List(command.synopsis.helpDoc.getSpan)
             val finalSynopsis = synopsisList
               .foldRight(HelpDoc.Span.empty) {
                 case (HelpDoc.Span.Text(""), span) => span
@@ -322,7 +322,7 @@ object Command {
             helpDirectiveForChild orElse helpDirectiveForParent
           case CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) =>
             wizardDirectiveForChild orElse wizardDirectiveForParent
-          case builtIn @ CommandDirective.BuiltIn(_) => ZIO.succeed(builtIn)
+          case builtIn @ CommandDirective.BuiltIn(_)                          => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             child
               .parse(leftover, conf)

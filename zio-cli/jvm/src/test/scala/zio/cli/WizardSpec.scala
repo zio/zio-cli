@@ -104,7 +104,7 @@ object WizardSpec extends ZIOSpecDefault {
   def testWizard(command: Command[_], parameters: List[String]): UIO[String] = {
     val wizard = Wizard(command, CliConfig.default, HelpDoc.empty)
     for {
-      _ <- TestConsole.feedLines(parameters: _*)
+      _            <- TestConsole.feedLines(parameters: _*)
       finalCommand <- wizard.execute.catchAll { case Wizard.QuitException() =>
                         ZIO.succeed(List("quitting..."))
                       }

@@ -25,7 +25,7 @@ object GitExample extends ZIOCliDefault {
   val modifiedFlag: Options[Boolean] = Options.boolean("m")
 
   val addHelp: HelpDoc = HelpDoc.p("Add subcommand description")
-  val add =
+  val add              =
     Command("add", modifiedFlag, Args.directory("directory")).withHelp(addHelp).map { case (modified, directory) =>
       Subcommand.Add(modified, directory)
     }

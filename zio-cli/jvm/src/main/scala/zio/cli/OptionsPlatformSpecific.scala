@@ -13,7 +13,7 @@ private[cli] trait OptionsPlatformSpecific { self: Options.type =>
    */
   def oauth2(provider: OAuth2Provider, scope: List[String]): Options[OAuth2Token] = {
     val providerSegment = s"${provider.name.toLowerCase()}_${provider.clientIdentifier}"
-    val defaultFile =
+    val defaultFile     =
       JPaths.get(java.lang.System.getProperty("user.home"), s"oauth2_${providerSegment}_access_token.json")
 
     val accessTokenFile: Options[JPath] =

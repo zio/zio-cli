@@ -53,7 +53,7 @@ object FigCharLine {
     val s = line.take(width)
     s.indexWhere(_ != ' ') match {
       case -1 => Empty(s.length)
-      case l =>
+      case l  =>
         val r = s.length - 1 - s.lastIndexWhere(_ != ' ')
         Chars(l, s.drop(l).dropRight(r), r)
     }

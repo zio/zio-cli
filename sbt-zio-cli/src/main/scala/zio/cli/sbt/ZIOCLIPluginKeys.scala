@@ -4,7 +4,7 @@ import sbt._
 
 trait ZIOCLIPluginKeys {
 
-  lazy val zioCliMainClass = settingKey[Option[String]]("The mainClass of the CLI App in the Compile scope")
+  lazy val zioCliMainClass          = settingKey[Option[String]]("The mainClass of the CLI App in the Compile scope")
   lazy val zioCliNativeImageOptions = settingKey[Seq[String]](
     "A collection of arguments to pass the native-image builder to customize native image generation"
   )

@@ -19,7 +19,7 @@ object ZIOCLIPlugin extends AutoPlugin with ZIOCLIPluginKeys {
     zioCliMainClass                        := None,
     requires.autoImport.nativeImageReady   := zioCliNativeImageReady.value,
     requires.autoImport.nativeImageOptions := zioCliNativeImageOptions.value,
-    zioCliBuildNative := {
+    zioCliBuildNative                      := {
       Compile / mainClass := {
         zioCliMainClass.value
       }
