@@ -46,7 +46,7 @@ object GitExample extends ZIOCliDefault {
   }
 
   val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote =
+  val remote              =
     // val gitRemote       = Command("remote", verboseFlag).withHelp(remoteHelp).map(Subcommand.Remote(_))
     // val gitRemoteAdd    = Command("remote").withHelp(remoteHelp).subcommands(remoteAdd)
     // val gitRemoteRemove = Command("remote").withHelp(remoteHelp).subcommands(remoteRemove)
