@@ -202,21 +202,39 @@ object CommandSpec extends ZIOSpecDefault {
           }
         )
       }: _*),
-      suite("test sub sub commands") {
-
-        val command =
-          Command("command", Options.Empty, Args.none).subcommands(
-            Command("sub", Options.Empty, Args.none).subcommands(
-              Command("subsub", Options.boolean("i", true), Args.text)
+      suite("test sub sub commands")(
+        test("sub sub command with option and argument") {
+          val command =
+            Command("command", Options.Empty, Args.none).subcommands(
+              Command("sub", Options.Empty, Args.none).subcommands(
+                Command("subsub", Options.boolean("i", true), Args.text)
+              )
             )
-          )
 
-        test("sub sub command with option and argument")(
           assertZIO(command.parse(List("command", "sub", "subsub", "-i", "text"), CliConfig.default))(
             equalTo(CommandDirective.UserDefined(Nil, (true, "text")))
           )
-        )
-      }
+        },
+        test("nested subcommands with empty args should show help") {
+          val cli =
+            Command("cli", Options.Empty, Args.none).subcommands(
+              Command("subA", Options.Empty, Args.none).subcommands(
+                Command("list", Options.Empty, Args.none),
+                Command("get", Options.Empty, Args.none)
+              ),
+              Command("subB", Options.Empty, Args.none)
+            )
+
+          cli.parse(List.empty, CliConfig.default).map { result =>
+            assertTrue {
+              result match {
+                case CommandDirective.BuiltIn(ShowHelp(_, _)) => true
+                case _                                        => false
+              }
+            }
+          }
+        }
+      )
     ),
     suite("Helpdoc On Command Suite")(
       suite("test adding helpdoc to commands")(

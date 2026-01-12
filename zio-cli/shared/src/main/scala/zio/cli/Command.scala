@@ -289,28 +289,34 @@ object Command {
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
       val helpDirectiveForChild =
-        child
-          .parse(args.tail, conf)
-          .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
-            case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
-              val parentName = names.headOption.getOrElse("")
-              CommandDirective.builtIn {
-                BuiltInOption.ShowHelp(
-                  UsageSynopsis.Named(List(parentName), None) + synopsis,
-                  helpDoc
-                )
-              }
-          }
+        if (args.isEmpty)
+          ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty))
+        else
+          child
+            .parse(args.tail, conf)
+            .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
+              case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
+                val parentName = names.headOption.getOrElse("")
+                CommandDirective.builtIn {
+                  BuiltInOption.ShowHelp(
+                    UsageSynopsis.Named(List(parentName), None) + synopsis,
+                    helpDoc
+                  )
+                }
+            }
 
       val helpDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowHelp(synopsis, helpDoc)))
 
       val wizardDirectiveForChild =
-        child
-          .parse(args.tail, conf)
-          .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
-            case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
-          }
+        if (args.isEmpty)
+          ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty))
+        else
+          child
+            .parse(args.tail, conf)
+            .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
+              case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
+            }
 
       val wizardDirectiveForParent =
         ZIO.succeed(CommandDirective.builtIn(BuiltInOption.ShowWizard(self)))
