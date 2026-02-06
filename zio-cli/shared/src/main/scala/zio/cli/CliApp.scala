@@ -130,6 +130,12 @@ object CliApp {
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {
+            case CommandDirective.UserDefined(leftover, _) if leftover.nonEmpty && !self.config.ignoreUnrecognized =>
+              val error = ValidationError(
+                ValidationErrorType.InvalidArgument,
+                HelpDoc.p(s"Unexpected argument(s): ${leftover.mkString(", ")}")
+              )
+              printDocs(error.error) *> ZIO.fail(CliError.Parsing(error))
             case CommandDirective.UserDefined(_, value) =>
               self.execute(value).mapBoth(CliError.Execution(_), Some(_))
             case CommandDirective.BuiltIn(x) =>
