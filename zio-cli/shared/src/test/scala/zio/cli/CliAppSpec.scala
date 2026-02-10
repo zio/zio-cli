@@ -59,9 +59,19 @@ object CliAppSpec extends ZIOSpecDefault {
 
     suite("unrecognized arguments")(
       test("should fail with non-zero exit code when extra arguments are provided") {
-        val result = app().run(List("xyz", "abc")).exit
+        val result = app().run(List("xyz", "abc"))
 
-        assertZIO(result)(fails(anything))
+        assertZIO(result.exit)(
+          fails(
+            isSubtype[CliError.Parsing](
+              hasField(
+                "e",
+                (e: CliError.Parsing) => e.e.error.toPlaintext(color = false),
+                containsString("Unexpected argument(s): abc")
+              )
+            )
+          )
+        )
       },
       test("should succeed when no extra arguments are provided") {
         val result = app().run(List("xyz")).exit
