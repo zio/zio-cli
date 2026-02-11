@@ -58,7 +58,7 @@ object CliAppSpec extends ZIOSpecDefault {
     )(input => ZIO.succeed(input))
 
     suite("unrecognized arguments")(
-      test("should fail with non-zero exit code when extra arguments are provided") {
+      test("should fail with parsing error when extra arguments are provided") {
         val result = app().run(List("xyz", "abc"))
 
         assertZIO(result.exit)(

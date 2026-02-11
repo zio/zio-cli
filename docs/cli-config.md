@@ -14,12 +14,13 @@ final case class CliConfig(
   autoCorrectLimit: Int,
   finalCheckBuiltIn: Boolean = true,
   showAllNames: Boolean = true,
-  showTypes: Boolean = true
+  showTypes: Boolean = true,
+  ignoreUnrecognized: Boolean = false
 )
 ```
 
-`CliConfig` allows to control case sensitivity, autocorrection behaviour, command processing and
-help appearance.
+`CliConfig` allows to control case sensitivity, autocorrection behaviour, command processing,
+help appearance, and handling of unrecognized arguments.
 ### Case sensitivity
 It is controlled by field `caseSensitive`. If it is `true`, then a `CliApp` will determine as distinct uppercase and lowercase versions of a letter in a command. On the other hand, `caseSensitive = false` implies that the `CliApp` will treat uppercase and lowercase letters as the same. In the Git example, we would have:
 
@@ -65,18 +66,36 @@ command (-o, --option )          # showAllNames = true,  showTypes = false
 command --option                 # showAllNames = false, showTypes = false
 ```
 
+## Unrecognized arguments
+`ignoreUnrecognized` controls whether unrecognized or extra command-line arguments should cause the application to fail or be silently ignored. When set to `false` (the default), any unrecognized arguments will cause the application to fail with an informative error message. When set to `true`, unrecognized arguments will be silently ignored, allowing the application to proceed normally.
+
+For example, if your CLI app accepts a single argument `file` and a user provides:
+```
+myapp file.txt extra-arg
+```
+- With `ignoreUnrecognized = false` (default): The app will fail with an error message like "Unexpected argument(s): extra-arg"
+- With `ignoreUnrecognized = true`: The app will proceed normally, ignoring "extra-arg"
+
 
 ## Default configuration
 
 The default configuration is given by
 ```scala mdoc:silent
 object CliConfig {
-  val default: CliConfig = CliConfig(caseSensitive = false, autoCorrectLimit = 2)
+  val default: CliConfig = CliConfig(
+    caseSensitive = false, 
+    autoCorrectLimit = 2,
+    finalCheckBuiltIn = true,
+    showAllNames = true,
+    showTypes = true,
+    ignoreUnrecognized = false
+  )
 }
 ```
 This means that a `CliApp` that does not specify any `CliConfig` and uses `CliConfig.default` will:
 - ignore if the letters of a command are written in uppercase or lowercase,
 - correct automatically up to two mistakes when writing the name of an option in a command of `CliApp`,
-- trigger Help or Wizard Mode if the corresponding option is found after an invalid command was entered and
-- show full usage synopsis of commands.
+- trigger Help or Wizard Mode if the corresponding option is found after an invalid command was entered,
+- show full usage synopsis of commands, and
+- fail with an informative error message when unrecognized arguments are provided.
 
