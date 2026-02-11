@@ -46,8 +46,50 @@ object CliAppSpec extends ZIOSpecDefault {
     )
   }
 
+  private val unrecognizedArgsSpec = {
+    val cmd: Command[String] = Command("cli", Args.text("xyz"))
+
+    def app(config: CliConfig = CliConfig.default): CliApp[Any, Nothing, String] = CliApp.make(
+      name = "Test",
+      version = "0.0.1",
+      summary = HelpDoc.Span.text("test"),
+      command = cmd,
+      config = config
+    )(input => ZIO.succeed(input))
+
+    suite("unrecognized arguments")(
+      test("should fail with parsing error when extra arguments are provided") {
+        val result = app().run(List("xyz", "abc"))
+
+        assertZIO(result.exit)(
+          fails(
+            isSubtype[CliError.Parsing](
+              hasField(
+                "e",
+                (e: CliError.Parsing) => e.e.error.toPlaintext(color = false),
+                containsString("Unexpected argument(s): abc")
+              )
+            )
+          )
+        )
+      },
+      test("should succeed when no extra arguments are provided") {
+        val result = app().run(List("xyz")).exit
+
+        assertZIO(result)(succeeds(anything))
+      },
+      test("should succeed with extra arguments when ignoreUnrecognized is true") {
+        val config = CliConfig.default.copy(ignoreUnrecognized = true)
+        val result = app(config).run(List("xyz", "abc")).exit
+
+        assertZIO(result)(succeeds(anything))
+      }
+    )
+  }
+
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("CliApp")(
-      exitCodeSpec
+      exitCodeSpec,
+      unrecognizedArgsSpec
     )
 }

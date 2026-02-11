@@ -15,13 +15,18 @@ import zio.{URIO, ZIO}
  *   Whether or not to show all the names of an option in the synopsis of a command.
  * @param showTypes
  *   Whether or not to show the type of an option in the synopsis of a command.
+ * @param ignoreUnrecognized
+ *   Whether or not to silently ignore unrecognized/extra arguments. When false (the default), unrecognized arguments
+ *   will cause the application to fail with an informative error message. When true, unrecognized arguments will be
+ *   silently ignored.
  */
 final case class CliConfig(
   caseSensitive: Boolean,
   autoCorrectLimit: Int,
   finalCheckBuiltIn: Boolean = true,
   showAllNames: Boolean = true,
-  showTypes: Boolean = true
+  showTypes: Boolean = true,
+  ignoreUnrecognized: Boolean = false
 ) {
   def normalizeCase(text: String): String = if (caseSensitive) text else text.toLowerCase()
 
