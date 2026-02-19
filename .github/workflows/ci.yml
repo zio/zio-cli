@@ -82,7 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '11', '21' ] # tests on 17 are done in testCross
+        java: [ '21' ] # tests on 17 are done in testCross
         scala: [ '2.12.x', '2.13.x', '3.3.x' ]
         platform: [ 'JVM' ]
     steps:
