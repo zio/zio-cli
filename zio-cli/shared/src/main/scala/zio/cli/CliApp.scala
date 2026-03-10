@@ -23,8 +23,10 @@ sealed trait CliApp[-R, +E, +A] { self =>
 
   final def map[B](f: A => B): CliApp[R, E, B] =
     self match {
-      case CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
-        CliApp.CliAppImpl(name, version, summary, command, execute.andThen(_.map(f)), footer, config, figFont)
+      case impl @ CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
+        CliApp
+          .CliAppImpl(name, version, summary, command, execute.andThen(_.map(f)), footer, config, figFont)
+          .withConfigFileResolver(impl.configFileResolver)
     }
 
   def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B]
@@ -44,9 +46,11 @@ object CliApp {
     command: Command[Model],
     footer: HelpDoc = HelpDoc.Empty,
     config: CliConfig = CliConfig.default,
-    figFont: FigFont = FigFont.Default
+    figFont: FigFont = FigFont.Default,
+    configFileResolver: ConfigFileResolver = ConfigFileResolver.live
   )(execute: Model => ZIO[R, E, A]): CliApp[R, E, A] =
     CliAppImpl(name, version, summary, command, execute, footer, config, figFont)
+      .withConfigFileResolver(configFileResolver)
 
   private[cli] case class CliAppImpl[-R, +E, Model, +A](
     name: String,
@@ -58,6 +62,17 @@ object CliApp {
     config: CliConfig = CliConfig.default,
     figFont: FigFont = FigFont.Default
   ) extends CliApp[R, E, A] { self =>
+
+    private var _configFileResolver: ConfigFileResolver = ConfigFileResolver.live
+
+    def configFileResolver: ConfigFileResolver = _configFileResolver
+
+    def withConfigFileResolver(resolver: ConfigFileResolver): CliAppImpl[R, E, Model, A] = {
+      val c = copy()
+      c._configFileResolver = resolver
+      c
+    }
+
     def config(newConfig: CliConfig): CliApp[R, E, A] = copy(config = newConfig)
 
     def footer(newFooter: HelpDoc): CliApp[R, E, A] =
@@ -67,6 +82,9 @@ object CliApp {
       printLine(helpDoc.toPlaintext(80)).!
 
     def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
+      val showDiagnostics = args.contains("--config-diagnostics")
+      val filteredArgs    = args.filterNot(_ == "--config-diagnostics")
+
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
         builtInOption match {
           case ShowHelp(synopsis, helpDoc) =>
@@ -125,19 +143,30 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
-        .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
-          {
-            case CommandDirective.UserDefined(_, value) =>
-              self.execute(value).mapBoth(CliError.Execution(_), Some(_))
-            case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
-                printDocs(e.error) *> ZIO.fail(err)
-              }
-          }
-        )
+      def runWithArgs(mergedArgs: List[String]): ZIO[R, CliError[E], Option[A]] =
+        self.command
+          .parse(prefix(self.command) ++ mergedArgs, self.config)
+          .foldZIO(
+            e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
+            {
+              case CommandDirective.UserDefined(_, value) =>
+                self.execute(value).mapBoth(CliError.Execution(_), Some(_))
+              case CommandDirective.BuiltIn(x) =>
+                executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
+                  printDocs(e.error) *> ZIO.fail(err)
+                }
+            }
+          )
+
+      _configFileResolver.resolve(self.name).flatMap { case (dotfileArgs, dotfileSources) =>
+        val (mergedArgs, allSources) =
+          ConfigFileResolver.mergeArgs(dotfileArgs, dotfileSources, filteredArgs)
+        val diagnosticsEffect =
+          if (showDiagnostics && allSources.nonEmpty)
+            printLine(ConfigFileResolver.formatDiagnostics(allSources)).!
+          else ZIO.unit
+        diagnosticsEffect *> runWithArgs(mergedArgs)
+      }
     }
 
     override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =
@@ -150,7 +179,7 @@ object CliApp {
         footer,
         config,
         figFont
-      )
+      ).withConfigFileResolver(_configFileResolver)
 
     override def summary(s: HelpDoc.Span): CliApp[R, E, A] =
       copy(summary = self.summary + s)
