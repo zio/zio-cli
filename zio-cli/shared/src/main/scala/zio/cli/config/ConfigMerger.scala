@@ -24,8 +24,8 @@ object ConfigMerger {
     val cliKeysMap = cliArgs.flatMap { arg =>
       val eqIdx = arg.indexOf('=')
       if (eqIdx > 0 && arg.startsWith("-")) Some(arg.substring(0, eqIdx) -> arg)
-      else if (arg.startsWith("-"))          Some(arg -> arg)
-      else                                   None
+      else if (arg.startsWith("-")) Some(arg -> arg)
+      else None
     }.toMap
 
     val cliKeys = cliKeysMap.keySet

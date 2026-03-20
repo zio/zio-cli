@@ -5,8 +5,7 @@ import java.nio.file.{Files, Path, Paths}
 import scala.io.Source
 
 /**
- * Native implementation of config file resolution.
- * Identical to JVM — Scala Native supports `java.nio.file`.
+ * Native implementation of config file resolution. Identical to JVM — Scala Native supports `java.nio.file`.
  */
 trait ConfigFileResolverPlatformSpecific {
 
@@ -28,7 +27,9 @@ trait ConfigFileResolverPlatformSpecific {
 
       existing.zipWithIndex.flatMap { case (path, priority) =>
         val source = Source.fromFile(path.toFile, "UTF-8")
-        val lines  = try source.getLines().toList finally source.close()
+        val lines  =
+          try source.getLines().toList
+          finally source.close()
         ConfigParser.parseLines(lines, path.toString, priority)
       }
     }

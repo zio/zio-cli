@@ -57,15 +57,15 @@ object ConfigEngineSpec extends ZIOSpecDefault {
     ),
     suite("ConfigMerger")(
       test("11. CLI args override file options") {
-        val fileOpts = List(ConfigOption("--max", Some("10"), "a", 1))
-        val cliArgs  = List("--max=20")
+        val fileOpts       = List(ConfigOption("--max", Some("10"), "a", 1))
+        val cliArgs        = List("--max=20")
         val (merged, diag) = ConfigMerger.mergeWithDiagnostics(fileOpts, cliArgs)
         assert(merged)(equalTo(List("--max=20"))) &&
         assert(diag.cliOverrides)(contains("--max"))
       },
       test("12. handles separated CLI overrides") {
-        val fileOpts = List(ConfigOption("--max", Some("10"), "a", 1))
-        val cliArgs  = List("--max", "20")
+        val fileOpts       = List(ConfigOption("--max", Some("10"), "a", 1))
+        val cliArgs        = List("--max", "20")
         val (merged, diag) = ConfigMerger.mergeWithDiagnostics(fileOpts, cliArgs)
         assert(merged)(equalTo(List("--max", "20"))) &&
         assert(diag.cliOverrides)(contains("--max"))
@@ -98,7 +98,7 @@ object ConfigEngineSpec extends ZIOSpecDefault {
         assert(merged.toSet)(equalTo(Set("--a=1", "--b=2", "--c", "3")))
       },
       test("16. records cli overrides properly in diagnostics") {
-        val fileOpts = List(ConfigOption("-f", None, "1", 1))
+        val fileOpts  = List(ConfigOption("-f", None, "1", 1))
         val (_, diag) = ConfigMerger.mergeWithDiagnostics(fileOpts, List("-f"))
         assert(diag.cliOverrides)(equalTo(List("-f"))) &&
         assert(diag.conflicts.head.cliOverride)(isTrue)
@@ -112,18 +112,18 @@ object ConfigEngineSpec extends ZIOSpecDefault {
         assert(diag.resolvedOptions.map(_.key).toSet)(equalTo(Set("-a", "-b")))
       },
       test("18. merges key without value but cli has value") {
-        val fileOpts = List(ConfigOption("--k", None, "1", 1))
+        val fileOpts       = List(ConfigOption("--k", None, "1", 1))
         val (merged, diag) = ConfigMerger.mergeWithDiagnostics(fileOpts, List("--k=10"))
         assert(merged)(equalTo(List("--k=10"))) &&
         assert(diag.cliOverrides)(contains("--k"))
       },
       test("19. respects original cli args order") {
-        val fileOpts = List(ConfigOption("--fromFile", None, "1", 1))
+        val fileOpts    = List(ConfigOption("--fromFile", None, "1", 1))
         val (merged, _) = ConfigMerger.mergeWithDiagnostics(fileOpts, List("arg1", "arg2"))
         assert(merged.takeRight(2))(equalTo(List("arg1", "arg2")))
       },
       test("20. does not falsely flag unique key as overridden") {
-        val fileOpts = List(ConfigOption("--x", Some("10"), "1", 1))
+        val fileOpts  = List(ConfigOption("--x", Some("10"), "1", 1))
         val (_, diag) = ConfigMerger.mergeWithDiagnostics(fileOpts, List("--y", "20"))
         assert(diag.conflicts)(isEmpty)
       },

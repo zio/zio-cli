@@ -82,8 +82,12 @@ object CliApp {
               .foldRight(HelpDoc.empty)(_ + _)
 
             val configHelp = h1("configuration") +
-              p(s"This application supports configuration via dotfiles. You can create a file named .${self.name} to define your options. Format is either `--key=value`, `--key value`, or `--flag` per line.") +
-              p("Priority (Highest to Lowest): CLI arguments > Current Directory > Parent Directories > Home Directory.") +
+              p(
+                s"This application supports configuration via dotfiles. You can create a file named .${self.name} to define your options. Format is either `--key=value`, `--key value`, or `--flag` per line."
+              ) +
+              p(
+                "Priority (Highest to Lowest): CLI arguments > Current Directory > Parent Directories > Home Directory."
+              ) +
               p("Use the --config-diagnostics flag to preview how configuration is being resolved.")
 
             // TODO add rendering of built-in options such as help
@@ -132,11 +136,13 @@ object CliApp {
         }
 
       val configEffect = for {
-        configOpts <- ConfigFileResolver.resolveAndParse(self.name).catchAll(_ => ZIO.succeed(Nil))
+        configOpts               <- ConfigFileResolver.resolveAndParse(self.name).catchAll(_ => ZIO.succeed(Nil))
         (mergedArgs, diagnostics) = ConfigMerger.mergeWithDiagnostics(configOpts, args)
-        _ <- ConfigDiagnostics.printDiagnostics(diagnostics).when(args.contains("--config-diagnostics"))
+        _                        <- ConfigDiagnostics.printDiagnostics(diagnostics).when(args.contains("--config-diagnostics"))
 
-        isBuiltIn = args.exists(h => h == "--help" || h == "-h" || h == "--wizard" || h == "--compgen" || h == "--generate-completion")
+        isBuiltIn = args.exists(h =>
+                      h == "--help" || h == "-h" || h == "--wizard" || h == "--compgen" || h == "--generate-completion"
+                    )
         finalArgs = if (isBuiltIn) args else mergedArgs.filterNot(_ == "--config-diagnostics")
       } yield finalArgs
 

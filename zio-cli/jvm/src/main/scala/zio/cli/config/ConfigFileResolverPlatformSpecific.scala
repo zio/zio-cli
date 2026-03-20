@@ -5,14 +5,14 @@ import java.nio.file.{Files, Path, Paths}
 import scala.io.Source
 
 /**
- * JVM implementation of config file resolution.
- * Walks from CWD to root, then home, looking for `.<commandName>` dotfiles.
+ * JVM implementation of config file resolution. Walks from CWD to root, then home, looking for `.<commandName>`
+ * dotfiles.
  */
 trait ConfigFileResolverPlatformSpecific {
 
   /**
-   * Discovers config files and parses them into [[ConfigOption]] values.
-   * Priority order: home (lowest) → root → … → cwd (highest).
+   * Discovers config files and parses them into [[ConfigOption]] values. Priority order: home (lowest) → root → … → cwd
+   * (highest).
    */
   def resolveAndParse(commandName: String): Task[List[ConfigOption]] =
     ZIO.attempt {
@@ -37,7 +37,9 @@ trait ConfigFileResolverPlatformSpecific {
 
       existing.zipWithIndex.flatMap { case (path, priority) =>
         val source = Source.fromFile(path.toFile, "UTF-8")
-        val lines  = try source.getLines().toList finally source.close()
+        val lines  =
+          try source.getLines().toList
+          finally source.close()
         ConfigParser.parseLines(lines, path.toString, priority)
       }
     }

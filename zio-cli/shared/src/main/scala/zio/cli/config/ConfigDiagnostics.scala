@@ -24,8 +24,8 @@ case class ConfigConflict(
 object ConfigDiagnostics {
 
   /**
-   * Prints a human-readable summary of where each resolved option came from,
-   * which options were overridden by CLI, and detected conflicts.
+   * Prints a human-readable summary of where each resolved option came from, which options were overridden by CLI, and
+   * detected conflicts.
    */
   def printDiagnostics(diagnostics: ConfigDiagnostics): UIO[Unit] = {
     val header = Console.printLine("\n--- Config Diagnostics ---").ignore

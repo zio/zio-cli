@@ -3,10 +3,14 @@ package zio.cli.config
 /**
  * Represents a single configuration option parsed from a dotfile.
  *
- * @param key      The option key, including dashes (e.g. "--max-lines")
- * @param value    Optional value for the option
- * @param source   File path string where the option was found
- * @param priority Priority index (higher = more important, closer to cwd)
+ * @param key
+ *   The option key, including dashes (e.g. "--max-lines")
+ * @param value
+ *   Optional value for the option
+ * @param source
+ *   File path string where the option was found
+ * @param priority
+ *   Priority index (higher = more important, closer to cwd)
  */
 case class ConfigOption(
   key: String,
