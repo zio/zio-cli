@@ -1,7 +1,7 @@
 package zio.cli.config
 
 import zio._
-import java.nio.file.{Files, Path, Paths}
+import java.io.File
 import scala.io.Source
 
 /**
@@ -17,30 +17,30 @@ trait ConfigFileResolverPlatformSpecific {
   def resolveAndParse(commandName: String): Task[List[ConfigOption]] =
     ZIO.attempt {
       val fileName = s".$commandName"
-      val homePath = sys.props.get("user.home").map(Paths.get(_)).map(_.resolve(fileName))
-      val cwd      = Paths.get("").toAbsolutePath
+      val homePath = sys.props.get("user.home").map(new File(_, fileName))
+      val cwd      = new File("").getAbsoluteFile
 
-      def getParents(path: Path): List[Path] = {
-        val parent = path.getParent
-        if (parent == null) List(path) else path :: getParents(parent)
+      def getParents(file: File): List[File] = {
+        val parent = file.getParentFile
+        if (parent == null) List(file) else file :: getParents(parent)
       }
 
       // From root to CWD
       val cwdUpToRoot = getParents(cwd).reverse
-      val cwdPaths    = cwdUpToRoot.map(_.resolve(fileName))
+      val cwdPaths    = cwdUpToRoot.map(dir => new File(dir, fileName))
 
       // home first (lowest priority), then root→cwd
       val allPaths = homePath.toList ++ cwdPaths
 
       // De-duplicate, keep only existing files, and assign priority indices
-      val existing = allPaths.distinct.filter(Files.exists(_))
+      val existing = allPaths.distinct.filter(_.exists())
 
-      existing.zipWithIndex.flatMap { case (path, priority) =>
-        val source = Source.fromFile(path.toFile, "UTF-8")
+      existing.zipWithIndex.flatMap { case (file, priority) =>
+        val source = Source.fromFile(file, "UTF-8")
         val lines  =
           try source.getLines().toList
           finally source.close()
-        ConfigParser.parseLines(lines, path.toString, priority)
+        ConfigParser.parseLines(lines, file.getAbsolutePath, priority)
       }
     }
 }
