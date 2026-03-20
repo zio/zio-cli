@@ -8,6 +8,7 @@ import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.HelpDoc.{h1, p}
 import zio.cli.completion.{Completion, CompletionScript}
 import zio.cli.figlet.FigFont
+import zio.cli.config._
 
 import scala.annotation.tailrec
 
@@ -80,9 +81,14 @@ object CliApp {
               .map(HelpDoc.p)
               .foldRight(HelpDoc.empty)(_ + _)
 
+            val configHelp = h1("configuration") +
+              p(s"This application supports configuration via dotfiles. You can create a file named .${self.name} to define your options. Format is either `--key=value`, `--key value`, or `--flag` per line.") +
+              p("Priority (Highest to Lowest): CLI arguments > Current Directory > Parent Directories > Home Directory.") +
+              p("Use the --config-diagnostics flag to preview how configuration is being resolved.")
+
             // TODO add rendering of built-in options such as help
             printLine(
-              (fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300)
+              (fancyName + header + synopsisHelpDoc + helpDoc + configHelp + self.footer).toPlaintext(columnWidth = 300)
             ).mapBoth(CliError.IO(_), _ => None)
           case ShowCompletionScript(path, shellType) =>
             printLine(
@@ -125,19 +131,30 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
-        .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
-          {
-            case CommandDirective.UserDefined(_, value) =>
-              self.execute(value).mapBoth(CliError.Execution(_), Some(_))
-            case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
-                printDocs(e.error) *> ZIO.fail(err)
-              }
-          }
-        )
+      val configEffect = for {
+        configOpts <- ConfigFileResolver.resolveAndParse(self.name).catchAll(_ => ZIO.succeed(Nil))
+        (mergedArgs, diagnostics) = ConfigMerger.mergeWithDiagnostics(configOpts, args)
+        _ <- ConfigDiagnostics.printDiagnostics(diagnostics).when(args.contains("--config-diagnostics"))
+
+        isBuiltIn = args.exists(h => h == "--help" || h == "-h" || h == "--wizard" || h == "--compgen" || h == "--generate-completion")
+        finalArgs = if (isBuiltIn) args else mergedArgs.filterNot(_ == "--config-diagnostics")
+      } yield finalArgs
+
+      configEffect.flatMap { finalArgs =>
+        self.command
+          .parse(prefix(self.command) ++ finalArgs, self.config)
+          .foldZIO(
+            e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
+            {
+              case CommandDirective.UserDefined(_, value) =>
+                self.execute(value).mapBoth(CliError.Execution(_), Some(_))
+              case CommandDirective.BuiltIn(x) =>
+                executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
+                  printDocs(e.error) *> ZIO.fail(err)
+                }
+            }
+          )
+      }
     }
 
     override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =
