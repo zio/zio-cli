@@ -156,7 +156,7 @@ object Command {
                   )
                 }
             }
-          tuple1                                   = splitForcedArgs(commandOptionsAndArgs)
+          tuple1                                   = splitForcedArgs(configArgs ++ commandOptionsAndArgs)
           (optionsAndArgs, forcedCommandArgs)      = tuple1
           tuple2                                  <- Options.validate(options, optionsAndArgs, conf)
           (optionsError, commandArgs, optionsType) = tuple2
