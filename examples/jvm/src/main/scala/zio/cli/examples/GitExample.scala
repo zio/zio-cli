@@ -39,24 +39,18 @@ object GitExample extends ZIOCliDefault {
       Subcommand.Remote.Add(name, url)
     }
   }
-
   val remoteRemove = {
     val remoteRemoveHelp: HelpDoc = HelpDoc.p("Remove remote subcommand description")
     Command("remove", Args.text("name")).withHelp(remoteRemoveHelp).map(Subcommand.Remote.Remove)
   }
 
   val remoteHelp: HelpDoc = HelpDoc.p("Remote subcommand description")
-  val remote              =
-    // val gitRemote       = Command("remote", verboseFlag).withHelp(remoteHelp).map(Subcommand.Remote(_))
-    // val gitRemoteAdd    = Command("remote").withHelp(remoteHelp).subcommands(remoteAdd)
-    // val gitRemoteRemove = Command("remote").withHelp(remoteHelp).subcommands(remoteRemove)
-    // gitRemote | gitRemoteAdd | gitRemoteRemove
+
+  val remote =
     Command("remote", verboseFlag)
       .withHelp(remoteHelp)
       .map(Subcommand.Remote(_))
       .subcommands(remoteAdd, remoteRemove)
-      .map(_._2) // TODO: We shouldn't have to discard the standalone remote command
-
   val git: Command[Subcommand] =
     Command("git", Options.none, Args.none).subcommands(add, remote)
 
