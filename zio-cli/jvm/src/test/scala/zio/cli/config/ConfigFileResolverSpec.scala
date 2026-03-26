@@ -34,25 +34,25 @@ object ConfigFileResolverSpec extends ZIOSpecDefault {
           _ <- writeFile(parent.resolve(s".$commandName"), List("--verbosity=debug"))
           _ <- writeFile(cwd.resolve(s".$commandName"), List("--line-ending=POSIX"))
 
-          oldHome <- ZIO.attempt(Option(System.getProperty("user.home")))
-          oldDir  <- ZIO.attempt(Option(System.getProperty("user.dir")))
+          oldHome <- ZIO.attempt(Option(java.lang.System.getProperty("user.home")))
+          oldDir  <- ZIO.attempt(Option(java.lang.System.getProperty("user.dir")))
 
           result <- (
                       for {
-                        _       <- ZIO.attempt(System.setProperty("user.home", home.toString))
-                        _       <- ZIO.attempt(System.setProperty("user.dir", cwd.toString))
-                        parsed  <- ConfigFileResolver.resolveAndParse(commandName)
-                        merged   = ConfigMerger.merge(parsed, List("--line-ending", "CLI"))
+                        _      <- ZIO.attempt(java.lang.System.setProperty("user.home", home.toString))
+                        _      <- ZIO.attempt(java.lang.System.setProperty("user.dir", cwd.toString))
+                        parsed <- ConfigFileResolver.resolveAndParse(commandName)
+                        merged  = ConfigMerger.merge(parsed, List("--line-ending", "CLI"))
                       } yield (parsed, merged)
                     ).ensuring(
                       ZIO.attempt {
                         oldHome match {
-                          case Some(value) => System.setProperty("user.home", value)
-                          case None        => System.clearProperty("user.home")
+                          case Some(value) => java.lang.System.setProperty("user.home", value)
+                          case None        => java.lang.System.clearProperty("user.home")
                         }
                         oldDir match {
-                          case Some(value) => System.setProperty("user.dir", value)
-                          case None        => System.clearProperty("user.dir")
+                          case Some(value) => java.lang.System.setProperty("user.dir", value)
+                          case None        => java.lang.System.clearProperty("user.dir")
                         }
                       }.orDie
                     )
@@ -77,24 +77,24 @@ object ConfigFileResolverSpec extends ZIOSpecDefault {
           base <- ZIO.attempt(Files.createTempDirectory("zio-cli-config-app"))
           _    <- writeFile(base.resolve(s".$appName"), List("--line-ending=LF"))
 
-          oldHome <- ZIO.attempt(Option(System.getProperty("user.home")))
-          oldDir  <- ZIO.attempt(Option(System.getProperty("user.dir")))
+          oldHome <- ZIO.attempt(Option(java.lang.System.getProperty("user.home")))
+          oldDir  <- ZIO.attempt(Option(java.lang.System.getProperty("user.dir")))
 
           result <- (
                       for {
-                        _      <- ZIO.attempt(System.setProperty("user.home", base.toString))
-                        _      <- ZIO.attempt(System.setProperty("user.dir", base.toString))
+                        _      <- ZIO.attempt(java.lang.System.setProperty("user.home", base.toString))
+                        _      <- ZIO.attempt(java.lang.System.setProperty("user.dir", base.toString))
                         output <- app.run(Nil)
                       } yield output
                     ).ensuring(
                       ZIO.attempt {
                         oldHome match {
-                          case Some(value) => System.setProperty("user.home", value)
-                          case None        => System.clearProperty("user.home")
+                          case Some(value) => java.lang.System.setProperty("user.home", value)
+                          case None        => java.lang.System.clearProperty("user.home")
                         }
                         oldDir match {
-                          case Some(value) => System.setProperty("user.dir", value)
-                          case None        => System.clearProperty("user.dir")
+                          case Some(value) => java.lang.System.setProperty("user.dir", value)
+                          case None        => java.lang.System.clearProperty("user.dir")
                         }
                       }.orDie
                     )

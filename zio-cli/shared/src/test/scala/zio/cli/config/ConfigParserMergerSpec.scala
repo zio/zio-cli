@@ -1,5 +1,6 @@
 package zio.cli.config
 
+import zio.Scope
 import zio.test.Assertion._
 import zio.test._
 

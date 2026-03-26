@@ -70,7 +70,7 @@ object CliApp {
     private def usesBuiltInOnly(args: List[String]): Boolean =
       args.exists {
         case "-h" | "--help" | "--wizard" | "--compgen" | "--generate-completion" => true
-        case _                                                                      => false
+        case _                                                                    => false
       }
 
     def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
@@ -89,13 +89,16 @@ object CliApp {
 
             val configHelpDoc =
               h1("configuration") +
-                p(s"Defaults may be loaded from .$name files found in the home directory and in the current working directory hierarchy.") +
+                p(
+                  s"Defaults may be loaded from .$name files found in the home directory and in the current working directory hierarchy."
+                ) +
                 p("Priority is: CLI arguments > current directory > parent directories > home directory.") +
                 p("Applied configuration values are printed with their source file.")
 
             // TODO add rendering of built-in options such as help
             printLine(
-              (fancyName + header + synopsisHelpDoc + helpDoc + configHelpDoc + self.footer).toPlaintext(columnWidth = 300)
+              (fancyName + header + synopsisHelpDoc + helpDoc + configHelpDoc + self.footer)
+                .toPlaintext(columnWidth = 300)
             ).mapBoth(CliError.IO(_), _ => None)
           case ShowCompletionScript(path, shellType) =>
             printLine(
@@ -141,13 +144,15 @@ object CliApp {
       val effectiveArgs: UIO[List[String]] =
         if (usesBuiltInOnly(args)) ZIO.succeed(args)
         else
-          ConfigFileResolver.resolveAndParse(self.name).foldZIO(
-            _ => ZIO.succeed(args),
-            options => {
-              val (mergedArgs, diagnostics) = ConfigMerger.mergeWithDiagnostics(options, args)
-              ConfigDiagnostics.printDiagnostics(diagnostics) *> ZIO.succeed(mergedArgs)
-            }
-          )
+          ConfigFileResolver
+            .resolveAndParse(self.name)
+            .foldZIO(
+              _ => ZIO.succeed(args),
+              options => {
+                val (mergedArgs, diagnostics) = ConfigMerger.mergeWithDiagnostics(options, args)
+                ConfigDiagnostics.printDiagnostics(diagnostics) *> ZIO.succeed(mergedArgs)
+              }
+            )
 
       effectiveArgs.flatMap { finalArgs =>
         self.command

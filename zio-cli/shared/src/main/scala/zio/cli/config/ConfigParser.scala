@@ -38,7 +38,6 @@ object ConfigParser {
 
     var inSingle = false
     var inDouble = false
-    var escaped  = false
 
     def flush(): Unit =
       if (current.nonEmpty) {
@@ -47,26 +46,17 @@ object ConfigParser {
       }
 
     line.foreach { ch =>
-      if (escaped) {
-        current.append(ch)
-        escaped = false
-      } else {
-        ch match {
-          case '\\' if !inSingle =>
-            escaped = true
-          case '\'' if !inDouble =>
-            inSingle = !inSingle
-          case '"' if !inSingle =>
-            inDouble = !inDouble
-          case c if c.isWhitespace && !inSingle && !inDouble =>
-            flush()
-          case c =>
-            current.append(c)
-        }
+      ch match {
+        case '\'' if !inDouble =>
+          inSingle = !inSingle
+        case '"' if !inSingle =>
+          inDouble = !inDouble
+        case c if c.isWhitespace && !inSingle && !inDouble =>
+          flush()
+        case c =>
+          current.append(c)
       }
     }
-
-    if (escaped) current.append('\\')
 
     flush()
     builder.toList

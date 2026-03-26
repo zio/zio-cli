@@ -11,15 +11,17 @@ private[cli] trait ConfigFileResolverPlatformSpecific {
   def resolveAndParse(commandName: String): Task[List[ConfigOption]] =
     ZIO.attempt {
       val fileName = s".$commandName"
-      val homeFile = Option(System.getProperty("user.home")).map(home => new File(home, fileName)).toList
-      val cwd      = new File(Option(System.getProperty("user.dir")).getOrElse(".")).getAbsoluteFile
+      val homeFile = Option(java.lang.System.getProperty("user.home")).map(home => new File(home, fileName)).toList
+      val cwd      = new File(Option(java.lang.System.getProperty("user.dir")).getOrElse(".")).getAbsoluteFile
 
       val candidates = distinctByPath(homeFile ++ directoriesFromRootTo(cwd).map(new File(_, fileName)))
         .filter(file => file.exists() && file.isFile)
 
       candidates.zipWithIndex.flatMap { case (file, priority) =>
         val source = Source.fromFile(file, "UTF-8")
-        val lines  = try source.getLines().toList finally source.close()
+        val lines  =
+          try source.getLines().toList
+          finally source.close()
         ConfigParser.parseLines(lines, file.getAbsolutePath, priority)
       }
     }

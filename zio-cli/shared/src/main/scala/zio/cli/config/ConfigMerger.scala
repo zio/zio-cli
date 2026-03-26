@@ -5,7 +5,10 @@ object ConfigMerger {
   def merge(fileOptions: List[ConfigOption], cliArgs: List[String]): List[String] =
     mergeWithDiagnostics(fileOptions, cliArgs)._1
 
-  def mergeWithDiagnostics(fileOptions: List[ConfigOption], cliArgs: List[String]): (List[String], ConfigDiagnostics) = {
+  def mergeWithDiagnostics(
+    fileOptions: List[ConfigOption],
+    cliArgs: List[String]
+  ): (List[String], ConfigDiagnostics) = {
     val cliKeys = cliArgs.flatMap(arg => if (arg.startsWith("-")) Some(ConfigParser.optionKey(arg)) else None).toSet
 
     val groupedByKey = fileOptions.groupBy(_.key)
