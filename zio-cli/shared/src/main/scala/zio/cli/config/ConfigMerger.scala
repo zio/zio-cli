@@ -33,6 +33,8 @@ object ConfigMerger {
       }
     }
 
+    val cliOverrides = conflicts.collect { case conflict if conflict.cliOverride => conflict.key }
+
     val mergedArgs = resolvedOptions.flatMap(_.arguments) ++ cliArgs
 
     (
@@ -40,7 +42,7 @@ object ConfigMerger {
       ConfigDiagnostics(
         resolvedOptions = resolvedOptions,
         conflicts = conflicts,
-        cliOverrides = cliKeys.toList
+        cliOverrides = cliOverrides
       )
     )
   }

@@ -51,6 +51,13 @@ object ConfigParserMergerSpec extends ZIOSpecDefault {
 
         assert(merged)(equalTo(List("--verbose", "--count", "3"))) &&
         assert(diagnostics.cliOverrides)(contains("--count"))
+      },
+      test("CLI args are not reported as overrides when no file options are present") {
+        val (merged, diagnostics) = ConfigMerger.mergeWithDiagnostics(Nil, List("-a", "A", "-b", "B"))
+
+        assert(merged)(equalTo(List("-a", "A", "-b", "B"))) &&
+        assert(diagnostics.cliOverrides)(isEmpty) &&
+        assert(diagnostics.conflicts)(isEmpty)
       }
     )
 }
