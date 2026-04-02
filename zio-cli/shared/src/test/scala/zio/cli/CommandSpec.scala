@@ -363,6 +363,48 @@ object CommandSpec extends ZIOSpecDefault {
         }
       )
     },
+    suite("root-level --help with subcommands (issue #448)") {
+      val git =
+        Command("git", Options.Empty, Args.none).subcommands(
+          Command("add", Options.Empty, Args.none).subcommands(
+            Command("subsubCommand", Options.Empty, Args.none)
+          ),
+          Command("clone", Options.Empty, Args.none)
+        )
+
+      def helpText(result: CommandDirective[Any]): String = result match {
+        case CommandDirective.BuiltIn(ShowHelp(_, helpDoc)) => helpDoc.toPlaintext()
+        case _                                              => ""
+      }
+
+      Vector(
+        test("--help at root shows parent help, not child help") {
+          assertZIO(git.parse(List("git", "--help"), CliConfig.default).map(helpText))(
+            containsString("add") && containsString("clone")
+          )
+        },
+        test("-h at root shows parent help") {
+          assertZIO(git.parse(List("git", "-h"), CliConfig.default).map(helpText))(
+            containsString("add") && containsString("clone")
+          )
+        },
+        test("subcommand --help shows subcommand help") {
+          assertZIO(git.parse(List("git", "add", "--help"), CliConfig.default).map(helpText))(
+            containsString("subsubCommand")
+          )
+        },
+        test("empty args shows parent help") {
+          assertZIO(git.parse(List("git"), CliConfig.default).map(helpText))(
+            containsString("add") && containsString("clone")
+          )
+        },
+        test("--wizard at root shows parent wizard, not child wizard") {
+          assertZIO(git.parse(List("git", "--wizard"), CliConfig.default).map(directiveType))(
+            equalTo("wizard")
+          )
+        }
+      )
+    },
     test("cmd opts -- args") {
       val command =
         Command("cmd", Options.text("something").optional ++ Options.boolean("verbose").alias("v"), Args.text.*)

@@ -118,13 +118,24 @@ object Command {
             .builtInOptions(self, self.synopsis, self.helpDoc)
           Options
             .validate(options, args.tail, conf)
-            .map(_._3)
-            .someOrFail(
-              ValidationError(
-                ValidationErrorType.NoBuiltInMatch,
-                HelpDoc.p(s"No built-in option was matched")
-              )
-            )
+            .flatMap { case (_, leftover, value) =>
+              if (leftover.nonEmpty)
+                ZIO.fail(
+                  ValidationError(
+                    ValidationErrorType.NoBuiltInMatch,
+                    HelpDoc.p(s"No built-in option was matched")
+                  )
+                )
+              else
+                ZIO
+                  .fromOption(value)
+                  .mapError(_ =>
+                    ValidationError(
+                      ValidationErrorType.NoBuiltInMatch,
+                      HelpDoc.p(s"No built-in option was matched")
+                    )
+                  )
+            }
             .map(CommandDirective.BuiltIn)
         } else
           ZIO.fail(
@@ -293,7 +304,7 @@ object Command {
           ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty))
         else
           child
-            .parse(args.tail, conf)
+            .parse(args.tail, conf.copy(finalCheckBuiltIn = false))
             .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
               case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
                 val parentName = names.headOption.getOrElse("")
@@ -313,7 +324,7 @@ object Command {
           ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty))
         else
           child
-            .parse(args.tail, conf)
+            .parse(args.tail, conf.copy(finalCheckBuiltIn = false))
             .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
               case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
             }
