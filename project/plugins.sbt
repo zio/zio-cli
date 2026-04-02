@@ -9,7 +9,7 @@ addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.5.10")
 addSbtPlugin("org.scalameta"      % "sbt-mdoc"                      % "2.8.2")
 addSbtPlugin("org.scalameta"      % "sbt-scalafmt"                  % "2.5.6")
 addSbtPlugin("org.scoverage"      % "sbt-scoverage"                 % "2.4.4")
-addSbtPlugin("org.scalameta"      % "sbt-native-image"              % "0.3.2")
+addSbtPlugin("org.scalameta"      % "sbt-native-image"              % "0.4.0")
 addSbtPlugin("dev.zio"            % "zio-sbt-website"               % "0.5.0")
 addSbtPlugin("ch.epfl.scala"      % "sbt-scalafix"                  % "0.14.6")
 
