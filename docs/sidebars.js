@@ -12,6 +12,7 @@ const sidebars = {
         "helpdoc",
         "built-in-commands",
         "cli-config",
+        "config-files",
         "auth",
         "bash-and-zsh-completion",
         "sbt-plugin",
