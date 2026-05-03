@@ -7,6 +7,7 @@ import zio.cli.BuiltInOption._
 import zio.cli.HelpDoc.Span.{code, text}
 import zio.cli.HelpDoc.{h1, p}
 import zio.cli.completion.{Completion, CompletionScript}
+import zio.cli.config.{ConfigDiagnostics, ConfigFileResolver, ConfigMerger}
 import zio.cli.figlet.FigFont
 
 import scala.annotation.tailrec
@@ -66,6 +67,12 @@ object CliApp {
     private def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
+    private def usesBuiltInOnly(args: List[String]): Boolean =
+      args.exists {
+        case "-h" | "--help" | "--wizard" | "--compgen" | "--generate-completion" => true
+        case _                                                                    => false
+      }
+
     def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
       def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
         builtInOption match {
@@ -80,9 +87,18 @@ object CliApp {
               .map(HelpDoc.p)
               .foldRight(HelpDoc.empty)(_ + _)
 
+            val configHelpDoc =
+              h1("configuration") +
+                p(
+                  s"Defaults may be loaded from .$name files found in the home directory and in the current working directory hierarchy."
+                ) +
+                p("Priority is: CLI arguments > current directory > parent directories > home directory.") +
+                p("Applied configuration values are printed with their source file.")
+
             // TODO add rendering of built-in options such as help
             printLine(
-              (fancyName + header + synopsisHelpDoc + helpDoc + self.footer).toPlaintext(columnWidth = 300)
+              (fancyName + header + synopsisHelpDoc + helpDoc + configHelpDoc + self.footer)
+                .toPlaintext(columnWidth = 300)
             ).mapBoth(CliError.IO(_), _ => None)
           case ShowCompletionScript(path, shellType) =>
             printLine(
@@ -125,19 +141,34 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
-        .foldZIO(
-          e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
-          {
-            case CommandDirective.UserDefined(_, value) =>
-              self.execute(value).mapBoth(CliError.Execution(_), Some(_))
-            case CommandDirective.BuiltIn(x) =>
-              executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
-                printDocs(e.error) *> ZIO.fail(err)
+      val effectiveArgs: UIO[List[String]] =
+        if (usesBuiltInOnly(args)) ZIO.succeed(args)
+        else
+          ConfigFileResolver
+            .resolveAndParse(self.name)
+            .foldZIO(
+              _ => ZIO.succeed(args),
+              options => {
+                val (mergedArgs, diagnostics) = ConfigMerger.mergeWithDiagnostics(options, args)
+                ConfigDiagnostics.printDiagnostics(diagnostics) *> ZIO.succeed(mergedArgs)
               }
-          }
-        )
+            )
+
+      effectiveArgs.flatMap { finalArgs =>
+        self.command
+          .parse(prefix(self.command) ++ finalArgs, self.config)
+          .foldZIO(
+            e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
+            {
+              case CommandDirective.UserDefined(_, value) =>
+                self.execute(value).mapBoth(CliError.Execution(_), Some(_))
+              case CommandDirective.BuiltIn(x) =>
+                executeBuiltIn(x).catchSome { case err @ CliError.Parsing(e) =>
+                  printDocs(e.error) *> ZIO.fail(err)
+                }
+            }
+          )
+      }
     }
 
     override def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B] =

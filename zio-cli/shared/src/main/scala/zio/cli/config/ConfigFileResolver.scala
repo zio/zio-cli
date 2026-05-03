@@ -1,0 +1,3 @@
+package zio.cli.config
+
+object ConfigFileResolver extends ConfigFileResolverPlatformSpecific
