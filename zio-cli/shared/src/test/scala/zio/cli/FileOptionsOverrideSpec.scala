@@ -60,13 +60,15 @@ object FileOptionsOverrideSpec extends ZIOSpecDefault {
   private def orElseRootTest: Spec[Any, Any] = {
     val left  = Command("alpha", Options.text("flag")).map(s => ("alpha", s))
     val right = Command("beta", Options.text("flag")).map(s => ("beta", s))
-    val app =
+    val app   =
       CliApp.make("multi", "v0", HelpDoc.Span.empty, left.orElse(right))(ZIO.succeed(_))
     test("OrElse root: file-options pass is skipped, parsing still succeeds") {
       app
         .runWithFileArgs(List("alpha", "--flag", "ok"))
         .map(assert(_)(isSome(equalTo(("alpha", "ok")))))
-        .provideLayer(ZLayer.succeed[FileOptions](Const(List(FileOptions.OptionsFromFile("/x/.alpha", List("ignored"))))))
+        .provideLayer(
+          ZLayer.succeed[FileOptions](Const(List(FileOptions.OptionsFromFile("/x/.alpha", List("ignored")))))
+        )
     }
   }
 

@@ -15,7 +15,7 @@ abstract class LiveFileOptionsSpecShared extends ZIOSpecDefault {
   private val createTempDirectory: RIO[Scope, Path] =
     for {
       random <- Random.nextUUID
-      path <-
+      path   <-
         ZIO.attempt(Files.createTempDirectory(random.toString)).withFinalizer(f => ZIO.attempt(f.toFile.delete()).orDie)
     } yield path
 
@@ -33,14 +33,14 @@ abstract class LiveFileOptionsSpecShared extends ZIOSpecDefault {
         dir <- createTempDirectory
         _   <- TestSystem.putProperty("user.dir", resolvePath(dir, cwd).toString)
         _   <- TestSystem.putProperty("user.home", resolvePath(dir, home).toString)
-        _ <- ZIO.foreachDiscard(writeFiles) { case (paths, contents) =>
+        _   <- ZIO.foreachDiscard(writeFiles) { case (paths, contents) =>
                val writePath  = resolvePath(dir, paths :+ s".$cmd")
                val parentFile = writePath.getParent.toFile
                ZIO.attempt(parentFile.mkdirs()).unlessZIO(ZIO.attempt(parentFile.exists())) *>
                  ZIO.writeFile(writePath.toString, contents)
              }
 
-        result <- FileOptions.Live.getOptionsFromFiles(cmd)
+        result     <- FileOptions.Live.getOptionsFromFiles(cmd)
         resolvedExp = exp.toList.map { case (paths, args) =>
                         FileOptions.OptionsFromFile(resolvePath(dir, paths :+ s".$cmd").toString, args)
                       }

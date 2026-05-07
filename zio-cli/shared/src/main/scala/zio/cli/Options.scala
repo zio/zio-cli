@@ -318,7 +318,7 @@ object Options extends OptionsPlatformSpecific {
           tuple1 <- matchOptions(args, options, conf)
           newMap <-
             tuple1 match {
-              case (Some(e), _, _) => ZIO.fail(e)
+              case (Some(e), _, _)               => ZIO.fail(e)
               case (_, rest, _) if rest.nonEmpty =>
                 ZIO.fail(
                   ValidationError(

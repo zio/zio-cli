@@ -49,8 +49,8 @@ sealed trait Command[+A] extends Parameter with Named { self =>
   /**
    * Parses `args` into a [[CommandDirective]]. The optional `fromFiles` parameter carries dotfile-derived option
    * defaults — see [[FileOptions]] — which are merged before user-supplied flags, with the latter taking precedence.
-   * The default empty list preserves source compatibility for existing callers (tests, third-party code) that don't
-   * yet thread file options through.
+   * The default empty list preserves source compatibility for existing callers (tests, third-party code) that don't yet
+   * thread file options through.
    */
   def parse(
     args: List[String],

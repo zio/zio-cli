@@ -36,8 +36,8 @@ sealed trait CliApp[-R, +E, +A] { self =>
   def runWithFileArgs(args: List[String]): ZIO[R & FileOptions, CliError[E], Option[A]]
 
   /**
-   * Runs the CLI app with the platform-default [[FileOptions]] implementation: real file-system access on JVM and
-   * Scala Native, no-op on Scala.js. Source-compatible with pre-#191 callers — the only behavioural change is that
+   * Runs the CLI app with the platform-default [[FileOptions]] implementation: real file-system access on JVM and Scala
+   * Native, no-op on Scala.js. Source-compatible with pre-#191 callers — the only behavioural change is that
    * `.<command>` files in the cwd / parents / home directory are now consulted on JVM/Native. Existing applications
    * that don't put any such files on disk see no difference at runtime.
    */
@@ -162,20 +162,21 @@ object CliApp {
 
       // Only consult dotfiles when the root has a single deterministic name. For an `OrElse` root we'd otherwise be
       // arbitrarily picking one alias — see Kalin-Rudnicki's review of #317 for the original framing.
+      // Avoid `case Some(name)` here: `name` is already a member of `CliAppImpl` and
+      // Scala 2.13 (with `-Werror`) refuses to silently shadow the outer scope.
       val getFromFiles: ZIO[FileOptions, Nothing, List[FileOptions.OptionsFromFile]] =
         rootName.headOption match {
-          case Some(name) => ZIO.serviceWithZIO[FileOptions](_.getOptionsFromFiles(name))
-          case None =>
+          case Some(cmdName) => ZIO.serviceWithZIO[FileOptions](_.getOptionsFromFiles(cmdName))
+          case None          =>
             ZIO.logDebug(
               "Skipping file-options lookup: top-level command has no unique name (`OrElse` root)."
             ) *> ZIO.succeed(Nil)
         }
 
-      getFromFiles
-        .flatMap { fromFiles =>
-          self.command
-            .parse(rootName ++ args, self.config, fromFiles)
-        }
+      getFromFiles.flatMap { fromFiles =>
+        self.command
+          .parse(rootName ++ args, self.config, fromFiles)
+      }
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {

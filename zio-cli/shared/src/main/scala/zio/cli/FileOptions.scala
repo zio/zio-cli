@@ -57,9 +57,9 @@ object FileOptions extends FileOptionsPlatformSpecific {
 
     private def optReadPath(path: Path): UIO[Option[FileOptions.OptionsFromFile]] =
       (for {
-        _         <- ZIO.logDebug(s"Searching for file options in '$path'")
-        exists    <- ZIO.attempt(path.toFile.exists())
-        pathString = path.toString
+        _           <- ZIO.logDebug(s"Searching for file options in '$path'")
+        exists      <- ZIO.attempt(path.toFile.exists())
+        pathString   = path.toString
         optContents <-
           ZIO
             .readFile(pathString)
@@ -71,7 +71,7 @@ object FileOptions extends FileOptionsPlatformSpecific {
     private def getPathAndParents(path: Path): Task[List[Path]] =
       for {
         parentPath <- ZIO.attempt(Option(path.getParent))
-        parents <- parentPath match {
+        parents    <- parentPath match {
                      case Some(parentPath) => getPathAndParents(parentPath)
                      case None             => ZIO.succeed(Nil)
                    }
