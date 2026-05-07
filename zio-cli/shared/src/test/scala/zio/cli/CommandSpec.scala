@@ -402,6 +402,18 @@ object CommandSpec extends ZIOSpecDefault {
           assertZIO(git.parse(List("git", "--wizard"), CliConfig.default).map(directiveType))(
             equalTo("wizard")
           )
+        },
+        test("--help is not consumed as built-in when extra args remain") {
+          val cmd = Command("cmd", Options.Empty, Args.text.*)
+          assertZIO(cmd.parse(List("cmd", "--help", "payload"), CliConfig.default).map(directiveType))(
+            equalTo("user")
+          )
+        },
+        test("--wizard is not consumed as built-in when extra args remain") {
+          val cmd = Command("cmd", Options.Empty, Args.text.*)
+          assertZIO(cmd.parse(List("cmd", "--wizard", "payload"), CliConfig.default).map(directiveType))(
+            equalTo("user")
+          )
         }
       )
     },

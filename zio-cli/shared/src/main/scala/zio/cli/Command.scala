@@ -116,27 +116,11 @@ object Command {
         if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
+          def noBuiltInMatch =
+            ValidationError(ValidationErrorType.NoBuiltInMatch, HelpDoc.p("No built-in option was matched"))
           Options
             .validate(options, args.tail, conf)
-            .flatMap { case (_, leftover, value) =>
-              if (leftover.nonEmpty)
-                ZIO.fail(
-                  ValidationError(
-                    ValidationErrorType.NoBuiltInMatch,
-                    HelpDoc.p(s"No built-in option was matched")
-                  )
-                )
-              else
-                ZIO
-                  .fromOption(value)
-                  .mapError(_ =>
-                    ValidationError(
-                      ValidationErrorType.NoBuiltInMatch,
-                      HelpDoc.p(s"No built-in option was matched")
-                    )
-                  )
-            }
-            .map(CommandDirective.BuiltIn)
+            .collect(noBuiltInMatch) { case (_, Nil, Some(value)) => CommandDirective.BuiltIn(value) }
         } else
           ZIO.fail(
             ValidationError(
