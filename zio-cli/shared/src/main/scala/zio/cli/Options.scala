@@ -299,20 +299,103 @@ object Options extends OptionsPlatformSpecific {
     }
 
   /**
+   * Folds a list of file-derived options (highest priority first) into a single map keyed by option uid, where the
+   * value is the (path, raw-args) of the file that "won" for that option. Files are merged by walking from the lowest
+   * priority (the end of `queue`, which we reverse beforehand) to the highest, so closer files overwrite farther ones.
+   *
+   * Args inside a dotfile that don't match any declared option are rejected — silently dropping them would mask typos
+   * and make dotfile debugging miserable.
+   */
+  private def mergeFileOptions(
+    queue: List[FileOptions.OptionsFromFile],
+    acc: Predef.Map[String, (String, List[String])],
+    options: List[Options[_] with Input],
+    conf: CliConfig
+  ): IO[ValidationError, Predef.Map[String, (String, List[String])]] =
+    queue match {
+      case FileOptions.OptionsFromFile(path, args) :: tail =>
+        for {
+          tuple1 <- matchOptions(args, options, conf)
+          newMap <-
+            tuple1 match {
+              case (Some(e), _, _) => ZIO.fail(e)
+              case (_, rest, _) if rest.nonEmpty =>
+                ZIO.fail(
+                  ValidationError(
+                    ValidationErrorType.InvalidArgument,
+                    HelpDoc.p("Files can only contain options, not Args") +
+                      HelpDoc.p(s"Found args: ${rest.mkString(", ")}")
+                  )
+                )
+              case (_, _, map) => ZIO.succeed(map.map { case (k, v) => (k, (path, v)) })
+            }
+          mergedPairs <-
+            ZIO.foreach((acc.keySet | newMap.keySet).toList.sorted.map(k => (k, acc.get(k), newMap.get(k)))) {
+              case (k, Some((accPath, _)), Some(newRes @ (newPath, _))) =>
+                ZIO.logDebug(s"option '$k' : options from path '$accPath' overridden by path '$newPath'") *>
+                  ZIO.some(k -> newRes)
+              case (k, Some(accRes), None) =>
+                ZIO.some(k -> accRes)
+              case (k, None, Some(newRes)) =>
+                ZIO.some(k -> newRes)
+              case (_, None, None) =>
+                ZIO.none
+            }
+          mergedMap = mergedPairs.flatten.toMap
+          res      <- mergeFileOptions(tail, mergedMap, options, conf)
+        } yield res
+      case Nil =>
+        ZIO.succeed(acc)
+    }
+
+  /**
+   * Combines file-derived options with explicit command-line options, with the latter taking precedence. The path
+   * provenance carried alongside file options is used purely for debug-level log messages so users can trace where a
+   * given setting came from.
+   */
+  private def mergeFileAndInputOptions(
+    inputOptions: Predef.Map[String, List[String]],
+    fileOptions: Predef.Map[String, (String, List[String])]
+  ): UIO[Predef.Map[String, List[String]]] =
+    ZIO
+      .foreach(
+        (fileOptions.keySet | inputOptions.keySet).toList.sorted.map(k => (k, fileOptions.get(k), inputOptions.get(k)))
+      ) {
+        case (k, Some((accPath, _)), Some(inputRes)) =>
+          ZIO.logDebug(s"option '$k' : options from path '$accPath' overridden by command line") *>
+            ZIO.some(k -> inputRes)
+        case (k, Some((accPath, accArgs)), None) =>
+          ZIO.logInfo(s"option '$k' : using options from path '$accPath' - ${accArgs.mkString(", ")}") *>
+            ZIO.some(k -> accArgs)
+        case (k, None, Some(newRes)) =>
+          ZIO.some(k -> newRes)
+        case (_, None, None) =>
+          ZIO.none
+      }
+      .map(_.flatten.toMap)
+
+  /**
    * `Options.validate` parses `args` for options and returns an `Option[ValidationError]`, the leftover arguments and
    * the constructed value of type `A`. The possible error inside `Option[ValidationError]` would only be triggered if
    * there is an error when parsing the `Args` of a `Command`. This is because `ValidationErrors` are used to control
    * the end of the args corresponding to options.
+   *
+   * The optional `fromFiles` parameter carries dotfile-derived option defaults discovered by [[FileOptions]]. They are
+   * merged in priority order before the explicit `args` are applied, so command-line input always wins. The default
+   * empty list preserves source compatibility for existing call sites that don't use file options.
    */
   def validate[A](
     options: Options[A],
     args: List[String],
-    conf: CliConfig
+    conf: CliConfig,
+    fromFiles: List[FileOptions.OptionsFromFile] = Nil
   ): IO[ValidationError, (Option[ValidationError], List[String], A)] =
     for {
       matched                             <- matchOptions(args, options.flatten, conf)
       (error, commandArgs, matchedOptions) = matched
-      a                                   <- options.validate(matchedOptions, conf).mapError(error.getOrElse(_))
+      mapFromFiles                        <- mergeFileOptions(fromFiles.reverse, Predef.Map.empty, options.flatten, conf)
+      mergedOptions                       <- mergeFileAndInputOptions(matchedOptions, mapFromFiles)
+      a                                   <- options.validate(mergedOptions, conf).mapError(error.getOrElse(_))
     } yield (error, commandArgs, a)
 
   case object Empty extends Options[Unit] with Pipeline {

@@ -17,7 +17,39 @@ import scala.annotation.tailrec
  */
 sealed trait CliApp[-R, +E, +A] { self =>
 
-  def run(args: List[String]): ZIO[R, CliError[E], Option[A]]
+  /**
+   * Runs the CLI app, looking up dotfile defaults via the [[FileOptions]] service in the environment. This is the
+   * primitive runner — `run` and `runWithoutFileArgs` below are convenience wrappers that pin a specific
+   * [[FileOptions]] implementation.
+   *
+   * The current behaviour is:
+   *   - if the underlying command has a single, deterministic top-level name (e.g. `git`, or `git push` whose root is
+   *     `git`), [[FileOptions]] is asked for `.<name>` files in the cwd, all of its parents, and the user home
+   *     directory, in that priority order;
+   *   - if the root is an `OrElse` of distinct top-level commands (e.g. `(start | stop)`), there is no single name to
+   *     anchor the lookup, so the file-options pass is silently skipped — addresses the design concern raised by the
+   *     maintainer on the original PR (#317).
+   *
+   * Args originating from files are merged before user-supplied flags, with explicit command-line input always taking
+   * precedence; closer files (cwd) override farther ones (parents, then home).
+   */
+  def runWithFileArgs(args: List[String]): ZIO[R & FileOptions, CliError[E], Option[A]]
+
+  /**
+   * Runs the CLI app with the platform-default [[FileOptions]] implementation: real file-system access on JVM and
+   * Scala Native, no-op on Scala.js. Source-compatible with pre-#191 callers — the only behavioural change is that
+   * `.<command>` files in the cwd / parents / home directory are now consulted on JVM/Native. Existing applications
+   * that don't put any such files on disk see no difference at runtime.
+   */
+  final def run(args: List[String]): ZIO[R, CliError[E], Option[A]] =
+    runWithFileArgs(args).provideSomeLayer[R](ZLayer.succeed(FileOptions.default))
+
+  /**
+   * Runs the CLI app with [[FileOptions.Noop]] explicitly wired in, suppressing all dotfile lookups. Useful in tests,
+   * sandboxes, and any context where reading from the local filesystem is undesirable.
+   */
+  final def runWithoutFileArgs(args: List[String]): ZIO[R, CliError[E], Option[A]] =
+    runWithFileArgs(args).provideSomeLayer[R](ZLayer.succeed[FileOptions](FileOptions.Noop))
 
   def config(newConfig: CliConfig): CliApp[R, E, A]
 
@@ -66,8 +98,8 @@ object CliApp {
     private def printDocs(helpDoc: HelpDoc): UIO[Unit] =
       printLine(helpDoc.toPlaintext(80)).!
 
-    def run(args: List[String]): ZIO[R, CliError[E], Option[A]] = {
-      def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R, CliError[E], Option[A]] =
+    override def runWithFileArgs(args: List[String]): ZIO[R & FileOptions, CliError[E], Option[A]] = {
+      def executeBuiltIn(builtInOption: BuiltInOption): ZIO[R & FileOptions, CliError[E], Option[A]] =
         builtInOption match {
           case ShowHelp(synopsis, helpDoc) =>
             val fancyName = p(code(self.figFont.render(self.name)))
@@ -109,13 +141,14 @@ object CliApp {
             (for {
               parameters <-
                 Wizard(command, config, fancyName + header + explanation).execute.mapError(CliError.BuiltIn(_))
-              output <- run(parameters)
+              output <- runWithFileArgs(parameters)
             } yield output).catchSome { case CliError.BuiltIn(_) =>
               ZIO.none
             }
         }
 
-      // prepend a first argument in case the CliApp's command is expected to consume it
+      // prepend a first argument in case the CliApp's command is expected to consume it; also serves as the
+      // unique-top-level-name probe consumed by file-options lookup below
       @tailrec
       def prefix(command: Command[_]): List[String] =
         command match {
@@ -125,8 +158,24 @@ object CliApp {
           case Command.Subcommands(parent, _) => prefix(parent)
         }
 
-      self.command
-        .parse(prefix(self.command) ++ args, self.config)
+      val rootName = prefix(self.command)
+
+      // Only consult dotfiles when the root has a single deterministic name. For an `OrElse` root we'd otherwise be
+      // arbitrarily picking one alias — see Kalin-Rudnicki's review of #317 for the original framing.
+      val getFromFiles: ZIO[FileOptions, Nothing, List[FileOptions.OptionsFromFile]] =
+        rootName.headOption match {
+          case Some(name) => ZIO.serviceWithZIO[FileOptions](_.getOptionsFromFiles(name))
+          case None =>
+            ZIO.logDebug(
+              "Skipping file-options lookup: top-level command has no unique name (`OrElse` root)."
+            ) *> ZIO.succeed(Nil)
+        }
+
+      getFromFiles
+        .flatMap { fromFiles =>
+          self.command
+            .parse(rootName ++ args, self.config, fromFiles)
+        }
         .foldZIO(
           e => printDocs(e.error) *> ZIO.fail(CliError.Parsing(e)),
           {
