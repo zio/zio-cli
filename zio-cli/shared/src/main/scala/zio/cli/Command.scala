@@ -116,16 +116,11 @@ object Command {
         if (args.headOption.exists(conf.normalizeCase(_) == conf.normalizeCase(self.name))) {
           val options = BuiltInOption
             .builtInOptions(self, self.synopsis, self.helpDoc)
+          def noBuiltInMatch =
+            ValidationError(ValidationErrorType.NoBuiltInMatch, HelpDoc.p("No built-in option was matched"))
           Options
             .validate(options, args.tail, conf)
-            .map(_._3)
-            .someOrFail(
-              ValidationError(
-                ValidationErrorType.NoBuiltInMatch,
-                HelpDoc.p(s"No built-in option was matched")
-              )
-            )
-            .map(CommandDirective.BuiltIn)
+            .collect(noBuiltInMatch) { case (_, Nil, Some(value)) => CommandDirective.BuiltIn(value) }
         } else
           ZIO.fail(
             ValidationError(
@@ -288,21 +283,23 @@ object Command {
       args: List[String],
       conf: CliConfig
     ): IO[ValidationError, CommandDirective[(A, B)]] = {
+      val childConf       = conf.copy(finalCheckBuiltIn = false)
+      def invalidArgument = ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)
+
       val helpDirectiveForChild =
         if (args.isEmpty)
-          ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty))
+          ZIO.fail(invalidArgument)
         else
           child
-            .parse(args.tail, conf)
-            .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
-              case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
-                val parentName = names.headOption.getOrElse("")
-                CommandDirective.builtIn {
-                  BuiltInOption.ShowHelp(
-                    UsageSynopsis.Named(List(parentName), None) + synopsis,
-                    helpDoc
-                  )
-                }
+            .parse(args.tail, childConf)
+            .collect(invalidArgument) { case CommandDirective.BuiltIn(BuiltInOption.ShowHelp(synopsis, helpDoc)) =>
+              val parentName = names.headOption.getOrElse("")
+              CommandDirective.builtIn {
+                BuiltInOption.ShowHelp(
+                  UsageSynopsis.Named(List(parentName), None) + synopsis,
+                  helpDoc
+                )
+              }
             }
 
       val helpDirectiveForParent =
@@ -310,12 +307,12 @@ object Command {
 
       val wizardDirectiveForChild =
         if (args.isEmpty)
-          ZIO.fail(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty))
+          ZIO.fail(invalidArgument)
         else
           child
-            .parse(args.tail, conf)
-            .collect(ValidationError(ValidationErrorType.InvalidArgument, HelpDoc.empty)) {
-              case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) => directive
+            .parse(args.tail, childConf)
+            .collect(invalidArgument) { case directive @ CommandDirective.BuiltIn(BuiltInOption.ShowWizard(_)) =>
+              directive
             }
 
       val wizardDirectiveForParent =
