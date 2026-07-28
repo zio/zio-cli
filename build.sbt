@@ -29,7 +29,7 @@ addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion           = "2.1.26"
-val zioJsonVersion       = "0.9.2"
+val zioJsonVersion       = "0.10.0"
 val scalaJavaTimeVersion = "2.7.0"
 
 lazy val root = project
