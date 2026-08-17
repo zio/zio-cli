@@ -328,7 +328,7 @@ object Command {
           case builtIn @ CommandDirective.BuiltIn(_)                          => ZIO.succeed(builtIn)
           case CommandDirective.UserDefined(leftover, a) if leftover.nonEmpty =>
             child
-              .parse(leftover, conf)
+              .parse(leftover, childConf)
               .mapBoth(
                 {
                   case ValidationError(CommandMismatch, _) =>
