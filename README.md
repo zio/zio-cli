@@ -6,14 +6,14 @@
 
 Rapidly build powerful command-line applications powered by ZIO
 
-[![Experimental](https://img.shields.io/badge/Project%20Stage-Experimental-yellowgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-cli/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-cli_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-cli_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-cli_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-cli_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-cli-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-cli-docs_2.13) [![ZIO CLI](https://img.shields.io/github/stars/zio/zio-cli?style=social)](https://github.com/zio/zio-cli)
+[![Experimental](https://img.shields.io/badge/Project%20Stage-Experimental-yellowgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-cli/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/maven-central/v/dev.zio/zio-cli_2.13.svg?label=Sonatype%20Release)](https://central.sonatype.com/artifact/dev.zio/zio-cli_2.13) [![Sonatype Snapshots](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Fdev%2Fzio%2Fzio-cli_2.13%2Fmaven-metadata.xml&label=Sonatype%20Snapshot)](https://central.sonatype.com/repository/maven-snapshots/dev/zio/zio-cli_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-cli_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-cli_2.13) [![ZIO CLI](https://img.shields.io/github/stars/zio/zio-cli?style=social)](https://github.com/zio/zio-cli)
 
 ## Installation
 
 To use **ZIO CLI**, we need to add the following to our `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-cli" % "0.6.0"
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.8.2"
 ```
 ## Getting Started
 **ZIO CLI** allows to easily construct a CLI application. A CLI or Command-Line Interface is an application that allows the user to give instructions by means of pieces of text called commands. A command has the following structure
