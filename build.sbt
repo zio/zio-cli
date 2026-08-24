@@ -2,6 +2,8 @@ import BuildHelper._
 import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
 import sbt.addSbtPlugin
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
+import zio.sbt.ZioSbtCiPlugin._
+import zio.sbt.githubactions.{Condition, Job, Step, Strategy}
 
 inThisBuild(
   List(
@@ -21,12 +23,38 @@ inThisBuild(
     pgpSecretRing := file("/tmp/secret.asc"),
     scmInfo       := Some(
       ScmInfo(url("https://github.com/zio/zio-cli/"), "scm:git:git@github.com:zio/zio-cli.git")
+    ),
+
+    // zio-sbt-ci settings: keep the generated ci.yml matching the CI shape this project already
+    // had (master-only, JDK 21 by default, the same JVM memory flags, and the old two-job test
+    // split) rather than the plugin's stock defaults.
+    ciEnabledBranches    := Seq("master"),
+    ciDefaultJavaVersion := "21",
+    ciJvmOptions         := Seq(
+      "-Xms6G",
+      "-Xmx6G",
+      "-Xss4M",
+      "-XX:+UseG1GC",
+      "-XX:ReservedCodeCacheSize=512M",
+      "-XX:NonProfiledCodeHeapSize=256M"
+    ),
+    ciWorkflowEnv := {
+      val opts = ("-XX:+PrintCommandLineFlags" +: ciJvmOptions.value).mkString(" ")
+      Map("JDK_JAVA_OPTIONS" -> opts, "SBT_OPTS" -> opts)
+    },
+    ciUpdateReadmeCondition := Some(
+      Condition.Expression("github.event_name == 'push'") ||
+        Condition.Expression("github.event_name == 'workflow_dispatch'") ||
+        (Condition.Expression("github.event_name == 'release'") && Condition.Expression(
+          "github.event.action == 'published'"
+        ))
     )
   )
 )
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("lint", "check")
 
 val zioVersion           = "2.1.26"
 val zioJsonVersion       = "0.10.0"
@@ -52,6 +80,70 @@ lazy val root = project
     testkit.js,
     testkit.native
   )
+
+inThisBuild(
+  List(
+    ciTargetScalaVersions := targetScalaVersionsFor(zioCli.jvm, zioCli.js, zioCli.native).value,
+
+    // Preserves the old two-job split (all platforms on JDK 17, JVM-only re-run on 21/25)
+    // instead of the plugin's default of testing every platform on every configured JDK.
+    ciTestJobs := Seq(
+      Job(
+        id = "testCross",
+        name = "Test",
+        strategy = Some(
+          Strategy(
+            matrix = Map(
+              "java"     -> List("17"),
+              "scala"    -> List("2.12.x", "2.13.x", "3.3.x"),
+              "platform" -> List("JVM", "JS", "Native")
+            ),
+            failFast = false
+          )
+        ),
+        steps =
+          Seq(
+            SetupJava("${{ matrix.java }}"),
+            SetupSBT,
+            CacheDependencies,
+            Checkout.value,
+            Step.SingleStep(
+              name = "Install libuv",
+              condition = Some(Condition.Expression("matrix.platform == 'Native'")),
+              run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")
+            ),
+            Step.SingleStep(
+              name = "Run tests",
+              run = Some("sbt ++${{ matrix.scala }} zioCli${{ matrix.platform }}/test")
+            )
+          )
+      ),
+      Job(
+        id = "testJVMs",
+        name = "Test JVMs",
+        strategy = Some(
+          Strategy(
+            matrix = Map(
+              "java"  -> List("21", "25"),
+              "scala" -> List("2.12.x", "2.13.x", "3.3.x")
+            ),
+            failFast = false
+          )
+        ),
+        steps = Seq(
+          SetupJava("${{ matrix.java }}"),
+          SetupSBT,
+          CacheDependencies,
+          Checkout.value,
+          Step.SingleStep(
+            name = "Run tests",
+            run = Some("sbt ++${{ matrix.scala }} zioCliJVM/test")
+          )
+        )
+      )
+    )
+  )
+)
 
 lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .in(file("zio-cli"))
