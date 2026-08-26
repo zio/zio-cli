@@ -1,5 +1,4 @@
 import BuildHelper._
-import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
 import sbt.addSbtPlugin
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import zio.sbt.ZioSbtCiPlugin._
@@ -52,19 +51,23 @@ inThisBuild(
   )
 )
 
-addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
-addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("fmt", "all scalafmtSbt scalafmt Test/scalafmt")
+addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck")
 addCommandAlias("lint", "check")
 
 val zioVersion           = "2.1.26"
 val zioJsonVersion       = "0.10.0"
 val scalaJavaTimeVersion = "2.7.0"
 
+// sbt-scala-native 0.5.12's own test-interface is newer than the one zio-test-sbt 2.1.26 depends
+// on (0.5.10); both are 0.5.x, so the newer one coursier already picks is fine - this just tells
+// sbt's strict conflict manager that's an acceptable substitution instead of a hard error.
+ThisBuild / libraryDependencySchemes += "org.scala-native" % "test-interface_native0.5_2.13" % VersionScheme.Always
+
 lazy val root = project
   .in(file("."))
   .settings(
-    publish / skip := true,
-    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library"),
+    publish / skip     := true,
     crossScalaVersions := Nil
   )
   .aggregate(
@@ -152,11 +155,11 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(buildInfoSettings("zio.cli"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio"          % zioVersion,
-      "dev.zio" %%% "zio-json"     % zioJsonVersion,
-      "dev.zio" %%% "zio-streams"  % zioVersion,
-      "dev.zio" %%% "zio-test"     % zioVersion % Test,
-      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-json"     % zioJsonVersion,
+      "dev.zio" %% "zio-streams"  % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % Test,
+      "dev.zio" %% "zio-test-sbt" % zioVersion % Test
     )
   )
   .jvmSettings(
@@ -164,10 +167,10 @@ lazy val zioCli = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   )
   .nativeSettings(Test / fork := false)
   .nativeSettings(
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % scalaJavaTimeVersion % Test
+    libraryDependencies += "io.github.cquiroz" %% "scala-java-time" % scalaJavaTimeVersion % Test
   )
   .jsSettings(
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % scalaJavaTimeVersion % Test
+    libraryDependencies += "io.github.cquiroz" %% "scala-java-time" % scalaJavaTimeVersion % Test
   )
   .jsSettings(scalaJSUseMainModuleInitializer := true)
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -222,17 +225,24 @@ lazy val testkit = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(skip / publish := true)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-test"          % zioVersion,
-      "dev.zio" %% "zio-test-sbt"      % zioVersion,
-      "dev.zio" %% "zio-test-magnolia" % zioVersion
+      "dev.zio" %% "zio-test"     % zioVersion,
+      "dev.zio" %% "zio-test-sbt" % zioVersion
     )
+  )
+  // zio-test-magnolia has never published a Scala Native artifact (JVM/JS only), so it can't be a
+  // cross-platform dependency here.
+  .jvmSettings(
+    libraryDependencies += "dev.zio" %% "zio-test-magnolia" % zioVersion
+  )
+  .jsSettings(
+    libraryDependencies += "dev.zio" %% "zio-test-magnolia" % zioVersion
   )
   .nativeSettings(Test / fork := false)
   .nativeSettings(
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % scalaJavaTimeVersion % Test
+    libraryDependencies += "io.github.cquiroz" %% "scala-java-time" % scalaJavaTimeVersion % Test
   )
   .jsSettings(
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % scalaJavaTimeVersion % Test
+    libraryDependencies += "io.github.cquiroz" %% "scala-java-time" % scalaJavaTimeVersion % Test
   )
   .jsSettings(scalaJSUseMainModuleInitializer := true)
   .dependsOn(zioCli)
