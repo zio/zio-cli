@@ -61,8 +61,13 @@ val scalaJavaTimeVersion = "2.7.0"
 
 // sbt-scala-native 0.5.12's own test-interface is newer than the one zio-test-sbt 2.1.26 depends
 // on (0.5.10); both are 0.5.x, so the newer one coursier already picks is fine - this just tells
-// sbt's strict conflict manager that's an acceptable substitution instead of a hard error.
-ThisBuild / libraryDependencySchemes += "org.scala-native" % "test-interface_native0.5_2.13" % VersionScheme.Always
+// sbt's strict conflict manager that's an acceptable substitution instead of a hard error. Every
+// cross-built Scala version gets its own suffixed artifact name, so all three need an entry.
+ThisBuild / libraryDependencySchemes ++= Seq(
+  "org.scala-native" % "test-interface_native0.5_2.12" % VersionScheme.Always,
+  "org.scala-native" % "test-interface_native0.5_2.13" % VersionScheme.Always,
+  "org.scala-native" % "test-interface_native0.5_3"    % VersionScheme.Always
+)
 
 lazy val root = project
   .in(file("."))
