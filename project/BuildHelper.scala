@@ -1,11 +1,13 @@
 import sbt._
 import sbt.Keys._
 
-import explicitdeps.ExplicitDepsPlugin.autoImport._
 import sbtcrossproject.CrossPlugin.autoImport._
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbtbuildinfo._
 import BuildInfoKeys._
+// `BuildInfoKey` has to come from here rather than the bare `sbtbuildinfo` package: on the
+// Scala 3 / sbt2 axis, `sbtbuildinfo.BuildInfoKey` is only an object (no type alias), and only
+// `BuildInfoPlugin.autoImport` pairs a `type BuildInfoKey` with it, uniformly on both axes.
+import sbtbuildinfo.BuildInfoPlugin.autoImport.BuildInfoKey
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
@@ -16,7 +18,16 @@ object BuildHelper {
 
   def buildInfoSettings(packageName: String) =
     Seq(
-      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      // Wrapped explicitly with `BuildInfoKey(...)` rather than relying on its implicit
+      // `SettingKey[T] => BuildInfoKey` conversion applying automatically inside a `Seq[BuildInfoKey](...)`
+      // literal: Scala 3 does not apply it there the way Scala 2 does.
+      buildInfoKeys := Seq[BuildInfoKey](
+        BuildInfoKey(name),
+        BuildInfoKey(version),
+        BuildInfoKey(scalaVersion),
+        BuildInfoKey(sbtVersion),
+        BuildInfoKey(isSnapshot)
+      ),
       buildInfoPackage := packageName,
       buildInfoObject  := "BuildInfo"
     )
@@ -130,8 +141,7 @@ object BuildHelper {
     semanticdbOptions += "-P:semanticdb:synthetics:on",
     semanticdbVersion        := scalafixSemanticdb.revision, // use Scalafix compatible version
     Test / parallelExecution := scalaVersion.value != Scala3,
-    incOptions ~= (_.withLogRecompileOnMacro(false)),
-    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+    incOptions ~= (_.withLogRecompileOnMacro(false))
   )
 
   implicit class ModuleHelper(p: Project) {
