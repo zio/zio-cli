@@ -393,6 +393,15 @@ object CommandSpec extends ZIOSpecDefault {
             containsString("subsubCommand")
           )
         },
+        test("non-first subcommand --help shows that subcommand's help, not the first (issue #586)") {
+          val tool = Command("tool", Options.Empty, Args.none).subcommands(
+            Command("start", Options.text("port")).withHelp("start the server").map(_ => ()),
+            Command("stop", Options.Empty, Args.none).withHelp("stop the server")
+          )
+          assertZIO(tool.parse(List("tool", "stop", "--help"), CliConfig.default).map(helpText))(
+            containsString("stop the server") && not(containsString("port"))
+          )
+        },
         test("empty args shows parent help") {
           assertZIO(git.parse(List("git"), CliConfig.default).map(helpText))(
             containsString("add") && containsString("clone")
