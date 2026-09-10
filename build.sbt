@@ -56,7 +56,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck"
 addCommandAlias("lint", "check")
 
 val zioVersion           = "2.1.26"
-val zioJsonVersion       = "0.10.0"
+val zioJsonVersion       = "1.0.0"
 val scalaJavaTimeVersion = "2.7.0"
 
 // sbt-scala-native 0.5.12's own test-interface is newer than the one zio-test-sbt 2.1.26 depends
