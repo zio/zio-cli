@@ -24,10 +24,20 @@ jobs:
     continue-on-error: false
     if: ${{ (((github.event_name == 'workflow_dispatch') || (github.event.pull_request.user.login == 'dependabot[bot]')) || (github.event.pull_request.user.login == 'renovate[bot]')) || (github.event.pull_request.user.login == 'zio-scala-steward[bot]') }}
     steps:
+    - name: Check App Token
+      id: check-app-token
+      run: |
+        if [ -n "$APP_ID" ]; then
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+        fi
+      env:
+        APP_ID: ${{ secrets.APP_ID }}
     - name: Generate Token
       id: generate-token
       uses: zio/generate-github-app-token@v1.0.0
-      if: ${{ secrets.APP_ID != '' }}
+      if: ${{ steps.check-app-token.outputs.configured == 'true' }}
       with:
         app_id: ${{ secrets.APP_ID }}
         app_private_key: ${{ secrets.APP_PRIVATE_KEY }}
