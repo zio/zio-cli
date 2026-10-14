@@ -55,7 +55,7 @@ addCommandAlias("fmt", "all scalafmtSbt scalafmt Test/scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck")
 addCommandAlias("lint", "check")
 
-val zioVersion           = "2.1.26"
+val zioVersion           = "2.1.27"
 val zioJsonVersion       = "1.0.0"
 val scalaJavaTimeVersion = "2.7.0"
 
