@@ -10,7 +10,10 @@ private[cli] trait FileSystemPlatformSpecific extends PathPlatformSpecific {
   val live: FileSystem = new FileSystem {
 
     override def parsePath(path: String): IO[String, JPath] =
-      ZIO.attempt(JPaths.get(path)) orElseFail s"'$path' is not a recognized path."
+      ZIO.attempt(JPaths.get(path).normalize()) orElseFail s"'$path' is not a recognized path."
+
+    override def pathString(path: JPath): String =
+      path.normalize().toString
 
     override def exists(path: JPath): UIO[Boolean] =
       ZIO.attempt(JFiles.exists(path)) orElse ZIO.succeed(false)
@@ -20,6 +23,15 @@ private[cli] trait FileSystemPlatformSpecific extends PathPlatformSpecific {
 
     override def isRegularFile(path: JPath): UIO[Boolean] =
       ZIO.attempt(JFiles.isRegularFile(path)) orElse ZIO.succeed(false)
+
+    override def getParent(path: JPath): UIO[Option[JPath]] =
+      ZIO.attempt(Option(path.getParent)) orElse ZIO.none
+
+    override def resolve(parent: JPath, child: String): IO[String, JPath] =
+      ZIO.attempt(parent.resolve(child)) orElseFail s"Cannot resolve '$child' in '$parent'."
+
+    override def readFile(path: JPath): IO[String, String] =
+      ZIO.readFile(path.toString) orElseFail s"Cannot read file '$path'."
   }
 
 }
