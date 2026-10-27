@@ -57,7 +57,7 @@ addCommandAlias("lint", "check")
 
 val zioVersion           = "2.1.26"
 val zioJsonVersion       = "1.0.0"
-val scalaJavaTimeVersion = "2.7.0"
+val scalaJavaTimeVersion = "2.9.0"
 
 // sbt-scala-native 0.5.12's own test-interface is newer than the one zio-test-sbt 2.1.26 depends
 // on (0.5.10); both are 0.5.x, so the newer one coursier already picks is fine - this just tells
