@@ -2,7 +2,7 @@ package zio.cli
 
 import zio.cli.HelpDoc.Span._
 import zio.cli.HelpDoc.p
-import zio.{IO, UIO, ZIO, Zippable}
+import zio.{Console, IO, UIO, ZIO, Zippable}
 import zio.cli.oauth2._
 
 import java.time.{
@@ -298,6 +298,143 @@ object Options extends OptionsPlatformSpecific {
           .catchAll(e => ZIO.succeed((Some(e), input, Predef.Map.empty)))
     }
 
+  private def allOptionNames(options: Options[_]): Set[String] =
+    options.flatten.flatMap {
+      case s: Single[_]    => s.names
+      case kv: KeyValueMap => kv.argumentOption.names
+      case _               => Nil
+    }.toSet
+
+  private def conflictingOptionNames(flag: String, options: Options[_], conf: CliConfig): Set[String] = {
+    val normFlag                                       = conf.normalizeCase(flag)
+    def containsFlag(names: Iterable[String]): Boolean =
+      names.exists(n => conf.normalizeCase(n) == normFlag)
+
+    options match {
+      case Empty        => Set(flag)
+      case s: Single[_] =>
+        if (containsFlag(s.names)) s.names.toSet + flag else Set.empty
+      case kv: KeyValueMap =>
+        if (containsFlag(kv.argumentOption.names)) kv.argumentOption.names.toSet + flag else Set.empty
+      case WithDefault(inner, _) =>
+        conflictingOptionNames(flag, inner, conf)
+      case Map(inner, _) =>
+        conflictingOptionNames(flag, inner, conf)
+      case Both(left, right) =>
+        conflictingOptionNames(flag, left, conf) ++ conflictingOptionNames(flag, right, conf)
+      case OrElse(left, right) =>
+        val leftNames  = allOptionNames(left)
+        val rightNames = allOptionNames(right)
+        val inLeft     = containsFlag(leftNames)
+        val inRight    = containsFlag(rightNames)
+        (if (inLeft) conflictingOptionNames(flag, left, conf) ++ rightNames else Set.empty) ++
+          (if (inRight) conflictingOptionNames(flag, right, conf) ++ leftNames else Set.empty)
+      case OAuth2Options(_, _, aux) =>
+        conflictingOptionNames(flag, aux, conf)
+    }
+  }
+
+  private def matchFileOptions(
+    input: List[String],
+    options: List[Options[_] with Input],
+    conf: CliConfig
+  ): IO[ValidationError, Predef.Map[String, List[String]]] =
+    (input, options) match {
+      case (Nil, _) | (_, Nil) => ZIO.succeed(Predef.Map.empty)
+      case (_ :: tail, opts)   =>
+        findOptions(input, opts, conf).foldZIO(
+          e =>
+            e.validationErrorType match {
+              case ValidationErrorType.MissingFlag | ValidationErrorType.CorrectedFlag |
+                  ValidationErrorType.UnclusteredFlag(_, _) =>
+                matchFileOptions(tail, opts, conf)
+              case _ =>
+                ZIO.fail(e)
+            },
+          { case (otherArgs, otherOptions, map1) =>
+            if (map1.isEmpty) matchFileOptions(tail, opts, conf)
+            else matchFileOptions(otherArgs, otherOptions, conf).map(map2 => merge(map1, map2.toList))
+          }
+        )
+    }
+
+  private def mergeFileOptions(
+    queue: List[FileOptions.OptionsFromFile],
+    acc: Predef.Map[String, (String, List[String])],
+    rootOptions: Options[_],
+    flattenedOptions: List[Options[_] with Input],
+    conf: CliConfig
+  ): IO[ValidationError, Predef.Map[String, (String, List[String])]] =
+    queue match {
+      case FileOptions.OptionsFromFile(path, rawArgs) :: tail =>
+        for {
+          matchedMap <- matchFileOptions(rawArgs, flattenedOptions, conf).mapError(e =>
+                          ValidationError(
+                            e.validationErrorType,
+                            HelpDoc.p(s"Error in options file '$path':") + e.error
+                          )
+                        )
+          newMap               = matchedMap.map { case (k, v) => (k, (path, v)) }
+          overriddenNormalized =
+            newMap.keys.flatMap(k => conflictingOptionNames(k, rootOptions, conf)).map(conf.normalizeCase).toSet
+          retainedAcc = acc.filterNot { case (accKey, _) =>
+                          overriddenNormalized.contains(conf.normalizeCase(accKey))
+                        }
+          _ <- ZIO.foreachDiscard(acc.toList) { case (accKey, (accPath, _)) =>
+                 ZIO.when(overriddenNormalized.contains(conf.normalizeCase(accKey))) {
+                   ZIO.logDebug(s"Option '$accKey' from '$accPath' overridden by '$path'")
+                 }
+               }
+          mergedMap = retainedAcc ++ newMap
+          res      <- mergeFileOptions(tail, mergedMap, rootOptions, flattenedOptions, conf)
+        } yield res
+      case Nil =>
+        ZIO.succeed(acc)
+    }
+
+  private def mergeFileAndInputOptions(
+    inputOptions: Predef.Map[String, List[String]],
+    fileOptions: Predef.Map[String, (String, List[String])],
+    rootOptions: Options[_],
+    conf: CliConfig
+  ): UIO[(Predef.Map[String, List[String]], List[String])] = {
+    val cliOverriddenNormalized =
+      inputOptions.keys.flatMap(k => conflictingOptionNames(k, rootOptions, conf)).map(conf.normalizeCase).toSet
+
+    for {
+      fromFilesRetained <-
+        ZIO.foreach(fileOptions.toList.sortBy(_._1)) { case (k, (filePath, fileVals)) =>
+          if (cliOverriddenNormalized.contains(conf.normalizeCase(k))) {
+            ZIO.logDebug(s"Option '$k' from '$filePath' overridden by command-line arguments").as(None)
+          } else {
+            val diagnostic = s"Using option '$k' from '$filePath'"
+            ZIO.succeed(Some((k -> fileVals, diagnostic)))
+          }
+        }
+      retained = fromFilesRetained.flatten
+    } yield (retained.map(_._1).toMap ++ inputOptions, retained.map(_._2))
+  }
+
+  private[cli] def emitDiagnostics(diagnostics: List[String]): UIO[Unit] =
+    ZIO.foreachDiscard(diagnostics)(d => Console.printLineError(d).ignore *> ZIO.logDebug(d))
+
+  private[cli] def validateWithDiagnostics[A](
+    options: Options[A],
+    args: List[String],
+    conf: CliConfig,
+    fromFiles: List[FileOptions.OptionsFromFile]
+  ): IO[ValidationError, (Option[ValidationError], List[String], A, List[String])] = {
+    val flattened = options.flatten
+    for {
+      matched                             <- matchOptions(args, flattened, conf)
+      (error, commandArgs, matchedOptions) = matched
+      mapFromFiles                        <- mergeFileOptions(fromFiles.reverse, Predef.Map.empty, options, flattened, conf)
+      mergedWithDiag                      <- mergeFileAndInputOptions(matchedOptions, mapFromFiles, options, conf)
+      (mergedOptions, diagnostics)         = mergedWithDiag
+      a                                   <- options.validate(mergedOptions, conf).mapError(error.getOrElse(_))
+    } yield (error, commandArgs, a, diagnostics)
+  }
+
   /**
    * `Options.validate` parses `args` for options and returns an `Option[ValidationError]`, the leftover arguments and
    * the constructed value of type `A`. The possible error inside `Option[ValidationError]` would only be triggered if
@@ -309,10 +446,18 @@ object Options extends OptionsPlatformSpecific {
     args: List[String],
     conf: CliConfig
   ): IO[ValidationError, (Option[ValidationError], List[String], A)] =
+    validate(options, args, conf, Nil)
+
+  def validate[A](
+    options: Options[A],
+    args: List[String],
+    conf: CliConfig,
+    fromFiles: List[FileOptions.OptionsFromFile]
+  ): IO[ValidationError, (Option[ValidationError], List[String], A)] =
     for {
-      matched                             <- matchOptions(args, options.flatten, conf)
-      (error, commandArgs, matchedOptions) = matched
-      a                                   <- options.validate(matchedOptions, conf).mapError(error.getOrElse(_))
+      res                       <- validateWithDiagnostics(options, args, conf, fromFiles)
+      (error, commandArgs, a, d) = res
+      _                         <- emitDiagnostics(d)
     } yield (error, commandArgs, a)
 
   case object Empty extends Options[Unit] with Pipeline {
