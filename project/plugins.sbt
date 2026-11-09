@@ -11,6 +11,6 @@ addSbtPlugin("org.scoverage"      % "sbt-scoverage"                 % "2.4.4")
 addSbtPlugin("org.scalameta"      % "sbt-native-image"              % "0.5.0")
 addSbtPlugin("dev.zio"            % "zio-sbt-website"               % "0.8.8")
 addSbtPlugin("dev.zio"            % "zio-sbt-ci"                    % "0.8.8")
-addSbtPlugin("ch.epfl.scala"      % "sbt-scalafix"                  % "0.14.9")
+addSbtPlugin("ch.epfl.scala"      % "sbt-scalafix"                  % "0.14.10")
 
 resolvers += Resolver.sonatypeRepo("public")
