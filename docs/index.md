@@ -31,7 +31,7 @@ git clone https://github.com/zio/zio-cli.git
 ```
 
 
-- Options are named and position-independent parameters that are specified by writing the content after the name. The name is preceded by `--`. An option may have a shorter form called an alias. When the alias is used instead of the full name, only `-` is needed. An option of command `git clone` is `local`. It is a boolean option, so it is not necessary to write true or false after it: it will be true only if it appears. It is used in the following manner:
+- Options are named and position-independent parameters that are specified by writing the content after the name. The name is preceded by `--`. An option may have a shorter form called an alias. When a one-letter alias is used instead of the full name, only `-` is needed; a longer alias is written with `--`. An option of command `git clone` is `local`. It is a boolean option, so it is not necessary to write true or false after it: it will be true only if it appears. It is used in the following manner:
 ```
 git clone --local
 ```
@@ -98,7 +98,7 @@ The output will be
         @       @           /_/      @     @     @       @        @     @     @
 
 
-Sample Git v1.1.0 -- Sample implementation of git clone
+Sample Git 1.1.0 -- Sample implementation of git clone
 
 USAGE
 
