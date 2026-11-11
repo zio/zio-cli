@@ -185,4 +185,43 @@ val cliApp = CliApp.make(
     }
 ```
 
+## Token API
+`Options.oauth2` gives the command handler an `OAuth2Token`, from the package `zio.cli.oauth2`. The token is a small interface with two methods:
+- `accessToken: Task[AccessToken]` returns the current access token. If the stored token has expired, it is refreshed first. The refresh uses the refresh token when the server issued one, and otherwise repeats the authorization.
+- `refreshTokenNow: Task[Unit]` refreshes the token immediately. Use it when the server has invalidated the token before its expiry time, which the library cannot detect on its own.
+
+`AccessToken` is a case class with these fields:
+- `accessToken: String` is the token string. Treat it as a secret and do not print it.
+- `tokenType: TokenType` says how the token must be sent to the API.
+- `expiresAt: Option[OffsetDateTime]` is the expiry time, or `None` when the server did not give one.
+- `refreshToken: Option[String]` is the refresh token, when the server issued one.
+- `scope: List[String]` is the list of permissions that were granted.
+
+`TokenType` has three cases. `TokenType.Bearer` and `TokenType.Mac` are the two values the library recognizes. `TokenType.Other(tokenType)` keeps any other value as the server sent it.
+
+The token is stored as JSON in a file, and it is read again on the next run, so the user does not have to authorize again until the token expires and cannot be refreshed. By default the file is in the user's home directory and its name is `oauth2_<provider>_<client id>_access_token.json`. Here `<provider>` is the lower-case provider name, such as `github`. The generated option `--oauth2-file <path>` sets another path. The file holds the token in plain text, so protect it as you would a password.
+
+Parsing the command loads this file. If the file is missing, the authorization starts. If the stored token has expired, it is refreshed. Both happen before your handler is called.
+
+```scala mdoc:compile-only
+import zio._
+import zio.cli._
+import zio.cli.oauth2._
+
+val getToken = Command("token", Options.oauth2(OAuth2Provider.Github("sampleId"), List("repo")))
+
+val tokenApp = CliApp.make(
+  name = "token-demo",
+  version = "0.0.1",
+  summary = HelpDoc.Span.text("Shows the type of the GitHub token"),
+  command = getToken
+) { (token: OAuth2Token) =>
+  for {
+    current <- token.accessToken
+    _       <- Console.printLine(s"Token type: ${current.tokenType}")
+    _       <- token.refreshTokenNow
+  } yield ()
+}
+```
+
 
