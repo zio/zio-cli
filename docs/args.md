@@ -12,7 +12,7 @@ In **ZIO CLI**, Arguments are represented by instances of class `Args[_]`. `Args
 
 
 ## Construction of basic Args
-**ZIO CLI** offers a variety of methods to create basic `Args` that takes a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be thrown. Note that each type has its own validation function.
+**ZIO CLI** offers a variety of methods to create basic `Args` that takes a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, the parser returns a `ValidationError` failure. Note that each type has its own validation function.
 
 An `Args` instance of a basic type carries a name attribute. This can be specified when being created, but it can also be skipped. In this last case, the name will be that of the type. An example with Boolean type:
 ```scala mdoc:silent
@@ -27,7 +27,7 @@ Args.bool       // Boolean Args named "boolean"
 
 
 ### Boolean Args
-Produces an `Args[Boolean]`. It accepts as input `true` or `false`, while other pieces of text are not valid.
+Produces an `Args[Boolean]`. It accepts `true` or `false`, and the case-insensitive aliases `1`/`0`, `y`/`n`, `yes`/`no` and `on`/`off`. Other text is not valid.
 ```scala mdoc:silent
 Args.bool(name)
 ```
@@ -52,8 +52,8 @@ Args.file(name, exists = Exists.Yes)
 Args.directory(name, exists = Exists.Yes)
 
 // Path must point to non-existing files or directories
-Args.file(name, exists = Exists.Yes)
-Args.directory(name, exists = Exists.Yes)
+Args.file(name, exists = Exists.No)
+Args.directory(name, exists = Exists.No)
 ```
 ### Text Args
 Produces an `Args[String]`.
@@ -94,7 +94,7 @@ Args.localDateTime(name)
 ```scala mdoc:silent
 Args.localTime(name)
 ```
-- Produces `Args[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format such as 12-03.
+- Produces `Args[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format `--MM-dd`, such as `--12-03`.
 ```scala mdoc:silent
 Args.monthDay(name)
 ```
@@ -110,7 +110,7 @@ Args.offsetTime(name)
 ```scala mdoc:silent
 Args.period(name)
 ```
-- Produces `Args[java.time.Year]`. The input must be a year in the ISO-8601 format, such as 2007.
+- Produces `Args[java.time.Year]`. The input must be a plain integer year, such as 2007.
 ```scala mdoc:silent
 Args.year(name)
 ```
@@ -118,7 +118,7 @@ Args.year(name)
 ```scala mdoc:silent
 Args.yearMonth(name)
 ```
-- Produces `Args[java.time.ZonedDateTime]`. The input must be a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.
+- Produces `Args[java.time.ZonedDateTime]`. The input must be an ISO-8601 offset date-time followed by the zone ID in square brackets, such as `2007-12-03T10:15:30+01:00[Europe/Paris]`.
 ```scala mdoc:silent
 Args.zonedDateTime(name)
 ```
@@ -180,16 +180,16 @@ Args.text.between(2,5) // Creates an arguments accepting a list of String of len
 ```
 - Method `atLeast`
 
-It creates an argument accepting a list of arguments of the type before whose length must be more than `min` parameter.
+It creates an argument accepting a list of arguments of the type before whose length must be at least the `min` parameter.
 ```scala mdoc:silent
-Args.text.atLeast(2) // Creates an arguments accepting a list of String of length more than 2.
+Args.text.atLeast(2) // Creates an arguments accepting a list of String of length at least 2.
 ```
 
 - Method `atMost`
 
-It creates an argument accepting a list of arguments of the type before whose length must be less than `max`parameter
+It creates an argument accepting a list of arguments of the type before whose length must be at most the `max` parameter.
 ```scala mdoc:silent
-Args.text.atMost(5) // Creates an arguments accepting a list of String of length less than 5.
+Args.text.atMost(5) // Creates an arguments accepting a list of String of length at most 5.
 ```
 
 ### Transforming Args
