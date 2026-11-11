@@ -91,6 +91,8 @@ Output:
 ```scala
  COMMANDS
 
-  - add [-m] <directory>      Add subcommand description
-  - remote [(-v, --verbose)]  Remote subcommand description
+  - add [-m] <directory>                      Add subcommand description
+  - remote [(-v, --verbose)]                  Remote subcommand description
+  - remote [(-v, --verbose)] add <name> <url> Add remote subcommand description
+  - remote [(-v, --verbose)] remove <name>    Remove remote subcommand description
 ```
