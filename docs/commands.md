@@ -20,13 +20,12 @@ in the CLI, but you can also specify options and/or arguments:
 
 ```scala mdoc:silent
 import zio.cli._
+import java.nio.file.Path
 
-object Command {
-  def apply(name: String) = ???
-  def apply[ArgsType](name: String, args: Args[ArgsType]) = ???
-  def apply[OptionsType](name: String, options: Options[OptionsType]) = ???
-  def apply[OptionsType, ArgsType](name: String, options: Options[OptionsType], args: Args[ArgsType]) = ???
-}
+val plain: Command[Unit] = Command("git")
+val withArgs: Command[Path] = Command("clone", Args.directory("directory"))
+val withOptions: Command[Boolean] = Command("commit", Options.boolean("quiet"))
+val withBoth = Command("clone", Options.boolean("quiet"), Args.directory("directory"))
 ```
 ## Combining commands and transformations
 **ZIO CLI** also allows to combine different commands in a functional manner. This can be used for a cleaner design of the commands of a CLI app.
@@ -38,8 +37,8 @@ trait Command[+A] {
   def orElseEither[B](that: Command[B]): Command[Either[A, B]]
   def withHelp(help: HelpDoc): Command[A]
   def withHelp(help: String): Command[A]
-  def subcommands[B](that: Command[B])
-  def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*)
+  def subcommands[B](that: Command[B])(implicit ev: Reducable[A, B]): Command[ev.Out]
+  def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*)(implicit ev: Reducable[A, B]): Command[ev.Out]
   def map[B](f: A => B): Command[B]
 }
 ```
@@ -98,7 +97,7 @@ DESCRIPTION
 COMMANDS
 
   - add                          Stages changes in the working repository.
-  - clone --directory directory  Creates a copy of an existing repository.
+  - clone --directory <directory>  Creates a copy of an existing repository.
 ```
 
 
