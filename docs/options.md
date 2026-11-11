@@ -7,16 +7,16 @@ The `Options` data type models command-line options. Contrary to arguments, opti
 git checkout --quiet
 git checkout -q
 ```
-Both `--quiet` and `-q` refer to the same option. `-q` is the alias of `quiet`, a shorter form of the option. Note that the alias is preceded only by `-`.
+Both `--quiet` and `-q` refer to the same option. `-q` is the alias of `quiet`, a shorter form of the option. Note that a one-character alias is preceded by `-`, while a longer alias is preceded by `--`.
 
 In **ZIO CLI**, Options are represented by instances of class `Options[_]`. `Options[A]` is a description of the process of constructing an instance of `A` from a valid input of the CLI. It is not yet a specified option for the CLI. In other words, an instance of `Options[A]` defines a collection of valid commands and a way to construct a value `A` from them.
 
 ## Construction of basic Options
-**ZIO CLI** offers a variety of methods to create basic `Options` that take a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be thrown.
+**ZIO CLI** offers a variety of methods to create basic `Options` that take a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, the parser returns a `ValidationError` failure.
 
 The following methods construct an `Options` with a `name` that requires an input of the corresponding type from the user. Observe that for `Options` it is mandatory to specify the `name`.
 ### Boolean Options
-Produces an `Options[Boolean]`. It accepts as input `true` or `false`, while other pieces of text are not valid.
+Produces an `Options[Boolean]`. It accepts `true` or `false`, and the case-insensitive aliases `1`/`0`, `y`/`n`, `yes`/`no` and `on`/`off`. Other text is not valid. A flag such as `--quiet` with no value means `true`.
 ```scala mdoc:silent
 import zio.cli._
 
@@ -63,8 +63,8 @@ Options.file(name, exists = Exists.Yes)
 Options.directory(name, exists = Exists.Yes)
 
 // Path must point to non-existing files or directories
-Options.file(name, exists = Exists.Yes)
-Options.directory(name, exists = Exists.Yes)
+Options.file(name, exists = Exists.No)
+Options.directory(name, exists = Exists.No)
 ```
 ### Text Options
 Produces an `Options[String]`.
@@ -105,7 +105,7 @@ Options.localDateTime(name)
 ```scala mdoc:silent
 Options.localTime(name)
 ```
-- Produces `Options[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format such as 12-03.
+- Produces `Options[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format `--MM-dd`, such as `--12-03`.
 ```scala mdoc:silent
 Options.monthDay(name)
 ```
@@ -129,7 +129,7 @@ Options.year(name)
 ```scala mdoc:silent
 Options.yearMonth(name)
 ```
-- Produces `Options[java.time.ZonedDateTime]`. The input must be a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.
+- Produces `Options[java.time.ZonedDateTime]`. The input must be an ISO-8601 offset date-time followed by the zone ID in square brackets, such as `2007-12-03T10:15:30+01:00[Europe/Paris]`.
 ```scala mdoc:silent
 Options.zonedDateTime(name)
 ```
@@ -184,8 +184,8 @@ import zio.cli._
 import java.nio.file.Path
 
 val all = Options.boolean("all")
-val interactive = Options.boolean("all")
-val patch = Options.boolean("all")
+val interactive = Options.boolean("interactive")
+val patch = Options.boolean("patch")
 
 val orElseOption: Options[Boolean] = all | interactive | patch
 ```
@@ -213,8 +213,8 @@ case class Interactive() extends Mode
 case class Patch() extends Mode
 
 val all = Options.boolean("all").map(_ => All())
-val interactive = Options.boolean("all").map(_ => Interactive())
-val patch = Options.boolean("all").map(_ => Patch())
+val interactive = Options.boolean("interactive").map(_ => Interactive())
+val patch = Options.boolean("patch").map(_ => Patch())
 
 val alternative: Options[Mode] = all | interactive | patch
 ```
@@ -231,7 +231,7 @@ The HelpDoc of `optionsDatabase` will be
 ```
 COMMANDS
 
-  retrieve --database file [--backup file]  
+  retrieve --database <file> [--backup <file>]  
 ```
 The `[]` denotes that the parameter is optional.
 
@@ -239,13 +239,13 @@ The `[]` denotes that the parameter is optional.
 
 It creates an option that will have a default parameter in case that the user does not input the option. It can be used, for example, to specify a default directory in which a CLI application may perform some task if the user does not specify another one.
 ```scala mdoc:silent
-val directory = Options.directory("directory").withDefault("C:\\Users\\YourUser\\Documents")
+val directory = Options.directory("directory").withDefault(java.nio.file.Paths.get("C:\\Users\\YourUser\\Documents"))
 ```
 The output produced by the HelpDoc is
 ```
 OPTIONS
 
-  --directory directory
+  --directory <directory>
     A directory.
 
     This setting is optional. Default: 'C:\Users\YourUser\Documents'.
@@ -260,7 +260,7 @@ The output produced by the HelpDoc in this case is
 ```
 OPTIONS
 
-  (-d, --directory directory)
+  (-d, --directory <directory>)
     A directory.
 
     This setting is optional. Default: 'C:\Users\YourUser\Documents'.
@@ -323,7 +323,7 @@ The output of the HelpDoc of `options` is:
 ```
 USAGE
 
-  $ commit [(-a, -all)]|[--interactive]|[--patch] (-m, --msg text)
+  $ commit [(-a, --all)]|[--interactive]|[--patch] (-m, --msg <text>)
 
 OPTIONS
 
@@ -342,6 +342,6 @@ OPTIONS
 
     This setting is optional. Default: 'false'.
 
-  (-m, --msg text)
+  (-m, --msg <text>)
     A user-defined piece of text.
 ```
