@@ -131,6 +131,39 @@ Args.zoneId(name)
 Args.zoneOffset(name)
 ```
 
+### Enumeration Args
+Produces an `Args[A]` that accepts one of a fixed set of words. Each case is a pair of the word the user types and the value it stands for. The value is the second element of the pair. `Args.enumeration(name)(cases*)` gives the argument a name, and `Args.enumeration(cases*)` uses `choice` as the name.
+```scala mdoc:silent
+Args.enumeration("level")(("debug", 0), ("info", 1), ("warn", 2)) // Args[Int], named "level"
+Args.enumeration(("debug", 0), ("info", 1), ("warn", 2))         // Args[Int], named "choice"
+```
+
+### Other constructors
+- `Args.none` produces an `Args[Unit]` that consumes no input. Use it for a command that takes no arguments:
+```scala mdoc:silent
+Command("status", Options.boolean("short"), Args.none)
+```
+- `Args.path(name)` and `Args.path` produce an `Args[java.nio.file.Path]`. The path may be a file or a directory, and it may or may not exist. The unnamed form uses `path` as the name. This constructor is available on the JVM and Native only (see [Platform support](#platform-support)).
+```scala mdoc:silent
+Args.path("target")
+```
+
+### Platform support
+- On the JVM and Native, `Args.file`, `Args.directory` and `Args.path` are available.
+- On Scala.js, none of them are available. Code that uses them does not compile for Scala.js.
+- The matching options work differently. `Options.file` is available on all three platforms. `Options.directory` is not available on Scala.js. See [Options](options.md).
+
+### Primitive types
+Each basic constructor, such as `Args.text` or `Args.file`, creates a `PrimType`. A `PrimType` knows how to read a string from the command line, check it, and describe the accepted values in the help output. `PrimType` is a sealed trait, so the library defines the complete set of types and you cannot add new ones from outside.
+
+Path arguments use three small types:
+- `PathType` says what kind of path is expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable.
+- `Exists` says whether the path must exist: `Exists.Yes`, `Exists.No`, or `Exists.Either` when it does not matter.
+- `PrimType.Path(pathType, shouldExist)` combines the two. For example, `Args.file(name, exists = Exists.Yes)` is built from `PrimType.Path(PathType.File, Exists.Yes)`.
+```scala mdoc:silent
+PrimType.Path(PathType.File, Exists.Yes)
+```
+
 ## Combining and transforming Args
 When constructing a command, you can specify only one argument. Thus, to create more complex `Args` it is necessary to use the following methods of the trait `Args`:
 ```scala mdoc:silent
