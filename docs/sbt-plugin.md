@@ -89,7 +89,7 @@ lazy val root = project
   .in(file("."))
   .enablePlugins(ZIOCLIPlugin)
   .settings(
-    CLIPlugin.zioCliMainClass := Some("zio.cli.YourApp")
+    zioCliMainClass := Some("zio.cli.YourApp")
   )
 ```
 
