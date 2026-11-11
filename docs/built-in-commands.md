@@ -5,7 +5,7 @@ title: "Built-in commands"
 **ZIO CLI** automatically constructs some common commands:
 - `--help` or `-h` shows a description of the CLI's commands.
 - `--wizard` executes wizard mode.
-- `--shell-completion-index`, `--shell-completion-script` and `--shell-type` are used for Bash and Zsh Completion.
+- `--shell-completion-index`, `--shell-completion-script` and `--shell-type` accepts `sh`, `bash` or `zsh`. Only `bash` produces a working completion script; `zsh` is not yet implemented.
 
 These commands are automatically generated also for all subcommands of a command.
 ```scala mdoc:compile-only
@@ -67,7 +67,7 @@ If we desire to consult the help of a subcommand, like `clone`, we would get the
 ```
 USAGE
 
-  $ git clone --directory directory
+  $ git clone --directory <directory>
 
 DESCRIPTION
 
@@ -75,19 +75,19 @@ DESCRIPTION
 
 OPTIONS
 
-  --directory directory
+  --directory <directory>
     A directory.
 ```
 
 ### Wizard
-Wizard mode allows to construct a command by choosing between parameters offered by the application. The output would be the following.
-```
-Command(add|clone): 
-```
-If we input `clone`, we will get:
-```
---directory (directory): 
-```
+Wizard mode allows to construct a command by choosing between parameters offered by the application. It first prints a numbered list of the subcommands and asks for one, for example `[1] add` or `[2] clone`. The prompt is the command name followed by ` :> `, for example `git :> `. Typing `clone` (or its number, `2`) selects that subcommand. Then the wizard asks for each remaining option and argument in turn, using the same prompt style with the subcommand name.
+
+At any prompt you can also type:
+- `help` to show the help of the current parameter,
+- `restart` to start the wizard again from the beginning,
+- `quit` to exit the wizard.
+
+Pressing enter with no input asks the same question again. When the wizard has all the parameters, it prints the final command and then executes it.
 
 
 
