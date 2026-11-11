@@ -80,7 +80,7 @@ OPTIONS
 ```
 
 ### Wizard
-Wizard mode allows to construct a command by choosing between parameters offered by the application. It first prints a numbered list of the subcommands and asks for one, for example `[1] add` or `[2] clone`. The prompt is the command name followed by ` :> `, for example `git :> `. Typing `clone` (or its number, `2`) selects that subcommand. Then the wizard asks for each remaining option and argument in turn, using the same prompt style with the subcommand name.
+Wizard mode allows to construct a command by choosing between parameters offered by the application. It first prints a numbered list of the subcommands and asks for one, for example `[1] add` or `[2] clone`. The prompt is the command name followed by ` :> `, for example `git :> `. Typing `clone` (or its number, `2`) selects that subcommand. Then the wizard asks for the remaining parameters in turn. See [Wizard mode](wizard.md) for which parameters it prompts for.
 
 At any prompt you can also type:
 - `help` to show the help of the current parameter,
