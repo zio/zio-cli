@@ -6,6 +6,8 @@ sidebar_label: "OAuth2"
 
 A command-line application interacting with an external API might require some form of authentication, so that access is restricted for unauthorized users. One widely employed authorization and authentication protocol is OAuth2. **ZIO CLI** can perform interactions with APIs requiring OAuth2. Although it is possible to construct a custom OAuth2 provider easily, there are already tailored OAuth2 providers for GitHub, Google and Facebook within **ZIO CLI**. We will see how we can add `OAuth2` to our CLI application and how we can construct a custom OAuth2 provider to interact with other APIs.
 
+**Note:** `Options.oauth2` is available only on the JVM. By default the token is saved in a file in your home directory, which you can change with the generated `--oauth2-file` option.
+
 ## Using OAuth2
 
  OAuth2 is added to a CLI App as an `Options[OAuth2Token]`. The token can be stored and the user can specify the path, so it is not necessary to repeat authentication. We can create it as with other options:
@@ -115,7 +117,7 @@ It converts textual response of access token request into `AccessTokenResponse`.
 It defaults to decoding from standard JSON format.
 
 ### Construction of GitHub OAuth2 provider
-The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the library **ZIO Http**. They represent a POST request to GitHub API.
+The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the JDK package `java.net.http`. They represent a POST request to GitHub API.
 
 ```scala mdoc:silent:reset
 import zio.cli.oauth2._
