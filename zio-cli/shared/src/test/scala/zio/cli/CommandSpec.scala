@@ -430,6 +430,26 @@ object CommandSpec extends ZIOSpecDefault {
         r2 == CommandDirective.UserDefined(Nil, ((None, true), List("--something", "abc", "something"))),
         r3 == CommandDirective.UserDefined(Nil, ((None, false), List("-v", "--something", "abc", "something")))
       )
+    },
+    test("parse with fromFiles merges file options and lets CLI override aliases and OrElse options") {
+      val command =
+        Command(
+          "cmd",
+          Options.text("format").alias("f") ++ Options.boolean("verbose", true, "silent"),
+          Args.text("target")
+        )
+      val files = List(
+        FileOptions.OptionsFromFile("/work/sub/.cmd", List("--format", "json")),
+        FileOptions.OptionsFromFile("/test-home/.cmd", List("-f", "xml", "--verbose"))
+      )
+
+      for {
+        r1 <- command.parse(List("cmd", "input.txt"), CliConfig.default, files)
+        r2 <- command.parse(List("cmd", "-f", "yaml", "--silent", "input.txt"), CliConfig.default, files)
+      } yield assertTrue(
+        r1 == CommandDirective.UserDefined(Nil, (("json", true), "input.txt")),
+        r2 == CommandDirective.UserDefined(Nil, (("yaml", false), "input.txt"))
+      )
     }
   )
 
