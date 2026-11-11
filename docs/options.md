@@ -24,6 +24,16 @@ val name = "name"
 
 Options.boolean(name)
 ```
+### Boolean Options with a negation
+`Options.boolean(name, ifPresent, negationName, negationNames*)` adds a second name that sets the opposite value. With `ifPresent` set to `true`, `--color` gives `true` and `--no-color` gives `false`. If neither name is given, the value is `false`, which is the opposite of `ifPresent`. Giving both names in one command is a validation error.
+```scala mdoc:silent
+Options.boolean("color", true, "no-color")
+```
+The overload `Options.boolean(name, alias, ifPresent, negationName, negationNames*)` also gives the main name a single alias, such as `-v` for `--verbose`.
+```scala mdoc:silent
+Options.boolean("verbose", "v", true, "quiet", "q")
+```
+
 ### Enumeration Options
 If we desire to allow the user to choose between different options, we can use the `enumeration` method. It must specify a name and tuples `(String, A)` to create an instance of `Options[A]`. A valid input from the user is a key of a tuple and it will produce the corresponding value. We can use this method if there are different ways to execute a command. As an example, the command `git commit` allows choosing between options `--all`, `--interactive` and `--patch` that control how the user specifies the changes to be committed. One way to implement this would use `enumeration`:
 ```scala mdoc:silent
@@ -142,6 +152,12 @@ Options.zoneId(name)
 Options.zoneOffset(name)
 ```
 
+### Empty options
+`Options.none` produces an `Options[Unit]` that consumes no input. Use it for a command that takes no options. It is the same as leaving the options out of a command.
+```scala mdoc:silent
+Command("status", Options.none, Args.none)
+```
+
 ### Combining and transforming options
 We can use the following methods to create more complex Options:
 ```scala mdoc:silent
@@ -251,6 +267,53 @@ OPTIONS
     This setting is optional. Default: 'C:\Users\YourUser\Documents'.
 ```
 
+### Converting a tuple with as
+If a combined option produces a tuple, `as` turns the tuple into a value of a case class or any other function of two to six arguments. It is a shorthand for `map` that spreads the tuple into the function's arguments.
+```scala mdoc:silent
+final case class Bounds(from: BigInt, to: BigInt)
+
+val bounds: Options[Bounds] = (Options.integer("from") ++ Options.integer("to")).as(Bounds.apply _)
+```
+
+### Choosing between alternatives with fold
+If an option produces an `Either`, for example after `|` between two options of different types, `fold` handles each side. It takes one function per side. For two sides, the first function handles `Left` and the second handles `Right`. Versions with two to six functions exist, and with three or more sides the nested `Either` is read from the left.
+```scala mdoc:silent
+val nameOrId: Options[String] =
+  (Options.text("name").map(Left(_)) | Options.integer("id").map(Right(_)))
+    .fold((name: String) => s"name $name", (id: BigInt) => s"id $id")
+```
+
+### Rejecting values with collect and mapOrFail
+`collect` keeps the values that a partial function matches and rejects the others. The message is shown as the validation error.
+```scala mdoc:silent
+val colorCode: Options[Int] =
+  Options.text("color").collect("color must be red or blue") {
+    case "red"  => 1
+    case "blue" => 2
+  }
+```
+`mapOrFail` is the general form. The function returns `Left` with a `ValidationError` to reject a value, or `Right` with the new value to accept it.
+```scala mdoc:silent
+val port: Options[Int] =
+  Options.integer("port").mapOrFail { (value: BigInt) =>
+    if (value >= 1 && value <= 65535) Right(value.toInt)
+    else Left(ValidationError(ValidationErrorType.InvalidValue, HelpDoc.p("Port must be between 1 and 65535.")))
+  }
+```
+
+### Changing the placeholder with withPseudoName
+The help output shows a placeholder after the option name, such as `<text>`. `withPseudoName` replaces it. It changes only the help text and does not change what the option accepts.
+```scala mdoc:silent
+Options.text("lastname").withDefault("xyz").withPseudoName("NAME")
+```
+The help output for this option is:
+```
+--lastname <NAME>
+  A user-defined piece of text.
+
+  This setting is optional. Default: 'xyz'.
+```
+
 ### Making an alias
 Using method `alias` it is possible to give a shorter form of the name of the `Options`. This is used to make easier the input of options for the user. We will make an alias for option `--directory`. 
 ```scala mdoc:silent
@@ -345,3 +408,11 @@ OPTIONS
   (-m, --msg <text>)
     A user-defined piece of text.
 ```
+
+### Platform support
+Not every option constructor is available on every platform.
+- `Options.oauth2` is available only on the JVM. See [Authorization with OAuth2](auth.md).
+- `Options.file` is available on the JVM, Scala.js and Native.
+- `Options.directory` is available on the JVM and Native, but not on Scala.js.
+
+The matching argument constructors are described in [Platform support](args.md#platform-support).
