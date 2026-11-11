@@ -1,21 +1,51 @@
 const sidebars = {
   sidebar: [
     {
+      type: "doc",
+      id: "index",
+      label: "Introduction"
+    },
+    {
+      type: "doc",
+      id: "getting-started",
+      label: "Getting Started"
+    },
+    {
       type: "category",
-      label: "ZIO CLI",
+      label: "Reference",
       collapsed: false,
-      link: { type: "doc", id: "index" },
       items: [
         "args",
         "options",
         "commands",
+        "cli-app",
         "helpdoc",
         "built-in-commands",
         "cli-config",
-        "auth",
+        "validation-and-errors",
+        "wizard",
         "bash-and-zsh-completion",
+        "figlet",
+        "auth",
         "sbt-plugin",
-        "examples"
+        "testing"
+      ]
+    },
+    {
+      type: "category",
+      label: "Tutorials",
+      collapsed: false,
+      items: ["examples"]
+    },
+    {
+      type: "category",
+      label: "How-to Guides",
+      collapsed: false,
+      items: [
+        "how-to-optional-option-with-default",
+        "how-to-add-shell-completion",
+        "how-to-test-a-cli",
+        "how-to-package-native-binary"
       ]
     }
   ]
