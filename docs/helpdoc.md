@@ -57,7 +57,7 @@ Span1
   Description 1
 
 Span2
-  Description 2
+  Description 12
 ```
 
 - Blocks
@@ -126,7 +126,7 @@ HelpDoc.h1("Header 1") + HelpDoc.p("paragraph content")
 ```
 It shows:
 ```
-Header 1
+HEADER 1
 
   paragraph content
 ```
@@ -153,7 +153,7 @@ val optionsWithHelp = Options.text("sample") ?? "description of options"
 ```scala mdoc:silent:reset
 import zio.cli._
 
-trait Options[A] {
+trait Command[A] {
   def withHelp(that: String): Command[A] // that is converted into a paragraph
   def withHelp(that: HelpDoc): Command[A]
 }

@@ -207,7 +207,7 @@ lazy val docs = project
     projectStage                               := ProjectStage.Experimental,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioCli.jvm)
   )
-  .dependsOn(zioCli.jvm)
+  .dependsOn(zioCli.jvm, testkit.jvm)
   .enablePlugins(WebsitePlugin)
 
 lazy val sbtZioCli = project

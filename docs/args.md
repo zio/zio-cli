@@ -12,7 +12,7 @@ In **ZIO CLI**, Arguments are represented by instances of class `Args[_]`. `Args
 
 
 ## Construction of basic Args
-**ZIO CLI** offers a variety of methods to create basic `Args` that takes a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, a `ValidationError` will be thrown. Note that each type has its own validation function.
+**ZIO CLI** offers a variety of methods to create basic `Args` that takes a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, the parser returns a `ValidationError` failure. Note that each type has its own validation function.
 
 An `Args` instance of a basic type carries a name attribute. This can be specified when being created, but it can also be skipped. In this last case, the name will be that of the type. An example with Boolean type:
 ```scala mdoc:silent
@@ -27,7 +27,7 @@ Args.bool       // Boolean Args named "boolean"
 
 
 ### Boolean Args
-Produces an `Args[Boolean]`. It accepts as input `true` or `false`, while other pieces of text are not valid.
+Produces an `Args[Boolean]`. It accepts `true` or `false`, and the case-insensitive aliases `1`/`0`, `y`/`n`, `yes`/`no` and `on`/`off`. Other text is not valid.
 ```scala mdoc:silent
 Args.bool(name)
 ```
@@ -52,8 +52,8 @@ Args.file(name, exists = Exists.Yes)
 Args.directory(name, exists = Exists.Yes)
 
 // Path must point to non-existing files or directories
-Args.file(name, exists = Exists.Yes)
-Args.directory(name, exists = Exists.Yes)
+Args.file(name, exists = Exists.No)
+Args.directory(name, exists = Exists.No)
 ```
 ### Text Args
 Produces an `Args[String]`.
@@ -94,7 +94,7 @@ Args.localDateTime(name)
 ```scala mdoc:silent
 Args.localTime(name)
 ```
-- Produces `Args[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format such as 12-03.
+- Produces `Args[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format `--MM-dd`, such as `--12-03`.
 ```scala mdoc:silent
 Args.monthDay(name)
 ```
@@ -110,7 +110,7 @@ Args.offsetTime(name)
 ```scala mdoc:silent
 Args.period(name)
 ```
-- Produces `Args[java.time.Year]`. The input must be a year in the ISO-8601 format, such as 2007.
+- Produces `Args[java.time.Year]`. The input must be a plain integer year, such as 2007.
 ```scala mdoc:silent
 Args.year(name)
 ```
@@ -118,7 +118,7 @@ Args.year(name)
 ```scala mdoc:silent
 Args.yearMonth(name)
 ```
-- Produces `Args[java.time.ZonedDateTime]`. The input must be a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00 Europe/Paris.
+- Produces `Args[java.time.ZonedDateTime]`. The input must be an ISO-8601 offset date-time followed by the zone ID in square brackets, such as `2007-12-03T10:15:30+01:00[Europe/Paris]`.
 ```scala mdoc:silent
 Args.zonedDateTime(name)
 ```
@@ -129,6 +129,39 @@ Args.zoneId(name)
 - Produces `Args[java.time.ZoneOffset]`. The input must be a time-zone offset from Greenwich/UTC, such as +02:00.
 ```scala mdoc:silent
 Args.zoneOffset(name)
+```
+
+### Enumeration Args
+Produces an `Args[A]` that accepts one of a fixed set of words. Each case is a pair of the word the user types and the value it stands for. The value is the second element of the pair. `Args.enumeration(name)(cases*)` gives the argument a name, and `Args.enumeration(cases*)` uses `choice` as the name.
+```scala mdoc:silent
+Args.enumeration("level")(("debug", 0), ("info", 1), ("warn", 2)) // Args[Int], named "level"
+Args.enumeration(("debug", 0), ("info", 1), ("warn", 2))         // Args[Int], named "choice"
+```
+
+### Other constructors
+- `Args.none` produces an `Args[Unit]` that consumes no input. Use it for a command that takes no arguments:
+```scala mdoc:silent
+Command("status", Options.boolean("short"), Args.none)
+```
+- `Args.path(name)` and `Args.path` produce an `Args[java.nio.file.Path]`. The path may be a file or a directory, and it may or may not exist. The unnamed form uses `path` as the name. This constructor is available on the JVM and Native only (see [Platform support](#platform-support)).
+```scala mdoc:silent
+Args.path("target")
+```
+
+### Platform support
+- On the JVM and Native, `Args.file`, `Args.directory` and `Args.path` are available.
+- On Scala.js, none of them are available. Code that uses them does not compile for Scala.js.
+- The matching options work differently. `Options.file` is available on all three platforms. `Options.directory` is not available on Scala.js. See [Options](options.md).
+
+### Primitive types
+Each basic constructor, such as `Args.text` or `Args.file`, creates a `PrimType`. A `PrimType` knows how to read a string from the command line, check it, and describe the accepted values in the help output. `PrimType` is a sealed trait, so the library defines the complete set of types and you cannot add new ones from outside.
+
+Path arguments use three small types:
+- `PathType` says what kind of path is expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable.
+- `Exists` says whether the path must exist: `Exists.Yes`, `Exists.No`, or `Exists.Either` when it does not matter.
+- `PrimType.Path(pathType, shouldExist)` combines the two. For example, `Args.file(name, exists = Exists.Yes)` is built from `PrimType.Path(PathType.File, Exists.Yes)`.
+```scala mdoc:silent
+PrimType.Path(PathType.File, Exists.Yes)
 ```
 
 ## Combining and transforming Args
@@ -180,16 +213,16 @@ Args.text.between(2,5) // Creates an arguments accepting a list of String of len
 ```
 - Method `atLeast`
 
-It creates an argument accepting a list of arguments of the type before whose length must be more than `min` parameter.
+It creates an argument accepting a list of arguments of the type before whose length must be at least the `min` parameter.
 ```scala mdoc:silent
-Args.text.atLeast(2) // Creates an arguments accepting a list of String of length more than 2.
+Args.text.atLeast(2) // Creates an arguments accepting a list of String of length at least 2.
 ```
 
 - Method `atMost`
 
-It creates an argument accepting a list of arguments of the type before whose length must be less than `max`parameter
+It creates an argument accepting a list of arguments of the type before whose length must be at most the `max` parameter.
 ```scala mdoc:silent
-Args.text.atMost(5) // Creates an arguments accepting a list of String of length less than 5.
+Args.text.atMost(5) // Creates an arguments accepting a list of String of length at most 5.
 ```
 
 ### Transforming Args

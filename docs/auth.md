@@ -6,6 +6,8 @@ sidebar_label: "OAuth2"
 
 A command-line application interacting with an external API might require some form of authentication, so that access is restricted for unauthorized users. One widely employed authorization and authentication protocol is OAuth2. **ZIO CLI** can perform interactions with APIs requiring OAuth2. Although it is possible to construct a custom OAuth2 provider easily, there are already tailored OAuth2 providers for GitHub, Google and Facebook within **ZIO CLI**. We will see how we can add `OAuth2` to our CLI application and how we can construct a custom OAuth2 provider to interact with other APIs.
 
+**Note:** `Options.oauth2` is available only on the JVM. By default the token is saved in a file in your home directory, which you can change with the generated `--oauth2-file` option.
+
 ## Using OAuth2
 
  OAuth2 is added to a CLI App as an `Options[OAuth2Token]`. The token can be stored and the user can specify the path, so it is not necessary to repeat authentication. We can create it as with other options:
@@ -115,7 +117,7 @@ It converts textual response of access token request into `AccessTokenResponse`.
 It defaults to decoding from standard JSON format.
 
 ### Construction of GitHub OAuth2 provider
-The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the library **ZIO Http**. They represent a POST request to GitHub API.
+The construction of an OAuth2 provider will be dependent on the particular API that we would like to access. The first step is to define `name` and `clientIdentifier`. The value `clientIdentifier` can be obtained as a field of the case class representing our Provider. Then we construct the core of the Provider. Observe that the methods `authorizationRequest` and `accessTokenRequest` construct an `HttpRequest` from the JDK package `java.net.http`. They represent a POST request to GitHub API.
 
 ```scala mdoc:silent:reset
 import zio.cli.oauth2._
@@ -181,6 +183,45 @@ val cliApp = CliApp.make(
     // Implement logic of CliApp
       case file => printLine("Upload file to GitHub")
     }
+```
+
+## Token API
+`Options.oauth2` gives the command handler an `OAuth2Token`, from the package `zio.cli.oauth2`. The token is a small interface with two methods:
+- `accessToken: Task[AccessToken]` returns the current access token. If the stored token has expired, it is refreshed first. The refresh uses the refresh token when the server issued one, and otherwise repeats the authorization.
+- `refreshTokenNow: Task[Unit]` refreshes the token immediately. Use it when the server has invalidated the token before its expiry time, which the library cannot detect on its own.
+
+`AccessToken` is a case class with these fields:
+- `accessToken: String` is the token string. Treat it as a secret and do not print it.
+- `tokenType: TokenType` says how the token must be sent to the API.
+- `expiresAt: Option[OffsetDateTime]` is the expiry time, or `None` when the server did not give one.
+- `refreshToken: Option[String]` is the refresh token, when the server issued one.
+- `scope: List[String]` is the list of permissions that were granted.
+
+`TokenType` has three cases. `TokenType.Bearer` and `TokenType.Mac` are the two values the library recognizes. `TokenType.Other(tokenType)` keeps any other value as the server sent it.
+
+The token is stored as JSON in a file, and it is read again on the next run, so the user does not have to authorize again until the token expires and cannot be refreshed. By default the file is in the user's home directory and its name is `oauth2_<provider>_<client id>_access_token.json`. Here `<provider>` is the lower-case provider name, such as `github`. The generated option `--oauth2-file <path>` sets another path. The file holds the token in plain text, so protect it as you would a password.
+
+Parsing the command loads this file. If the file is missing, the authorization starts. If the stored token has expired, it is refreshed. Both happen before your handler is called.
+
+```scala mdoc:compile-only
+import zio._
+import zio.cli._
+import zio.cli.oauth2._
+
+val getToken = Command("token", Options.oauth2(OAuth2Provider.Github("sampleId"), List("repo")))
+
+val tokenApp = CliApp.make(
+  name = "token-demo",
+  version = "0.0.1",
+  summary = HelpDoc.Span.text("Shows the type of the GitHub token"),
+  command = getToken
+) { (token: OAuth2Token) =>
+  for {
+    current <- token.accessToken
+    _       <- Console.printLine(s"Token type: ${current.tokenType}")
+    _       <- token.refreshTokenNow
+  } yield ()
+}
 ```
 
 
