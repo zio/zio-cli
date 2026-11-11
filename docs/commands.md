@@ -18,13 +18,13 @@ A subcommand is a command that belongs to a larger command. Thus, it is possible
 It's possible to create a `Command` using the `apply` method. You must always specify the name of the command that will be used
 in the CLI, but you can also specify options and/or arguments:
 
-```scala mdoc:silent
+```scala mdoc:silent:reset
 import zio.cli._
 import java.nio.file.Path
 
-val plain: Command[Unit] = Command("git")
-val withArgs: Command[Path] = Command("clone", Args.directory("directory"))
-val withOptions: Command[Boolean] = Command("commit", Options.boolean("quiet"))
+val plain: zio.cli.Command[Unit] = Command("git")
+val withArgs: zio.cli.Command[Path] = Command("clone", Args.directory("directory"))
+val withOptions: zio.cli.Command[Boolean] = Command("commit", Options.boolean("quiet"))
 val withBoth = Command("clone", Options.boolean("quiet"), Args.directory("directory"))
 ```
 ## Combining commands and transformations
