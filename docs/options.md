@@ -2,297 +2,277 @@
 id: options
 title: "Options"
 ---
-The `Options` data type models command-line options. Contrary to arguments, options are named, position-independent parameters passed to a command-line program that modify its behavior. Note that the user must specify the name of the option just before its content. As an example, the Git CLI has a command named `git checkout` that allows changing between different development branches. It has different options that modify the functionality of the command like option `quiet`. This option allows suppressing feedback messages. It can be specified in the following manners:
-```
-git checkout --quiet
-git checkout -q
-```
-Both `--quiet` and `-q` refer to the same option. `-q` is the alias of `quiet`, a shorter form of the option. Note that a one-character alias is preceded by `-`, while a longer alias is preceded by `--`.
 
-In **ZIO CLI**, Options are represented by instances of class `Options[_]`. `Options[A]` is a description of the process of constructing an instance of `A` from a valid input of the CLI. It is not yet a specified option for the CLI. In other words, an instance of `Options[A]` defines a collection of valid commands and a way to construct a value `A` from them.
+`Options[A]` describes the named parameters of a command, such as `--quiet` or `--message "Fix typo"`. An `Options[A]` is a description, not a parsed value. It says which options the command accepts and how to build an `A` from them, and a [`Command`](commands.md) uses it to parse the user's input.
 
-## Construction of basic Options
-**ZIO CLI** offers a variety of methods to create basic `Options` that take a string from the user as input and transform it into a value of the corresponding type. The benefit of using these methods is that it is automatically checked if they describe a value of the given type and, in that case, are transformed into it. In case of an invalid input, the parser returns a `ValidationError` failure.
+An option is written as `--name` when its name is longer than one character, and as `-n` when it is one character long. The same rule applies to aliases. ZIO CLI accepts these forms on the command line:
 
-The following methods construct an `Options` with a `name` that requires an input of the corresponding type from the user. Observe that for `Options` it is mandatory to specify the `name`.
-### Boolean Options
-Produces an `Options[Boolean]`. It accepts `true` or `false`, and the case-insensitive aliases `1`/`0`, `y`/`n`, `yes`/`no` and `on`/`off`. Other text is not valid. A flag such as `--quiet` with no value means `true`.
-```scala mdoc:silent
+- A value after the name, as in `--name Ada`, or joined with `=`, as in `--name=Ada`.
+- Clustered one-character flags, as in `-abc` for `-a -b -c`.
+- Options in any order among themselves, but before the command's positional [arguments](args.md). Reading of options stops at the first token that is not an option, and a `--` token makes every later token an argument.
+
+A misspelled option name close to a real one, such as `--firstnme`, fails with `The flag "--firstnme" is not recognized. Did you mean --firstname?`. [How ZIO CLI reads a command line](parsing.md#how-to-write-options) describes these rules in detail.
+
+## Constructors
+
+The `Options` companion object has one constructor per value type, plus constructors for flags, key-value pairs and commands without options. Every constructor takes the option's name; there are no unnamed options.
+
+### Value Options
+
+A value option reads the token after its name and converts it to its value type. The constructors are `Options.text`, `Options.integer`, `Options.decimal`, `Options.duration`, `Options.instant`, `Options.localDate`, `Options.localDateTime`, `Options.localTime`, `Options.monthDay`, `Options.offsetDateTime`, `Options.offsetTime`, `Options.period`, `Options.year`, `Options.yearMonth`, `Options.zonedDateTime`, `Options.zoneId` and `Options.zoneOffset`. [Value Types](value-types.md) lists the Scala type, the placeholder and the accepted input of each one.
+
+To declare a required integer option:
+
+```scala mdoc:silent:reset
 import zio.cli._
 
-val name = "name"
+val count: Options[BigInt] = Options.integer("count")
+```
 
-Options.boolean(name)
+A value option is required. Without it, parsing fails with `Expected to find --count option.`, and a value that cannot be converted fails with `ten is not a integer.`. [Defaults](#defaults) shows how to make an option optional.
+
+### Boolean Options
+
+`Options.boolean(name, ifPresent = true)` creates a flag. The flag alone gives `ifPresent`, and a missing flag gives the opposite value, so every boolean option already has a default.
+
+To declare a flag that is `true` when present, and one that is `false` when present:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val quiet: Options[Boolean]    = Options.boolean("quiet")
+val progress: Options[Boolean] = Options.boolean("progress", ifPresent = false)
 ```
-### Boolean Options with a negation
-`Options.boolean(name, ifPresent, negationName, negationNames*)` adds a second name that sets the opposite value. With `ifPresent` set to `true`, `--color` gives `true` and `--no-color` gives `false`. If neither name is given, the value is `false`, which is the opposite of `ifPresent`. Giving both names in one command is a validation error.
+
+The user can also give the value explicitly, as `--quiet true`, `--quiet false` or `--quiet=false`.
+
+:::caution
+A flag reads the next token as its value only when it is exactly `true` or `false`. Other boolean words such as `no`, `0` or `FALSE` are not read: `--quiet=no` and `--quiet no` give `true`, and `no` is left over as a positional argument. The words listed in [Boolean](value-types.md#boolean) work for `Args.bool`, not for flags. [Boolean Flags](parsing.md#boolean-flags) shows examples.
+:::
+
+### Boolean Options With a Negation
+
+`Options.boolean(name, ifPresent, negationName, negationNames*)` adds a second flag that gives the opposite value. With `ifPresent` set to `true`, `--color` gives `true`, `--no-color` gives `false`, and the value is `false` when neither flag is given. Extra `negationNames` are aliases of the negation flag. Giving both flags fails with `Options collision detected. You can only specify either --color or --no-color.`.
+
+To declare a color flag with its negation:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val color: Options[Boolean] = Options.boolean("color", true, "no-color")
+```
+
+`Options.boolean(name, alias, ifPresent, negationName, negationNames*)` also gives the main flag an alias. To declare `-v`/`--verbose` with the negation `-q`/`--quiet`:
+
 ```scala mdoc:silent
-Options.boolean("color", true, "no-color")
+val verbose: Options[Boolean] = Options.boolean("verbose", "v", true, "quiet", "q")
 ```
-The overload `Options.boolean(name, alias, ifPresent, negationName, negationNames*)` also gives the main name a single alias, such as `-v` for `--verbose`.
-```scala mdoc:silent
-Options.boolean("verbose", "v", true, "quiet", "q")
-```
+
+:::caution
+Do not call `Options#alias` on a boolean option with a negation. The alias is added to both flags, so using it always fails with `Options collision detected`. Pass the alias to `Options.boolean` instead, as in the example above.
+:::
 
 ### Enumeration Options
-If we desire to allow the user to choose between different options, we can use the `enumeration` method. It must specify a name and tuples `(String, A)` to create an instance of `Options[A]`. A valid input from the user is a key of a tuple and it will produce the corresponding value. We can use this method if there are different ways to execute a command. As an example, the command `git commit` allows choosing between options `--all`, `--interactive` and `--patch` that control how the user specifies the changes to be committed. One way to implement this would use `enumeration`:
-```scala mdoc:silent
+
+`Options.enumeration(name)(cases*)` accepts one of a fixed set of words. Each case is a pair of the word the user types and the value it stands for. The word must match exactly, including its case.
+
+To accept one of three commit modes:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
 sealed trait Mode
-case class All() extends Mode
-case class Interactive() extends Mode
-case class Patch() extends Mode
+object Mode {
+  case object All         extends Mode
+  case object Interactive extends Mode
+  case object Patch       extends Mode
+}
 
-Options.enumeration[Mode]("mode")(("all", All()), ("interactive", Interactive()), ("patch", Patch()))
+val mode: Options[Mode] =
+  Options.enumeration[Mode]("mode")(("all", Mode.All), ("interactive", Mode.Interactive), ("patch", Mode.Patch))
 ```
-The output produced by the HelpDoc is
-```
-OPTIONS
 
-  --mode all | interactive | patch
-    One of the following cases: all, interactive, patch.
+The help lists the accepted words:
+
+```scala mdoc
+println(mode.helpDoc.toPlaintext(color = false))
 ```
 
 ### Path Options
-They are used to produce an `Options[Path]`.
-- Produces `Options[java.nio.file.Path]`.
-```scala mdoc:silent
-Options.file(name) // Used for a file
-```
-- Produces `Options[java.nio.file.Path]`.
-```scala mdoc:silent
-Options.directory(name) // Used for a directory
-```
-By default, the `CliApp` accepts paths pointing to files or directories that might or not exist. If you need to work with one of them exclusively you can use the type `Exists`:
-```scala mdoc:silent
-// Path can point to both existing or non-existing files or directories
-Options.file(name, exists = Exists.Either)
-Options.directory(name, exists = Exists.Either)
 
-// Path must point to existing files or directories
-Options.file(name, exists = Exists.Yes)
-Options.directory(name, exists = Exists.Yes)
+`Options.file(name, exists)` and `Options.directory(name, exists)` produce a `java.nio.file.Path`. The `exists` parameter defaults to `Exists.Either`. An existing path must also be of the right kind, so `Options.file` rejects an existing directory.
 
-// Path must point to non-existing files or directories
-Options.file(name, exists = Exists.No)
-Options.directory(name, exists = Exists.No)
-```
-### Text Options
-Produces an `Options[String]`.
-```scala mdoc:silent
-Options.text(name)
-```
-### Numeric Options
-Numeric `Options` produce `BigInt` and `BigDecimal`, so they can represent numbers of arbitrary size and precision. Note that the CLI checks that the input really represents a number.
-- Produces `Options[BigDecimal]`.
-```scala mdoc:silent
-Options.decimal(name)
+To require an existing configuration file:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val config = Options.file("config", exists = Exists.Yes)
 ```
 
-- Produces `Options[BigInt]`.
-```scala mdoc:silent
-Options.integer(name)
+`Options.directory` is not available on Scala.js, and `Options.file` there rejects every value. There is no `Options.path`; an option that accepts a file or a directory is built from a `PrimType`. [Paths](value-types.md#paths), [Custom Parameters From a PrimType](value-types.md#custom-parameters-from-a-primtype) and [Platform Support](value-types.md#platform-support) give the details.
+
+### Key-Value Options
+
+`Options.keyValueMap(name)` collects `key=value` pairs into a `Map[String, String]`. The user repeats the option for each pair, as in `-d a=1 -d b=2`, or lists several pairs after one option, as in `-d a=1 b=2`. Reading stops at the first token without `=` or with an empty value, and the rest is left for the next options or arguments. `Options.keyValueMap(option)` takes an `Options.Single[String]` instead of a name.
+
+To collect definitions under `--define` and `-d`:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val defines: Options[Map[String, String]] = Options.keyValueMap("define").alias("d")
 ```
 
-### Date/Time Options
-The following methods produce `Options` whose type parameter is a Date/Time type of the `java.time` library.
-- Produces `Options[java.time.Duration]`. The input must be a time-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'.
-```scala mdoc:silent
-Options.duration(name)
-```
-- Produces `Options[java.time.Instant]`. The input must be an instant in time in UTC format, such as 2007-12-03T10:15:30.00Z.
-```scala mdoc:silent
-Options.instant(name)
-```
-- Produces `Options[java.time.LocalDate]`. The input must be a date in ISO_LOCAL_DATE format, such as 2007-12-03.
-```scala mdoc:silent
-Options.localDate(name)
-```
-- Produces `Options[java.time.LocalDateTime]`. The input must be a date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.
-```scala mdoc:silent
-Options.localDateTime(name)
-```
-- Produces `Options[java.time.LocalTime]`. The input must be a time without a time-zone in the ISO-8601 format, such as 10:15:30.
-```scala mdoc:silent
-Options.localTime(name)
-```
-- Produces `Options[java.time.MonthDay]`. The input must be a month-day in the ISO-8601 format `--MM-dd`, such as `--12-03`.
-```scala mdoc:silent
-Options.monthDay(name)
-```
-- Produces `Options[java.time.OffsetDateTime]`. The input must be a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.
-```scala mdoc:silent
-Options.offsetDateTime(name)
-```
-- Produces `Options[java.time.OffsetTime]`. The input must be a time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00.
-```scala mdoc:silent
-Options.offsetTime(name)
-```
-- Produces `Options[java.time.Period]`. The input must be a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'.
-```scala mdoc:silent
-Options.period(name)
-```
-- Produces `Options[java.time.Year]`. The input must be a year in the ISO-8601 format, such as 2007.
-```scala mdoc:silent
-Options.year(name)
-```
-- Produces `Options[java.time.YearMonth]`. The input must be a year-month in the ISO-8601 format, such as 2007-12.
-```scala mdoc:silent
-Options.yearMonth(name)
-```
-- Produces `Options[java.time.ZonedDateTime]`. The input must be an ISO-8601 offset date-time followed by the zone ID in square brackets, such as `2007-12-03T10:15:30+01:00[Europe/Paris]`.
-```scala mdoc:silent
-Options.zonedDateTime(name)
-```
-- Produces `Options[java.time.ZoneId]`. The input must be a time-zone ID, such as Europe/Paris.
-```scala mdoc:silent
-Options.zoneId(name)
-```
-- Produces `Options[java.time.ZoneOffset]`. The input must be a time-zone offset from Greenwich/UTC, such as +02:00.
-```scala mdoc:silent
-Options.zoneOffset(name)
+:::caution
+A key-value option does not accept the `--define=a=1` form, and with the default case-insensitive [`CliConfig`](cli-config.md) it does not recognize a name or alias that contains capital letters, such as `-D`. Use lower-case names.
+:::
+
+### No Options
+
+`Options.none` is an `Options[Unit]` that consumes no input. A command built without options uses it, and it disappears from the command's value.
+
+To declare a command that takes no options:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val status = Command("status", Options.none, Args.none)
 ```
 
-### Empty options
-`Options.none` produces an `Options[Unit]` that consumes no input. Use it for a command that takes no options. It is the same as leaving the options out of a command.
-```scala mdoc:silent
-Command("status", Options.none, Args.none)
-```
+### Other Constructors
 
-### Combining and transforming options
-We can use the following methods to create more complex Options:
-```scala mdoc:silent
-trait Options[A] {
-  def ++[A1 >: A, B](that: Options[B]): Options[(A1, B)]
+`Options.oauth2(provider, scope)` adds OAuth2 authorization and is available only on the JVM; see [Authorization with OAuth2](auth.md). `Options.Single(name, aliases, primType, description, pseudoName)` wraps any `PrimType` directly, as shown in [Custom Parameters From a PrimType](value-types.md#custom-parameters-from-a-primtype).
+
+## Methods
+
+The `Options` trait has the following public methods. `Options#as` and `Options#fold` have overloads for two to six values, and only the smallest is shown:
+
+```scala
+sealed trait Options[+A] {
+  def ++[A1 >: A, B](that: Options[B])(implicit zippable: Zippable[A, B]): Options[zippable.Out]
   def |[A1 >: A](that: Options[A1]): Options[A1]
-  def orElse[A1 >: A](that: Options[A1]): Options[A1] // same as |
-  def orElseEither[B](that: Options[B]): Options[Either[A, B]] 
-  def map[B](f: A => B): Options[B] 
-  def optional: Options[Option[A]] 
+  def orElse[A1 >: A](that: Options[A1]): Options[A1]
+  def orElseEither[B](that: Options[B]): Options[Either[A, B]]
 
-  // Creates options with different aliases
-  def alias(name: String, names: String*): Options[A]
-
-  // Creates options that have a default value
+  def optional: Options[Option[A]]
   def withDefault[A1 >: A](value: A1): Options[A1]
+
+  def map[B](f: A => B): Options[B]
+  def mapOrFail[B](f: A => Either[ValidationError, B]): Options[B]
+  def collect[B](message: String)(f: PartialFunction[A, B]): Options[B]
+  def as[B, C, Z](f: (B, C) => Z)(implicit ev: A <:< (B, C)): Options[Z]
+  def fold[B, C, Z](f1: B => Z, f2: C => Z)(implicit ev: A <:< Either[B, C]): Options[Z]
+
+  def ??(that: String): Options[A]
+  def alias(name: String, names: String*): Options[A]
+  def withPseudoName(name: String): Options[A]
+
+  def helpDoc: HelpDoc
+  def synopsis: UsageSynopsis
+  def isBool: Boolean
+  def uid: Option[String]
 }
 ```
 
-### Adding Options
-Operator `++` can be used to zip two options. It can be used to chain two options in a tuple. For example, `git checkout` command has options `--quiet` and `--force`. The options for this command can be created in the following manner:
-```scala mdoc:silent
-val checkoutOptions = Options.boolean("quiet") ++ Options.boolean("force")
-```
+### Combining Options With ++
 
-The output of the CLI help will be:
-```
-COMMANDS
+`Options#++` requires both options. The result is a flat tuple: `a ++ b ++ c` is an `Options[(A, B, C)]`, not a nested pair, and `Unit` values such as `Options.none` disappear from it.
 
-  checkout [--quiet] [--force] 
-```
+To combine a flag and a text option:
 
-### Choosing between Options
-If we have more than one option and we need only one, we can create a new `Options` that allows to choose between two options using methods `|`, `orElse` and `orElseEither`. The difference between these three methods lies in the type parameter of the new `Options`. The user will be able to enter only the `Options` that he wants, triggering the desired functionality.
-- Method `orElse`
-
-`|` is just an alias for `orElse`. In the Git CLI, it is possible to choose between different options. This can be realized using `orElse`.
-```scala mdoc:silent:reset
-import zio.cli._
-import java.nio.file.Path
-
-val all = Options.boolean("all")
-val interactive = Options.boolean("interactive")
-val patch = Options.boolean("patch")
-
-val orElseOption: Options[Boolean] = all | interactive | patch
-```
-
-- Method `orElseEither`
-
-This method wraps the types in an `Either` class. This will be preferred if the types are very different.
-
-```scala mdoc:silent
-val orElseEitherOption: Options[Either[Either[Boolean, Boolean], Boolean]] = all orElseEither interactive orElseEither patch
-```
-This is another way to implement the `[--all | --interactive | --patch]` option of command `git commit`.
-
-
-### Transforming Options
-- Method `map`
-
-It allows to transform the type parameter of `Options[A]`. It takes a function `f: A => B` as parameter that is applied when processing the input of a user in a CLI app. This makes easier to implement the business logic of a CLI app. This allows to implement `[--all | --interactive | --patch]` option of command `git commit` using `orElse`. This is not possible without method `map`, because the result of using `orElse` is an option that returns true if some of the options are employed.
 ```scala mdoc:silent:reset
 import zio.cli._
 
-sealed trait Mode
-case class All() extends Mode
-case class Interactive() extends Mode
-case class Patch() extends Mode
-
-val all = Options.boolean("all").map(_ => All())
-val interactive = Options.boolean("interactive").map(_ => Interactive())
-val patch = Options.boolean("patch").map(_ => Patch())
-
-val alternative: Options[Mode] = all | interactive | patch
+val commitOptions: Options[(Boolean, String)] = Options.boolean("all") ++ Options.text("message")
 ```
 
-- Method `optional`
+The usage line of a command with these options is `[--all] --message <text>`. A flag is in square brackets because it has a default.
 
-It wraps the option in an `Option` class. The resulting `Options` is now optional, so the user can choose to specify it or not. If it is specified, it will be wrapped in `Some()`. Without input from the user, it will produce `None`. For example, if we are designing a command-line application to manage databases, we might desire to retrieve data from a particular database. The user could specify an additional backup database. If there were an error connecting with the main database, the CLI app would try to retrieve data from the backup database.
+### Choosing Between Options
+
+`Options#|` (and its alias `Options#orElse`) accepts exactly one of two options of a common type. `Options#orElseEither` does the same for options of different types and wraps the result in an `Either`, with `Left` for the first option. If both options are given, parsing fails with `Options collision detected. You can only specify either --name or --id.`. If neither is given, parsing fails with both missing-option messages, unless the whole alternative has a default.
+
+To accept a user by name or by ID, with a default when neither is given:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val user: Options[Either[String, BigInt]] =
+  Options.text("name") orElseEither Options.integer("id")
+
+val userOrMe: Options[Either[String, BigInt]] = user.withDefault(Left("me"))
+```
+
+The usage line shows the alternatives separated by `|`, as `--name <text>|--id <integer>`.
+
+:::caution
+Do not combine options that already have a default with `Options#|`, `Options#orElse` or `Options#orElseEither`. Such an option always succeeds, so the alternative always reports a collision, even when the user gives no option at all. This includes every `Options.boolean` and every option built with `Options#optional` or `Options#withDefault`. Put the default on the whole alternative instead, and use an enumeration for mutually exclusive modes, as in [Enumeration Options](#enumeration-options).
+:::
+
+When the choice is between flags, separate flags with a check also work. To reject `--all` together with `--patch`:
+
 ```scala mdoc:silent
-val database = Options.file("database")
-val backup = Options.file("backup").optional
-val retrieve = Command("retrieve", database ++ backup)
-```
-The HelpDoc of `optionsDatabase` will be 
-```
-COMMANDS
-
-  retrieve --database <file> [--backup <file>]  
-```
-The `[]` denotes that the parameter is optional.
-
-- Method `withDefault`
-
-It creates an option that will have a default parameter in case that the user does not input the option. It can be used, for example, to specify a default directory in which a CLI application may perform some task if the user does not specify another one.
-```scala mdoc:silent
-val directory = Options.directory("directory").withDefault(java.nio.file.Paths.get("C:\\Users\\YourUser\\Documents"))
-```
-The output produced by the HelpDoc is
-```
-OPTIONS
-
-  --directory <directory>
-    A directory.
-
-    This setting is optional. Default: 'C:\Users\YourUser\Documents'.
-```
-
-### Converting a tuple with as
-If a combined option produces a tuple, `as` turns the tuple into a value of a case class or any other function of two to six arguments. It is a shorthand for `map` that spreads the tuple into the function's arguments.
-```scala mdoc:silent
-final case class Bounds(from: BigInt, to: BigInt)
-
-val bounds: Options[Bounds] = (Options.integer("from") ++ Options.integer("to")).as(Bounds.apply _)
-```
-
-### Choosing between alternatives with fold
-If an option produces an `Either`, for example after `|` between two options of different types, `fold` handles each side. It takes one function per side. For two sides, the first function handles `Left` and the second handles `Right`. Versions with two to six functions exist, and with three or more sides the nested `Either` is read from the left.
-```scala mdoc:silent
-val nameOrId: Options[String] =
-  (Options.text("name").map(Left(_)) | Options.integer("id").map(Right(_)))
-    .fold((name: String) => s"name $name", (id: BigInt) => s"id $id")
-```
-
-### Rejecting values with collect and mapOrFail
-`collect` keeps the values that a partial function matches and rejects the others. The message is shown as the validation error.
-```scala mdoc:silent
-val colorCode: Options[Int] =
-  Options.text("color").collect("color must be red or blue") {
-    case "red"  => 1
-    case "blue" => 2
+val mode: Options[String] =
+  (Options.boolean("all") ++ Options.boolean("patch")).mapOrFail {
+    case (true, true) =>
+      Left(ValidationError(ValidationErrorType.InvalidValue, HelpDoc.p("Use either --all or --patch.")))
+    case (true, false) => Right("all")
+    case (false, true) => Right("patch")
+    case (false, false) => Right("default")
   }
 ```
-`mapOrFail` is the general form. The function returns `Left` with a `ValidationError` to reject a value, or `Right` with the new value to accept it.
+
+## Defaults
+
+An option without a default is required. These methods make it optional.
+
+### Options#optional
+
+`Options#optional` wraps the value in `Some`, and gives `None` when the option is missing. To make a port optional:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val port: Options[Option[BigInt]] = Options.integer("port").optional
+```
+
+The help adds `This setting is optional.`, and the usage line shows the option in square brackets, as `[--port <integer>]`.
+
+### Options#withDefault
+
+`Options#withDefault(value)` uses `value` when the option is missing. To default the output directory to `target`:
+
+```scala mdoc:silent
+val output = Options.directory("output").withDefault(java.nio.file.Paths.get("target"))
+```
+
+The help shows the default:
+
+```scala mdoc
+println(output.helpDoc.toPlaintext(color = false))
+```
+
+The default is used only when the option is missing. A value the user gives that is not valid is still an error. The default itself is not validated, so a default path is not checked against `Exists`. The default must have the option's type or a supertype of it: `Options.integer("retries").withDefault(3)` compiles as an `Options[Any]` unless the expected type is `Options[BigInt]`. [How to make an option optional or give it a default](how-to-optional-option-with-default.md) walks through the choices.
+
+## Transforming Values
+
+These methods convert the parsed value. Each one keeps the option's name, help and position on the command line.
+
+### Options#map
+
+`Options#map` converts the value with a function that cannot fail. To convert an integer option to an `Int`:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val retries: Options[Int] = Options.integer("retries").map(_.toInt)
+```
+
+### Options#mapOrFail
+
+`Options#mapOrFail` converts the value with a function that may reject it. The function returns `Right` with the new value, or `Left` with a `ValidationError` whose text is shown to the user. To accept only valid port numbers:
+
 ```scala mdoc:silent
 val port: Options[Int] =
   Options.integer("port").mapOrFail { (value: BigInt) =>
@@ -301,118 +281,88 @@ val port: Options[Int] =
   }
 ```
 
-### Changing the placeholder with withPseudoName
-The help output shows a placeholder after the option name, such as `<text>`. `withPseudoName` replaces it. It changes only the help text and does not change what the option accepts.
-```scala mdoc:silent
-Options.text("lastname").withDefault("xyz").withPseudoName("NAME")
-```
-The help output for this option is:
-```
---lastname <NAME>
-  A user-defined piece of text.
+### Options#collect
 
-  This setting is optional. Default: 'xyz'.
-```
-
-### Making an alias
-Using method `alias` it is possible to give a shorter form of the name of the `Options`. This is used to make easier the input of options for the user. We will make an alias for option `--directory`. 
-```scala mdoc:silent
-val directoryWithAlias = directory.alias("d")
-```
-The output produced by the HelpDoc in this case is
-```
-OPTIONS
-
-  (-d, --directory <directory>)
-    A directory.
-
-    This setting is optional. Default: 'C:\Users\YourUser\Documents'.
-```
-
-### Adding help
-Method `??` allows to add information about an options. The string is added after the current `HelpDoc` of the `Options`. We are going to recreate the `--quiet` option of `git checkout` to observe the effect of using `??`.
-```scala mdoc:silent
-val quiet = Options.boolean("quiet")
-  
-/* HelpDoc of quiet:
- *
- * --quiet
- *   A true or false value.
- * 
- *   This setting is optional. Default: 'false'.
- */
-
-```
-Now we add a description of the option:
+`Options#collect` keeps the values that a partial function matches, and rejects the others with the given message. To accept two colors:
 
 ```scala mdoc:silent
-val quietWithHelp = quiet ?? "Suppress feedback messages."
-
-/* HelpDoc of quietWithHelp:
- *
- * --quiet
- *   A true or false value.
- * 
- *   Suppress feedback messages.
- * 
- *   This setting is optional. Default: 'false'.
- */
+val colorCode: Options[Int] =
+  Options.text("color").collect("color must be red or blue") {
+    case "red"  => 1
+    case "blue" => 2
+  }
 ```
 
+### Options#as
 
+`Options#as` turns a tuple into a value of a case class, or into the result of any function of two to six arguments. It is a shorthand for `Options#map` that spreads the tuple into the function's arguments. To build a `Bounds` from two options:
 
-### Example
-As an example, we are going to construct an instance of `Options[Git]` that describes the options of the command `git commit`. We are going to implement only an option `--msg` that includes a commit message and alternatives between `-a`, `--interactive` and `--patch`. First, we create the basic options. Observe how we add an alias to `all`and `msg`.
+```scala mdoc:silent
+final case class Bounds(from: BigInt, to: BigInt)
+
+val bounds: Options[Bounds] = (Options.integer("from") ++ Options.integer("to")).as(Bounds.apply _)
+```
+
+### Options#fold
+
+`Options#fold` handles each side of an `Either`, such as the result of `Options#orElseEither`. It takes one function per side, and versions for two to six sides exist. With three or more sides, the nested `Either` is the one that chained `Options#orElseEither` calls produce, nested to the left. To turn a name or an ID into a description:
+
+```scala mdoc:silent
+val nameOrId: Options[String] =
+  (Options.text("name") orElseEither Options.integer("id"))
+    .fold((name: String) => s"name $name", (id: BigInt) => s"id $id")
+```
+
+## Names and Help
+
+These methods change how an option is named and described. On a combined option, such as `a ++ b` or `a | b`, they apply to every option inside it, so call them on each option before combining.
+
+### Options#alias
+
+`Options#alias(name, names*)` adds one or more alternative names. A one-character alias is written with `-`, and a longer one with `--`. To let `-o` and `--out` stand for `--output`:
+
 ```scala mdoc:silent:reset
 import zio.cli._
 
-val all = Options.boolean("all").alias("a")
-val interactive = Options.boolean("interactive")
-val patch = Options.boolean("patch")
-
-val msg = Options.text("msg").alias("m")
-```
-Then we combine options:
-- using `orElse` to combine `all`, `interactive` and `patch`,
-- adding it to `msg`.
-
-```scala mdoc:silent
-
-val alternative = all | interactive | patch
-
-val options = alternative ++ msg
-```
-The output of the HelpDoc of `options` is:
-```
-USAGE
-
-  $ commit [(-a, --all)]|[--interactive]|[--patch] (-m, --msg <text>)
-
-OPTIONS
-
-  (-a, --all)
-    A true or false value.
-
-    This setting is optional. Default: 'false'.
-
-  --interactive
-    A true or false value.
-
-    This setting is optional. Default: 'false'.
-
-  --patch
-    A true or false value.
-
-    This setting is optional. Default: 'false'.
-
-  (-m, --msg <text>)
-    A user-defined piece of text.
+val output = Options.text("output").alias("o", "out")
 ```
 
-### Platform support
-Not every option constructor is available on every platform.
-- `Options.oauth2` is available only on the JVM. See [Authorization with OAuth2](auth.md).
-- `Options.file` is available on the JVM, Scala.js and Native.
-- `Options.directory` is available on the JVM and Native, but not on Scala.js.
+The help lists every name:
 
-The matching argument constructors are described in [Platform support](args.md#platform-support).
+```scala mdoc
+println(output.helpDoc.toPlaintext(color = false))
+```
+
+### Options#??
+
+`Options#??` appends a paragraph to the help of an option. On an option with a default, the description comes before the sentence about the default. To describe the `--quiet` flag:
+
+```scala mdoc
+val quiet = Options.boolean("quiet") ?? "Suppress feedback messages."
+
+println(quiet.helpDoc.toPlaintext(color = false))
+```
+
+### Options#withPseudoName
+
+`Options#withPseudoName` replaces the placeholder that the help shows after the option name, such as `<text>`. It changes only the help, not what the option accepts. To show `<NAME>` instead of `<text>`:
+
+```scala mdoc
+val lastname = Options.text("lastname").withDefault("xyz").withPseudoName("NAME")
+
+println(lastname.helpDoc.toPlaintext(color = false))
+```
+
+## Inspecting and Validating Options
+
+`Options#helpDoc` returns the help as a [`HelpDoc`](helpdoc.md), and `Options#synopsis` returns the usage line. `Options#isBool` tells whether the option is a flag, and `Options#uid` returns its names, such as `--name, --id`.
+
+`Options.validate(options, args, conf)` parses a list of tokens without a command, which is useful in tests. It returns a tuple of an optional parse error that is kept for the arguments to report, the tokens left for the arguments, and the value. To parse two tokens with the default configuration:
+
+```scala mdoc:silent:reset
+import zio.cli._
+
+val parsed = Options.validate(Options.text("name"), List("--name", "Ada"), CliConfig.default)
+```
+
+`parsed` is a ZIO effect that succeeds with `(None, List(), "Ada")`.
