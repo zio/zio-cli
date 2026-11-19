@@ -82,8 +82,8 @@ import java.nio.file.{Path => JPath}
 
 sealed trait Subcommand extends Product with Serializable
 object Subcommand {
-  final case class Add(modified: Boolean, directory: JPath) extends Subcommand
-  case object Remote                                       extends Subcommand
+  case class Add(modified: Boolean, directory: JPath) extends Subcommand
+  case object Remote                                  extends Subcommand
 }
 
 val modified: Options[Boolean] = Options.boolean("m")
@@ -116,12 +116,12 @@ import java.nio.file.{Path => JPath}
 
 sealed trait Subcommand extends Product with Serializable
 object Subcommand {
-  final case class Add(modified: Boolean, directory: JPath) extends Subcommand
+  case class Add(modified: Boolean, directory: JPath) extends Subcommand
 
   sealed trait Remote extends Subcommand
   object Remote {
-    final case class Add(name: String, url: String) extends Remote
-    final case class Remove(name: String)           extends Remote
+    case class Add(name: String, url: String) extends Remote
+    case class Remove(name: String)           extends Remote
   }
 }
 
@@ -256,13 +256,13 @@ object GitTutorial extends ZIOCliDefault {
 
   sealed trait Subcommand extends Product with Serializable
   object Subcommand {
-    final case class Add(modified: Boolean, directory: JPath) extends Subcommand
-    final case class Commit(message: String)                  extends Subcommand
+    case class Add(modified: Boolean, directory: JPath) extends Subcommand
+    case class Commit(message: String)                  extends Subcommand
 
     sealed trait Remote extends Subcommand
     object Remote {
-      final case class Add(name: String, url: String) extends Remote
-      final case class Remove(name: String)           extends Remote
+      case class Add(name: String, url: String) extends Remote
+      case class Remove(name: String)           extends Remote
     }
   }
 
@@ -572,13 +572,13 @@ object GitTutorial extends ZIOCliDefault {
 
   sealed trait Subcommand extends Product with Serializable
   object Subcommand {
-    final case class Add(modified: Boolean, directory: JPath) extends Subcommand
-    final case class Commit(message: String)                  extends Subcommand
+    case class Add(modified: Boolean, directory: JPath) extends Subcommand
+    case class Commit(message: String)                  extends Subcommand
 
     sealed trait Remote extends Subcommand
     object Remote {
-      final case class Add(name: String, url: String) extends Remote
-      final case class Remove(name: String)           extends Remote
+      case class Add(name: String, url: String) extends Remote
+      case class Remove(name: String)           extends Remote
     }
   }
 

@@ -29,8 +29,8 @@ import java.nio.file.{Files, Path}
 
 sealed trait ShowError
 object ShowError {
-  final case class NotFound(path: Path)   extends ShowError
-  final case class Unreadable(path: Path) extends ShowError
+  case class NotFound(path: Path)   extends ShowError
+  case class Unreadable(path: Path) extends ShowError
 }
 
 val show: Command[Path] = Command("show", Args.file("file"))

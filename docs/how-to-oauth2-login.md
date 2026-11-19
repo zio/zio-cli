@@ -151,7 +151,7 @@ The default decoders read the standard JSON answers. If the service names a fiel
 ```scala mdoc:silent
 import zio.json._
 
-final case class LegacyDeviceCode(
+case class LegacyDeviceCode(
   device_code: String,
   user_code: String,
   verification_url: String,

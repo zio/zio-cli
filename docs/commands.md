@@ -51,7 +51,7 @@ trait Command[+A] {
 `Command#map` applies a function to the parsed value:
 
 ```scala mdoc:silent
-final case class Clone(quiet: Boolean, repository: String)
+case class Clone(quiet: Boolean, repository: String)
 
 val cloneCommand: Command[Clone] = cloneCmd.map { case (quiet, repository) => Clone(quiet, repository) }
 ```

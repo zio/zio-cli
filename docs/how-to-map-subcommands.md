@@ -19,9 +19,9 @@ import java.nio.file.Path
 
 sealed trait GitCommand
 object GitCommand {
-  final case class Add(path: Path)                           extends GitCommand
-  final case class Clone(quiet: Boolean, repository: String) extends GitCommand
-  case object Status                                         extends GitCommand
+  case class Add(path: Path)                           extends GitCommand
+  case class Clone(quiet: Boolean, repository: String) extends GitCommand
+  case object Status                                   extends GitCommand
 }
 ```
 
@@ -97,7 +97,7 @@ object GitMain extends ZIOCliDefault {
 When the parent has options of its own, such as a global `--verbose` flag, the value becomes a tuple of the parent's value and the subcommand's value. Map the tuple to a type that holds both:
 
 ```scala mdoc:silent
-final case class Invocation(verbose: Boolean, command: GitCommand)
+case class Invocation(verbose: Boolean, command: GitCommand)
 
 val verboseGit: Command[Invocation] =
   Command("git", Options.boolean("verbose"))

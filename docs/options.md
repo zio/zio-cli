@@ -298,7 +298,7 @@ val colorCode: Options[Int] =
 `Options#as` turns a tuple into a value of a case class, or into the result of any function of two to six arguments. It is a shorthand for `Options#map` that spreads the tuple into the function's arguments. To build a `Bounds` from two options:
 
 ```scala mdoc:silent
-final case class Bounds(from: BigInt, to: BigInt)
+case class Bounds(from: BigInt, to: BigInt)
 
 val bounds: Options[Bounds] = (Options.integer("from") ++ Options.integer("to")).as(Bounds.apply _)
 ```
