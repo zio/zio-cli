@@ -9,12 +9,12 @@ We want a command-line tool that calls a web API on behalf of its user, for exam
 You need:
 
 - A JVM build of the application. `Options.oauth2` does not exist on Scala.js or Scala Native.
-- An application registered with the service, with the device flow enabled. For GitHub, create an OAuth app under Settings → Developer settings → OAuth Apps, tick "Enable Device Flow", and copy its client ID.
+- An application registered with the service, with the device flow enabled. For GitHub, create an OAuth app, enable the device flow in the app's settings, and copy its client ID.
 - The scopes your API calls need. Reading the user's profile on GitHub needs `read:user`.
 
 ## Steps
 
-The first four steps build a `whoami` command that prints the GitHub login of the user. The last step replaces the GitHub provider with one for another service.
+The first four steps build a `whoami` command that prints the GitHub profile of the user. The last step replaces the GitHub provider with one for another service.
 
 ### 1. Require a Token in the Command
 
@@ -71,7 +71,7 @@ def fetchProfileWithRetry(token: OAuth2Token): Task[HttpResponse[String]] =
   }
 ```
 
-`OAuth2Token#refreshTokenNow` uses the refresh token when the service issued one. GitHub OAuth apps do not issue refresh tokens, so for them it runs the browser authorization again.
+`OAuth2Token#refreshTokenNow` uses the refresh token when the service issued one. GitHub OAuth apps issue refresh tokens only when expiring user tokens are enabled for the app. Without a refresh token, it runs the browser authorization again.
 
 ### 4. Run the Command in a CliApp
 
