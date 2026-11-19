@@ -111,7 +111,7 @@ Path parameters return a `java.nio.file.Path`. Two small types configure them:
 
 `PathType` says which kind of path is expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable. `Exists` says whether the path must exist: `Exists.Yes`, `Exists.No`, or `Exists.Either` when it does not matter.
 
-`PrimType.Path(pathType, shouldExist)` combines the two. `Args.file(name, exists = Exists.Yes)`, for example, wraps `PrimType.Path(PathType.File, Exists.Yes)`. A third parameter, `fileSystem`, defaults to the real file system.
+`PrimType.Path(pathType, shouldExist)` combines the two. `Args.file(name, exists = Exists.Yes)`, for example, wraps `PrimType.Path(PathType.File, Exists.Yes)`. A third parameter, `fileSystem`, is a `zio.cli.files.FileSystem` and defaults to `FileSystem.live`. `FileSystem` has four methods, `parsePath(path: String): IO[String, Path]`, `exists(path: Path): UIO[Boolean]`, `isDirectory(path: Path): UIO[Boolean]` and `isRegularFile(path: Path): UIO[Boolean]`, so a test can pass its own implementation.
 
 The `exists` parameter of `Args.file`, `Args.directory`, `Options.file` and `Options.directory` defaults to `Exists.Either`. The help sentence follows the combination, as in `A file.`, `An existing file.` or `A directory that must not exist.`. Validation checks the path in two steps:
 
