@@ -2,7 +2,7 @@
 id: getting-started
 title: "Getting Started"
 ---
-This page builds a small command-line program with **ZIO CLI** from an empty project. It assumes you know Scala and sbt, but have not used ZIO CLI before. At the end you will have one command, one option and one argument, and you will have read the help text that **ZIO CLI** generates from them.
+This page builds a small command-line program with **ZIO CLI** from an empty project. It assumes you know Scala and sbt, but have not used ZIO CLI before. At the end you will have one command, one option and one argument, and you will see the help text that **ZIO CLI** generates from them.
 
 The steps are:
 
@@ -10,19 +10,11 @@ The steps are:
 2. Write an app that describes one command.
 3. Run the app and read its help output.
 
-## 1. Add the dependency
+## 1. Add the Dependency
 
-**ZIO CLI** is published to Maven Central under the group `dev.zio` and the artifact `zio-cli`. The library is built for Scala 2.12, 2.13 and 3. Add this line to `build.sbt`:
+Add `zio-cli` to `build.sbt` as shown in [Installation](index.md#installation). This page uses the JVM and `sbt run`.
 
-```scala
-libraryDependencies += "dev.zio" %% "zio-cli" % "@VERSION@"
-```
-
-The version shown is the latest release tag in the repository at the time of writing. Check the [releases page](https://github.com/zio/zio-cli/releases) for a newer one.
-
-The `%%` operator tells sbt to add the Scala version suffix to the artifact name, so the same line works for each supported Scala version.
-
-## 2. Write the app
+## 2. Write the App
 
 Create a file such as `src/main/scala/Greet.scala`. The app is an `object` that extends `ZIOCliDefault`. That trait makes the object a runnable program, and it asks you to define one value, `cliApp`.
 
@@ -31,6 +23,8 @@ Building a CLI app takes three pieces:
 - An **option**, a named parameter such as `--loud`. See [Options](options.md).
 - An **argument**, a position-based parameter such as the name in `greet Ada`. See [Args](args.md).
 - A **command**, the named instruction that owns the option and the argument. See [Commands](commands.md).
+
+The complete app defines all three pieces and ties them to the code that prints the greeting:
 
 ```scala mdoc:silent
 import zio.Console.printLine
@@ -65,39 +59,63 @@ object Greet extends ZIOCliDefault {
 
 Some details in this code:
 
-- `Options.boolean("loud")` creates the option. `.alias("l")` adds a short name, so `-l` works too.
+- `Options.boolean("loud")` creates the option. `Options#alias` adds a short name, so `-l` works too.
 - `Args.text("name")` creates the argument. The `"name"` string is only a label for the help text. It is not a flag.
 - `Command("greet", loud, who)` combines the option and the argument. The result has the type `Command[(Boolean, String)]`, which is the type of the value the app receives.
 - `CliApp.make` takes a display name, a version, a one-line summary and the command. Its last parameter list is the function that runs the app logic. The function receives the parsed values, so you do not parse text yourself.
 
-## 3. Run the app
+## 3. Run the App
 
 From the project root, run:
 
-```
+```shell
 sbt "run --loud Ada"
 ```
 
-The program parses `--loud` as true and `Ada` as the name, then prints `HELLO, ADA!` in upper case. Notice that you do not type `greet` at the start. `CliApp` adds the command name before it parses your input, so you only type the options and arguments.
+The program parses `--loud` as true and `Ada` as the name, then prints `HELLO, ADA!` in upper case. Notice that you do not type `greet` at the start. `CliApp` adds the command name before it parses your input, so you only type the options and arguments. Options come before arguments: ZIO CLI stops reading options at the first argument, as [How ZIO CLI reads a command line](parsing.md) explains.
 
 Now ask for help:
 
-```
+```shell
 sbt "run --help"
 ```
 
-The help text is generated from the code you wrote, so you do not write it by hand. It lists:
+The help text comes from the code you wrote, so you do not write it by hand. Below a banner that spells the app name in large letters, it prints:
 
-- the app name, version and summary,
-- a usage line that shows the option in brackets, because it is optional, and the argument in angle brackets,
-- the command with its help text, and the option and argument it expects.
+```text
+greet 0.1.0 -- Prints a greeting
 
-If you change `withHelp`, the `summary`, or the alias, rerun `--help` to see the change. The built-in `--help` flag is covered in [Built-in commands](built-in-commands.md).
+USAGE
 
-## Where to go next
+  $ greet [(-l, --loud)] <name>
+
+DESCRIPTION
+
+  Prints a greeting for the given name
+
+ARGUMENTS
+
+  <name>
+    A user-defined piece of text.
+
+OPTIONS
+
+  (-l, --loud)
+    A true or false value.
+
+    This setting is optional. Default: 'false'.
+```
+
+The usage line shows the option in parentheses inside brackets, because it is optional, and the argument in angle brackets. If you change `Command#withHelp`, the `summary`, or the alias, rerun `--help` to see the change. The built-in `--help` flag is covered in [Built-in Commands](built-in-commands.md).
+
+## Where to Go Next
+
+Each of these pages takes one part further:
 
 - [Commands](commands.md) explains how to build several commands and nest subcommands.
 - [Options](options.md) lists the option types, such as text, integer and enumeration.
 - [Args](args.md) explains position-based arguments, including repeated arguments.
-- [Built-in commands](built-in-commands.md) covers `--help`, `--wizard` and shell completion, which every app gets for free.
-- [Wizard mode](wizard.md) shows how a user can build a command interactively, without knowing the options in advance.
+- [Built-in Commands](built-in-commands.md) covers `--help`, `--wizard` and shell completion, which every app gets for free.
+- [Wizard Mode](wizard.md) shows how a user can build a command interactively, without knowing the options in advance.
+- [How ZIO CLI reads a command line](parsing.md) explains the order in which the input is read.
+- [Tutorial: Build a Git-Like CLI](examples.md) builds a larger program with subcommands, step by step.
