@@ -3,6 +3,7 @@ id: how-to-exit-codes
 title: "How to choose the exit code for each error"
 sidebar_label: "Choose Exit Codes"
 ---
+
 Scripts and CI jobs read a program's exit code to decide what happened. A program built with `ZIOCliDefault` uses only two codes, `0` and `1`. This guide shows how to give each kind of failure its own exit code, such as `2` for invalid input and `3` for a missing file.
 
 ## What ZIOCliDefault Does
