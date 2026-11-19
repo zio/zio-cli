@@ -97,9 +97,9 @@ inThisBuild(
       Step.SingleStep(
         name = "Check website build process",
         run = Some(
-          Seq("docs/clean", "docs/installWebsite", "docs/compileDocs")
+          Seq("docs/clean", "docs/compileDocs")
             .map("sbt --no-colors --batch " + _)
-            .mkString("", "; ", "; cd website; npm run build")
+            .mkString("", "; ", "; cd website; npm install; npm run build")
         )
       ),
       Step.SingleStep(

@@ -52,7 +52,7 @@ jobs:
     - name: Check artifacts build process
       run: sbt --no-colors +publishLocal
     - name: Check website build process
-      run: sbt --no-colors --batch docs/clean; sbt --no-colors --batch docs/installWebsite; sbt --no-colors --batch docs/compileDocs; cd website; npm run build
+      run: sbt --no-colors --batch docs/clean; sbt --no-colors --batch docs/compileDocs; cd website; npm install; npm run build
     - name: Check docs build on a fresh ZIO website
       run: sbt --no-colors docs/checkDocsOnFreshWebsite
   lint:
