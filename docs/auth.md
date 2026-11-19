@@ -35,7 +35,7 @@ val stars: Command[(OAuth2Token, Boolean)] = Command("stars", github ++ Options.
 
 `Options.oauth2` adds one option, `--oauth2-file <file>`, which sets the file that stores the token. It is optional. It also adds a section about the authorization to the help output. For an application named `gh-stars`, `--help` prints the following after the banner, on a machine where the home directory is `/home/user`:
 
-```
+```text
 gh-stars 1.0.0 -- Lists your starred repositories
 
 USAGE
@@ -78,7 +78,7 @@ When the authorization fails, for example because the user denies access, the co
 
 When the authorization runs, ZIO CLI talks to the service in three steps:
 
-```
+```text
 CLI                                   Service                       User's browser
  |-- authorization request ------------>|                                 |
  |<-- device code, user code, URL ------|                                 |
@@ -97,13 +97,13 @@ The program then sends the access token request repeatedly. It waits the interva
 
 An `OAuth2Provider` describes how to talk to one service. Three providers are included, each a case class in the `OAuth2Provider` companion object:
 
-| Provider                                        | Parameters from the service's developer console | Scope separator | Refresh tokens |
-| ----------------------------------------------- | ----------------------------------------------- | --------------- | -------------- |
-| `OAuth2Provider.Github(clientId)`               | The client ID of an OAuth app                   | `,`             | Yes            |
-| `OAuth2Provider.Google(clientId, clientSecret)` | The client ID and client secret                 | space           | Yes            |
-| `OAuth2Provider.Facebook(appId, clientToken)`   | The app ID and client token                     | `,`             | No             |
+| Provider                                        | Parameters from the service's developer console | Scope separator | Sends refresh requests |
+| ----------------------------------------------- | ----------------------------------------------- | --------------- | ---------------------- |
+| `OAuth2Provider.Github(clientId)`               | The client ID of an OAuth app                   | `,`             | Yes                    |
+| `OAuth2Provider.Google(clientId, clientSecret)` | The client ID and client secret                 | space           | Yes                    |
+| `OAuth2Provider.Facebook(appId, clientToken)`   | The app ID and client token                     | `,`             | No                     |
 
-The service must allow the device flow for the registered application. On GitHub, enable "Device Flow" in the settings of the OAuth app. On Google, create an OAuth client of type "TVs and Limited Input devices". On Facebook, enable "Login from Devices" in the Facebook Login settings of the app.
+The service must allow the device flow for the registered application. On GitHub, enable the device flow in the settings of the OAuth app. On Google, create an OAuth client of type "TVs and Limited Input devices". On Facebook, enable the device login option in the Facebook Login settings of the app.
 
 We create one option per provider. Google requires at least one scope, so its example requests the `openid` and `email` scopes:
 
