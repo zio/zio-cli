@@ -63,8 +63,9 @@ CliConfig.default
 - Command and subcommand names.
 - The distance used for "Did you mean" hints.
 - Matching words during shell completion.
+- The words of a boolean argument, such as `YES` or `Off` for `Args.bool`.
 
-Enumeration values and argument values are always case-sensitive.
+Enumeration values are always case-sensitive.
 
 :::caution
 Option names are matched case-sensitively in practice, even with `caseSensitive = false`. For an option declared as `Options.text("name")`, the input `--NAME Ada` is rejected with `Expected to find --name option.` Type option names in the case they are declared.
