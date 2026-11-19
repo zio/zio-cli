@@ -67,7 +67,7 @@ libraryDependencies ++= Seq(
 )
 ```
 
-The [Testing](testing.md) reference lists the assertions, and [How to Test a CLI App](how-to-test-a-cli.md) shows them in use.
+The [Testing](testing.md) reference lists the assertions, and [How to test a CLI app](how-to-test-a-cli.md) shows them in use.
 
 ### sbt Plugin
 
