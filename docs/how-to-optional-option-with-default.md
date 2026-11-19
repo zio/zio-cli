@@ -6,10 +6,7 @@ sidebar_label: "Make an Option Optional"
 
 An option built with a constructor such as `Options.text` is required: a command without it fails with `Expected to find --user option.`. This guide makes options optional, so the user can leave them out, and chooses what the program receives when they do.
 
-You need:
-
-- The `zio-cli` library on your classpath; see [Installation](index.md#installation).
-- A command whose options you want to relax. [Options](options.md) describes how options are built.
+You need the `zio-cli` library on your classpath (see [Installation](index.md#installation)) and a command whose options you want to relax; [Options](options.md) describes how options are built.
 
 ## Choose What a Missing Option Means
 
@@ -45,7 +42,7 @@ To invert a flag, pass `ifPresent = false`, as described in [Boolean Options](op
 val retries: Options[Int] = Options.integer("retries").map(_.toInt).withDefault(3)
 ```
 
-The type annotation matters. `Options#withDefault` accepts any supertype of the option's type, so without the annotation `Options.integer("retries").withDefault(3)` compiles as an `Options[Any]`. Keep the `BigInt` with `withDefault(BigInt(3))` if you do not need an `Int`.
+The type annotation matters: without it, `Options.integer("retries").withDefault(3)` compiles as an `Options[Any]`, as [Defaults](options.md#defaults) explains.
 
 ### 3. Make an Option Optional
 
@@ -91,7 +88,7 @@ println(serve.synopsis.helpDoc.toPlaintext(color = false))
 
 ## What the Default Does Not Cover
 
-A default is used only when the option is missing. A value the user gives that is not valid still fails: `--retries many` fails with `many is not a integer.`, not with the default. The default itself is not validated, so a default path is not checked against its `Exists` rule.
+A default is used only when the option is missing; an invalid value such as `--retries many` still fails with `many is not a integer.`, and the default itself is not validated (see [Defaults](options.md#defaults)).
 
 Positional arguments have no counterpart of `Options#withDefault` or `Options#optional`. To make an argument optional, accept at most one value with `Args#atMost(1)`, as described in [Args](args.md#methods).
 
