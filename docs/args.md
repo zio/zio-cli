@@ -145,7 +145,7 @@ The help names the repetition rule, and the usage line shows the argument follow
 println(numbers.helpDoc.toPlaintext(color = false))
 ```
 
-`Args#*`, `Args#+` and `Args#atLeast` are greedy: they take every remaining token. An argument combined after them never receives a value, so a required one fails with `Missing argument <name>.`. If a remaining token is not a valid value, the command fails with that value's error; the token is not left for a later argument. `Args#atMost` and `Args#between` stop at their maximum, so another argument can follow them.
+`Args#*`, `Args#+` and `Args#atLeast` are greedy: they take every remaining token. An argument combined after them never receives a value, so a required one fails with `Missing argument <name>.`. If a remaining token is not a valid value, the command fails with that value's error; the token is not left for a later argument. `Args#atMost` and `Args#between` stop at their maximum, so another argument can follow them once that many values are given. With fewer values, a remaining token that is not valid for the repeated argument fails the command instead of going to the next argument.
 
 :::caution
 Tokens left over after the last argument is filled are ignored, without an error. With `Args.text("name")`, the input `alice bob` gives `"alice"`, and `bob` is dropped; see [Leftover Words](parsing.md#leftover-words).
