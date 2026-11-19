@@ -45,7 +45,7 @@ If the executable must have another name, such as a short alias, add one `comple
 
 ### 2. Build and Install the Executable
 
-Build the executable and install it under the name `greet` on the `PATH`. [How to package a CLI as a native binary](how-to-package-native-binary.md) covers GraalVM native images. The `installer.sh` launcher template in the ZIO CLI repository puts the executable at `$XDG_DATA_HOME/<app>/bin/<app>`, which is `~/.local/share/<app>/bin/<app>` when `XDG_DATA_HOME` is not set and the user is not root, so add that directory to the `PATH` when you use it.
+Build the executable and install it under the name `greet` on the `PATH`. [How to package a CLI as a native binary](how-to-package-native-binary.md) covers GraalVM native images. The `installer.sh` launcher template in the ZIO CLI repository builds a native image and links it at `$XDG_DATA_HOME/<app>/bin/<app>` (`~/.local/share/<app>/bin/<app>` when `XDG_DATA_HOME` is not set and the user is not root) only when `native-image` is available. Without `native-image` it runs the downloaded JAR and creates no such file, so use it only with a native image, and add that directory to the `PATH`.
 
 The completion script stores the path of the executable and runs it on every Tab press, so install the executable at its final location before generating the script.
 
@@ -78,7 +78,7 @@ To enable it for all users, install the file in the system directory instead, su
 
 ### 5. Test It
 
-Open a new bash session, type `greet ` with a trailing space, and press Tab. Bash shows `--name`, the only option of the command. Each Tab press runs `greet --shell-type bash --shell-completion-index <n>` with the typed words in the `COMP_WORD_0`, `COMP_WORD_1`, … environment variables, and the program prints the candidates instead of running the command.
+Open a new bash session, type `greet ` with a trailing space, and press Tab. Bash shows `--name`, the only option of the command. [Bash Completion](bash-and-zsh-completion.md#how-a-completion-request-works) explains what the program does on each Tab press.
 
 ## Troubleshooting
 
