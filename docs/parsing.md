@@ -34,7 +34,7 @@ The shell splits the line into words before your program starts. **ZIO CLI** the
  CliApp#run               prints help / script, or runs your code with the value (leftover is ignored)
 ```
 
-Each step is covered in its own section below. The reference pages hold the details of each building block: [Commands](commands.md), [Options](options.md), [Args](args.md), [Built-in commands](built-in-commands.md) and [CliConfig](cli-config.md).
+Each step is covered in its own section below. The reference pages hold the details of each building block: [Commands](commands.md), [Options](options.md), [Args](args.md), [Built-in Commands](built-in-commands.md) and [CliConfig](cli-config.md).
 
 ## Trying It Yourself
 
@@ -65,7 +65,7 @@ def show[A](command: Command[A], line: String, config: CliConfig = CliConfig.def
 }
 ```
 
-A successful parse gives a `CommandDirective.UserDefined` with the parsed value and the leftover words that nothing consumed. A built-in flag gives a `CommandDirective.BuiltIn`, and a failure gives a `ValidationError` whose `error` field holds the message the user sees. See [Validation and errors](validation-and-errors.md) for the error types.
+A successful parse gives a `CommandDirective.UserDefined` with the parsed value and the leftover words that nothing consumed. A built-in flag gives a `CommandDirective.BuiltIn`, and a failure gives a `ValidationError` whose `error` field holds the message the user sees. See [Validation and Errors](validation-and-errors.md) for the error types.
 
 Most examples use a small `tail` command. It has an integer option `--lines` (short name `-n`, default 10), a flag `--follow` (short name `-f`) and one text argument:
 
@@ -104,7 +104,7 @@ show(tail, "tail -n 5 -f app.log")
 show(tail, "tail -f -n 5 app.log")
 ```
 
-Options written after an argument are not read as options. They become leftover words, so an option that has a default silently keeps it:
+Options written after an argument are not read as options. They become leftover words, so an option that has a default silently keeps it, and users who write `tail app.log -n 5` get no error, only the default value. Put the options first in your own help text and examples, so users copy that order:
 
 ```scala mdoc
 show(tail, "tail app.log -n 5")
@@ -130,10 +130,6 @@ Two more consequences of the same rule are worth knowing. A word that looks like
 show(tail, "tail --nope app.log")
 show(tail, "tail --lines 5 --lines 6 app.log")
 ```
-
-:::caution
-Options are not position-independent. Users who are used to tools that accept options anywhere on the line can write `tail app.log -n 5` and get no error, only the default value. Put the options first in your own help text and examples, so users copy that order.
-:::
 
 ## Ending Options With `--`
 
@@ -312,7 +308,7 @@ The same typo now runs the command with `--greting` as the name:
 show(greetWithDefault, "greet --greting Hi Ada")
 ```
 
-**ZIO CLI** only suggests. It never replaces the word with the corrected name. Set `CliConfig#autoCorrectLimit` in [CliConfig](cli-config.md) to change the threshold, and see [Validation and errors](validation-and-errors.md) for the `CorrectedFlag` error type.
+**ZIO CLI** only suggests. It never replaces the word with the corrected name. Set `CliConfig#autoCorrectLimit` in [CliConfig](cli-config.md) to change the threshold, and see [Validation and Errors](validation-and-errors.md) for the `CorrectedFlag` error type.
 
 ## Case Sensitivity
 
@@ -335,7 +331,7 @@ show(greet, "greet --GREETING Hello Ada")
 
 ## Built-In Flags
 
-Every command understands a few flags that you do not declare: `--help` (or `-h`), `--wizard`, and the shell completion flags `--shell-completion-script` and `--shell-completion-index`, both used together with `--shell-type`. [Built-in commands](built-in-commands.md) describes what each one does.
+Every command understands a few flags that you do not declare: `--help` (or `-h`), `--wizard`, and the shell completion flags `--shell-completion-script` and `--shell-completion-index`, both used together with `--shell-type`. [Built-in Commands](built-in-commands.md) describes what each one does.
 
 A built-in flag is recognised in two situations. The first is when the words after the command name are only built-in flags:
 
@@ -393,5 +389,5 @@ show(greet, "greet --greeting Hello Ada Bob")
 - [Tutorial: Build a Git-Like CLI](examples.md) uses these rules in a complete program with subcommands, options with values, help and tests.
 - [Options](options.md) and [Args](args.md) list every option and argument type and the values each one accepts.
 - [Commands](commands.md) covers `|`, subcommands and mapping the parsed value.
-- [Built-in commands](built-in-commands.md) and [CliConfig](cli-config.md) describe the built-in flags and the settings used on this page.
-- [Validation and errors](validation-and-errors.md) lists the error types a failed parse produces.
+- [Built-in Commands](built-in-commands.md) and [CliConfig](cli-config.md) describe the built-in flags and the settings used on this page.
+- [Validation and Errors](validation-and-errors.md) lists the error types a failed parse produces.
