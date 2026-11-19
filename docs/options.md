@@ -372,3 +372,7 @@ val parsed = Options.validate(Options.text("name"), List("--name", "Ada"), CliCo
 ```
 
 `parsed` is a ZIO effect that succeeds with `(None, List(), "Ada")`.
+
+## How Options Are Represented
+
+`Options` is a sealed trait. Its cases are `Options.Empty` (the result of `Options.none`), `Options.Single` (one named option), `Options.WithDefault` (the result of `Options#optional` and `Options#withDefault`), `Options.Both` (the result of `Options#++`), `Options.OrElse` (the result of `Options#|`), `Options.Map` (the result of `Options#map` and the methods built on it), `Options.KeyValueMap` and `Options.OAuth2Options`. They are public, but you build options with the constructors and methods above instead of constructing the cases yourself.
