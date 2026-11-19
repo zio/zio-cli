@@ -150,7 +150,7 @@ object Greet extends ZIOCliDefault {
 }
 ```
 
-The exit code is `0` when `cliApp.run` succeeds, including after `--help`. On `CliError.Parsing`, the message is already printed and the program exits with code `1`. Any other failure is logged by ZIO at the `ERROR` level, and the program exits with code `1`. To choose other exit codes, see [How to choose the exit code for each error](how-to-exit-codes.md).
+The program exits with code `0` when `cliApp.run` succeeds and with code `1` otherwise; [Exit Codes](validation-and-errors.md#exit-codes) lists each outcome. To choose other exit codes, see [How to choose the exit code for each error](how-to-exit-codes.md).
 
 Use `ZIOCli` directly when your program extends another `ZIOApp` subtype.
 
