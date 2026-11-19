@@ -8,13 +8,7 @@ Scripts and CI jobs read a program's exit code to decide what happened. A progra
 
 ## What ZIOCliDefault Does
 
-`ZIOCliDefault` passes the program arguments to `CliApp#run` and exits as follows:
-
-| Outcome                                                   | Exit code | Output                                                   |
-| --------------------------------------------------------- | --------- | -------------------------------------------------------- |
-| `CliApp#run` succeeds, including after `--help`           | `0`       | Whatever the command or the built-in option prints.      |
-| `CliError.Parsing`                                        | `1`       | The validation message, already printed by `CliApp#run`. |
-| `CliError.Execution`, `CliError.IO` or `CliError.BuiltIn` | `1`       | ZIO logs the failure at the `ERROR` level.               |
+`ZIOCliDefault` passes the program arguments to `CliApp#run`. The program exits with `0` when `CliApp#run` succeeds, including after `--help`, and with `1` for every `CliError`. [Validation and Errors](validation-and-errors.md#exit-codes) lists each case.
 
 Because every failure ends with code `1`, a caller cannot tell a typing mistake from a failed command. To change that, we run the `CliApp` ourselves from a `ZIOAppDefault` and map each error to an exit code.
 
