@@ -3,7 +3,7 @@ id: value-types
 title: "Value Types"
 ---
 
-Every basic [`Args`](args.md) and [`Options`](options.md) constructor reads one string from the command line and converts it to a Scala value. The conversion is described by a `PrimType`, a sealed trait whose cases are listed on this page. For each type, this page gives the constructors, the placeholder shown in the help, the input the user types, and any platform limits.
+Every basic [`Args`](args.md) and [`Options`](options.md) constructor reads one string from the command line and converts it to a Scala value. The conversion is described by a `PrimType`, a sealed trait whose cases are listed on this page. For each type, this page gives the constructors, the placeholder shown in the help, the input the user types, and any platform limits. `PrimType#validate(value)` parses a string and returns an `IO[String, A]` that fails with the messages on this page, which tests can use to check a type without a command.
 
 ## Summary
 
@@ -64,15 +64,17 @@ For a positional `Args.bool`, the user types one of these words. For an `Options
 
 To define an enumeration option and print its help:
 
-```scala mdoc
+```scala mdoc:silent
 val level = Options.enumeration("level")(("debug", 0), ("info", 1), ("warn", 2))
+```
 
+```scala mdoc
 println(level.helpDoc.toPlaintext(color = false))
 ```
 
 ## Dates and Times
 
-The `java.time` types are parsed with the matching `parse` method of `java.time`, so they accept the ISO-8601 forms below. `Year` is the exception: it reads a plain integer. The help sentence of each type is the one ZIO CLI prints under the option or argument.
+The `java.time` types are parsed with the matching `parse` or `of` method of `java.time`, so they accept the ISO-8601 forms below. `Year` reads a plain integer, and `YearMonth` reads a year, a dash and a two-digit month. The help sentence of each type is the one ZIO CLI prints under the option or argument.
 
 | Placeholder        | Example input that parses                 | Help sentence printed by ZIO CLI                                                                         |
 | ------------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -107,8 +109,7 @@ println(birthday.helpDoc.toPlaintext(color = false))
 
 Path parameters return a `java.nio.file.Path`. Two small types configure them:
 
-- `PathType` says which kind of path is expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable.
-- `Exists` says whether the path must exist: `Exists.Yes`, `Exists.No`, or `Exists.Either` when it does not matter.
+`PathType` says which kind of path is expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable. `Exists` says whether the path must exist: `Exists.Yes`, `Exists.No`, or `Exists.Either` when it does not matter.
 
 `PrimType.Path(pathType, shouldExist)` combines the two. `Args.file(name, exists = Exists.Yes)`, for example, wraps `PrimType.Path(PathType.File, Exists.Yes)`. A third parameter, `fileSystem`, defaults to the real file system.
 
