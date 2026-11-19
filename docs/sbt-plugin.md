@@ -1,7 +1,7 @@
 ---
 id: sbt-plugin
-title: "ZIO CLI SBT Plugin"
-sidebar_label: "SBT Plugin"
+title: "ZIO CLI sbt Plugin"
+sidebar_label: "sbt Plugin"
 ---
 
 The `sbt-zio-cli` plugin is an sbt plugin in the **ZIO CLI** repository. It enables the [sbt-native-image](https://github.com/scalameta/sbt-native-image) plugin, sets a few native-image defaults, and adds one working task, `zioCliBuildNative`, which builds a native executable of your app. Its other tasks are placeholders that print `TODO: Not Implemented!`.
@@ -99,7 +99,7 @@ For shell completion, use the built-in `--shell-completion-script` option of the
 
 ## sbt-native-image Keys
 
-Only the two settings above are forwarded to sbt-native-image. Every other sbt-native-image setting and task, such as `nativeImageVersion`, `nativeImageInstalled`, `nativeImageRun`, `nativeImageCopy` and `nativeImageRunAgent`, is available unchanged on a project that enables `ZIOCLIPlugin`. Those keys, how GraalVM is downloaded, and where the binary is written are described in [How to package a CLI as a native binary](how-to-package-native-binary.md).
+Only the two settings above are forwarded to sbt-native-image. Every other sbt-native-image setting and task, such as `nativeImageVersion`, `nativeImageInstalled`, `nativeImageRun`, `nativeImageCopy` and `nativeImageRunAgent`, is available unchanged on a project that enables `ZIOCLIPlugin`. Those keys, how GraalVM is downloaded, and where the binary is written are described in [How to package a CLI as a native binary](how-to-package-native-binary.md). The plugin itself depends on sbt-native-image 0.5.0, so the defaults described there apply only when you also add sbt-native-image 0.6.0 to `project/plugins.sbt`.
 
 ## See Also
 

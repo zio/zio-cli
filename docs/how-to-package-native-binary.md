@@ -86,10 +86,10 @@ sbt-native-image then runs `bin/native-image` from the first of `GRAAL_HOME`, `G
 
 ## The ZIO CLI sbt Plugin
 
-The ZIO CLI repository also contains an sbt plugin, `sbt-zio-cli`, whose `zioCliBuildNative` task wraps the same `nativeImage` task. It is not published, so the steps above are the shorter path. See [ZIO CLI SBT Plugin](sbt-plugin.md) for what it adds.
+The ZIO CLI repository also contains an sbt plugin, `sbt-zio-cli`, whose `zioCliBuildNative` task wraps the same `nativeImage` task. It is not published, so the steps above are the shorter path. See [ZIO CLI sbt Plugin](sbt-plugin.md) for what it adds.
 
 ## See Also
 
-- [ZIO CLI SBT Plugin](sbt-plugin.md) describes the `sbt-zio-cli` settings and tasks.
+- [ZIO CLI sbt Plugin](sbt-plugin.md) describes the `sbt-zio-cli` settings and tasks.
 - [How to add shell completion](how-to-add-shell-completion.md) generates a bash completion script for the installed executable.
 - The [sbt-native-image README](https://github.com/scalameta/sbt-native-image) lists every setting and task of the plugin.
