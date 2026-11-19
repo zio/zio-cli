@@ -199,3 +199,7 @@ On arguments combined with `Args#++`, `Args#??` appends the same paragraph to ev
 ### Inspecting an Args
 
 `Args#helpDoc` returns the help as a [`HelpDoc`](helpdoc.md), and `Args#synopsis` returns the usage line. `Args#minSize` and `Args#maxSize` give the number of tokens the arguments accept, and `Args#uid` returns their names, such as `<repository>, <directory>`. `Args#validate` parses a list of tokens and returns the leftover tokens with the value; tests use it to check an `Args` without building a command.
+
+## How Args Are Represented
+
+`Args` is a sealed trait. Its cases are `Args.Empty` (the result of `Args.none`), `Args.Single` (one argument), `Args.Both` (the result of `Args#++`), `Args.Variadic` (the result of `Args#*`, `Args#+`, `Args#atLeast`, `Args#atMost` and `Args#between`) and `Args.Map` (the result of `Args#map` and the methods built on it). They are public, but you build arguments with the constructors and methods above instead of constructing the cases yourself.
