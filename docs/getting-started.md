@@ -12,7 +12,7 @@ The steps are:
 
 ## 1. Add the Dependency
 
-Add `zio-cli` to `build.sbt` as shown in [Installation](index.md#installation). The library is published for Scala 2.12, 2.13 and 3, on the JVM, Scala.js and Scala Native. This page uses the JVM and `sbt run`.
+Add `zio-cli` to `build.sbt` as shown in [Installation](index.md#installation). This page uses the JVM and `sbt run`.
 
 ## 2. Write the App
 
@@ -72,7 +72,7 @@ From the project root, run:
 sbt "run --loud Ada"
 ```
 
-The program parses `--loud` as true and `Ada` as the name, then prints `HELLO, ADA!` in upper case. Notice that you do not type `greet` at the start. `CliApp` adds the command name before it parses your input, so you only type the options and arguments. Options come before arguments: ZIO CLI stops reading options at the first argument, as [How ZIO CLI Reads a Command Line](parsing.md) explains.
+The program parses `--loud` as true and `Ada` as the name, then prints `HELLO, ADA!` in upper case. Notice that you do not type `greet` at the start. `CliApp` adds the command name before it parses your input, so you only type the options and arguments. Options come before arguments: ZIO CLI stops reading options at the first argument, as [How ZIO CLI reads a command line](parsing.md) explains.
 
 Now ask for help:
 
@@ -116,6 +116,6 @@ Each of these pages takes one part further:
 - [Options](options.md) lists the option types, such as text, integer and enumeration.
 - [Args](args.md) explains position-based arguments, including repeated arguments.
 - [Built-in Commands](built-in-commands.md) covers `--help`, `--wizard` and shell completion, which every app gets for free.
-- [Wizard mode](wizard.md) shows how a user can build a command interactively, without knowing the options in advance.
-- [How ZIO CLI Reads a Command Line](parsing.md) explains the order in which the input is read.
+- [Wizard Mode](wizard.md) shows how a user can build a command interactively, without knowing the options in advance.
+- [How ZIO CLI reads a command line](parsing.md) explains the order in which the input is read.
 - [Tutorial: Build a Git-Like CLI](examples.md) builds a larger program with subcommands, step by step.
