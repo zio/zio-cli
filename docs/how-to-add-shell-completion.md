@@ -45,7 +45,7 @@ If the executable must have another name, such as a short alias, add one `comple
 
 ### 2. Build and Install the Executable
 
-Build the executable and install it under the name `greet` on the `PATH`. [How to package a native binary](how-to-package-native-binary.md) covers GraalVM native images. The ZIO CLI installer script puts the executable at `$XDG_DATA_HOME/<app>/bin/<app>`, which is `~/.local/share/<app>/bin/<app>` when `XDG_DATA_HOME` is not set, so add that directory to the `PATH` when you use it.
+Build the executable and install it under the name `greet` on the `PATH`. [How to package a native binary](how-to-package-native-binary.md) covers GraalVM native images. The `installer.sh` launcher template in the ZIO CLI repository puts the executable at `$XDG_DATA_HOME/<app>/bin/<app>`, which is `~/.local/share/<app>/bin/<app>` when `XDG_DATA_HOME` is not set and the user is not root, so add that directory to the `PATH` when you use it.
 
 The completion script stores the path of the executable and runs it on every Tab press, so install the executable at its final location before generating the script.
 
