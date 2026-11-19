@@ -3,11 +3,11 @@ id: testing
 title: "Testing CLI Applications"
 ---
 
-The `zio-cli-testkit` module provides [ZIO Test](https://zio.dev/reference/test/) assertions and generators for **ZIO CLI** commands and apps. It checks the usage synopsis and help document of a command, how a command parses an argument list, what a `CliApp` returns, and what it prints. For a step-by-step walkthrough that builds a complete test spec, see [How to test a CLI app](how-to-test-a-cli.md).
+The `zio-cli-testkit` module provides [ZIO Test](https://zio.dev/reference/test/) assertions and generators for **ZIO CLI** [commands](commands.md) and [apps](cli-app.md). It checks the usage synopsis and help document of a command, how a command parses an argument list, what a `CliApp` returns, and what it prints. For a step-by-step walkthrough that builds a complete test spec, see [How to test a CLI app](how-to-test-a-cli.md).
 
 ## Overview
 
-The testkit is published as a separate artifact for the JVM, Scala.js and Scala Native, for Scala 2.12, 2.13 and 3. Every API on this page is available on all three platforms. [Modules](index.md#modules) gives the dependency line; add it to the `Test` configuration. The testkit brings in `zio-test` and `zio-test-sbt`.
+The testkit is published as a separate artifact for the JVM, Scala.js and Scala Native, for Scala 2.12, 2.13 and 3. Every API on this page is available on all three platforms. [Modules](index.md#modules) gives the dependency line; add it to the `Test` configuration. The testkit brings in `zio-test` and `zio-test-sbt` (and, on the JVM and Scala.js, `zio-test-magnolia`).
 
 All public types live in the `zio.cli.testkit` package:
 
