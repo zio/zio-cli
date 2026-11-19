@@ -6,10 +6,7 @@ sidebar_label: "Validate and Convert Input"
 
 Every option and argument already checks that its input has the right type: `Options.integer` rejects `ten`. This guide adds the checks that the type cannot express, such as "a port between 1 and 65535" or "one of these three words", and converts the input into your own types. Each step shows the error message the user sees.
 
-You need:
-
-- The `zio-cli` library on your classpath; see [Installation](index.md#installation).
-- Options and arguments to check. [Options](options.md) and [Args](args.md) describe how to build them.
+You need the `zio-cli` library on your classpath (see [Installation](index.md#installation)) and options and arguments to check; [Options](options.md) and [Args](args.md) describe how to build them.
 
 ## Choose a Method
 
@@ -126,7 +123,7 @@ val uri: Args[java.net.URI] = Args.text("uri").mapTry(java.net.URI.create)
 val open                    = Command("open", uri)
 ```
 
-The message of the `URISyntaxException` becomes the error:
+The message of the exception that `java.net.URI.create` throws becomes the error:
 
 ```scala mdoc
 println(errorFor(open, "open", "not a uri"))
