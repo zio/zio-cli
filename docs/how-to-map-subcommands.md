@@ -3,6 +3,7 @@ id: how-to-map-subcommands
 title: "How to turn subcommands into one domain type"
 sidebar_label: "Map Subcommands to a Type"
 ---
+
 An app with subcommands produces a different raw value for each one: `Unit` for a subcommand without parameters, a `Path` for one with a file argument, a tuple for one with an option and an argument. Combined with `Command#subcommands`, these values lose their types and become `Any`. This guide shows how to give every subcommand one shared domain type, so that the function you pass to `CliApp.make` is a single, exhaustive `match`.
 
 We build a small Git-like app with three subcommands: `add <path>`, `clone [--quiet] <repository>` and `status`.
