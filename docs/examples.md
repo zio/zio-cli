@@ -185,7 +185,7 @@ val cliApp = CliApp.make(
 }
 ```
 
-Put the definitions from Step 4 and this `cliApp` into an `object GitTutorial extends ZIOCliDefault` in `src/main/scala/GitTutorial.scala`. `ZIOCliDefault` turns the object into a runnable program that hands the words from the command line to `cliApp`.
+Create `src/main/scala/GitTutorial.scala`. Put the imports from Step 4 and from this step at the top of the file. Put the definitions from Step 4 and this `cliApp` inside an `object GitTutorial extends ZIOCliDefault`, with `Subcommand` and its cases inside the object too. `ZIOCliDefault` turns the object into a runnable program that hands the words from the command line to `cliApp`. Step 6 shows the finished file.
 
 The text after `run` is what your program receives. Notice that it does not start with `git`. When you start an installed program as `git add ./src`, the operating system passes only `add ./src` to it, so `CliApp` adds the root command name `git` in front before it parses the words. You type only what comes after the program name:
 
@@ -441,7 +441,7 @@ OPTIONS
 ```
 
 :::caution
-`--help` after any subcommand other than the first one in `subcommands(add, commit, remote)` shows the help of the first one, `add`. Running `sbt "run commit --help"` prints the help above. Use `sbt "run --help"` to see the usage line and description of every subcommand.
+`--help` after any subcommand other than the first one in `subcommands(add, commit, remote)` shows the help of the first one, `add`. Running `sbt "run commit --help"` prints the help above. Use `sbt "run --help"` to see the usage line and description of every subcommand. See [Built-in Commands](built-in-commands.md#help) for the rule.
 :::
 
 [Help Documentation](helpdoc.md) covers `HelpDoc`, the type behind help text, and [Built-in Commands](built-in-commands.md) lists every built-in flag.
@@ -485,7 +485,7 @@ Because our root command is called `git`, loading this script would replace the 
 
 ## Step 9: Test the Parsing
 
-The testkit module, `zio-cli-testkit`, checks a command without a terminal. Add it to your build as a test dependency, as listed in [Modules](index.md#modules), together with ZIO Test.
+The testkit module, `zio-cli-testkit`, checks a command without a terminal. Add it to your build as a test dependency, as listed in [Modules](index.md#modules), together with ZIO Test. sbt 1.5 and later run ZIO Test specs without extra setup; on older sbt versions, add `testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")` to `build.sbt`.
 
 `CliAssertion.assertCommand` parses each command line in a ZIO Test generator and checks that it produces the expected value. Each `CliRepr` pairs a command line with that value. Like `Command#parse`, it expects the full line, so each line starts with the root command name `git`, which `CliApp` adds when the program runs. `CliAssertion.assertCommandSuccess` takes an assertion on the result instead, which lets us check that a line fails. The spec goes into `src/test/scala/GitTutorialSpec.scala`:
 
