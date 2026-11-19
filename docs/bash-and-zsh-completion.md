@@ -9,7 +9,7 @@ Only bash is supported. The `zsh` value of `--shell-type` exists, but no zsh scr
 
 ## Built-in Options
 
-The three options are added to the top-level command of every `CliApp`, next to `--help` and `--wizard`, which [Built-in Commands](built-in-commands.md) describes. They are not listed in the help output:
+The three options are recognized by the parser of every `CliApp`, next to `--help` and `--wizard`, which [Built-in Commands](built-in-commands.md) describes. They are not listed in the help output:
 
 | Option                      | Value                  | Purpose                                                              |
 | --------------------------- | ---------------------- | -------------------------------------------------------------------- |
@@ -158,4 +158,4 @@ Completion of commands, options and values works on every platform. Only path co
 | Commands, options, enumerations, ZoneIds | Yes | Yes      | Yes          |
 | File and directory paths                 | Yes | No       | No           |
 
-The sbt plugin declares `zioCliGenerateBashCompletion` and `zioCliGenerateZshCompletion` tasks, which are not implemented yet. See [sbt plugin](sbt-plugin.md). Generate the script with the built-in options instead.
+The sbt plugin declares `zioCliGenerateBashCompletion` and `zioCliGenerateZshCompletion` tasks, which only print `TODO: Not Implemented!`. See [sbt plugin](sbt-plugin.md). Generate the script with the built-in options instead.
