@@ -17,6 +17,18 @@ The built-in options are:
 
 There is no built-in `--version` option, and the help does not list the built-in options.
 
+When `Command#parse` sees a built-in option, it returns `CommandDirective.BuiltIn` holding one of these cases:
+
+```scala
+sealed trait BuiltInOption
+object BuiltInOption {
+  final case class ShowHelp(synopsis: UsageSynopsis, helpDoc: HelpDoc) extends BuiltInOption
+  final case class ShowCompletionScript(pathToExecutable: java.nio.file.Path, shellType: ShellType) extends BuiltInOption
+  final case class ShowCompletions(index: Int, shellType: ShellType) extends BuiltInOption
+  final case class ShowWizard(command: Command[_]) extends BuiltInOption
+}
+```
+
 ## How Built-in Options Are Matched
 
 zio-cli looks for built-in options after the name of the top-level command and after the name of each subcommand. The following rules decide which one runs:
@@ -107,7 +119,7 @@ ARGUMENTS
 ```
 
 :::caution
-`--help` and `-h` after any subcommand except the first one show the help of the first subcommand. Here `git clone --help` prints the help of `add`. The parent's help (`git --help`) lists every subcommand with its usage, so point users there.
+`--help` and `-h` after any subcommand except the first one show the help of the first subcommand, as described in [Subcommands](commands.md#subcommands). Point users to `git --help`, which lists every subcommand with its usage.
 :::
 
 ## Wizard
