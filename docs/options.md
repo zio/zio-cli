@@ -11,7 +11,7 @@ An option is written as `--name` when its name is longer than one character, and
 - Clustered one-character flags, as in `-abc` for `-a -b -c`.
 - Options in any order among themselves, but before the command's positional [arguments](args.md). Reading of options stops at the first token that is not an option, and a `--` token makes every later token an argument.
 
-A misspelled option name close to a real one, such as `--firstnme`, fails with `The flag "--firstnme" is not recognized. Did you mean --firstname?`. [How ZIO CLI reads a command line](parsing.md#how-to-write-options) describes these rules in detail.
+A misspelled option name close to a real one, such as `--firstnme`, fails with `The flag "--firstnme" is not recognized. Did you mean --firstname?`. [How to Write Options](parsing.md#how-to-write-options) describes these rules in detail.
 
 ## Constructors
 
@@ -171,6 +171,8 @@ sealed trait Options[+A] {
   def helpDoc: HelpDoc
   def synopsis: UsageSynopsis
   def isBool: Boolean
+  def flatten: List[Options[_] with Input]
+  def validate(args: Map[String, List[String]], conf: CliConfig): IO[ValidationError, A]
   def uid: Option[String]
 }
 ```
@@ -337,9 +339,11 @@ println(output.helpDoc.toPlaintext(color = false))
 
 `Options#??` appends a paragraph to the help of an option. On an option with a default, the description comes before the sentence about the default. To describe the `--quiet` flag:
 
-```scala mdoc
+```scala mdoc:silent
 val quiet = Options.boolean("quiet") ?? "Suppress feedback messages."
+```
 
+```scala mdoc
 println(quiet.helpDoc.toPlaintext(color = false))
 ```
 
@@ -347,9 +351,11 @@ println(quiet.helpDoc.toPlaintext(color = false))
 
 `Options#withPseudoName` replaces the placeholder that the help shows after the option name, such as `<text>`. It changes only the help, not what the option accepts. To show `<NAME>` instead of `<text>`:
 
-```scala mdoc
+```scala mdoc:silent
 val lastname = Options.text("lastname").withDefault("xyz").withPseudoName("NAME")
+```
 
+```scala mdoc
 println(lastname.helpDoc.toPlaintext(color = false))
 ```
 
