@@ -56,16 +56,16 @@ val greetApp: CliApp[Any, java.io.IOException, Unit] = CliApp.make(
 
 Each parameter of `CliApp.make` has the following meaning:
 
-| Parameter | Type                    | Default             | What it does                                                                                                     |
-| --------- | ----------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `name`    | `String`                | none                | The program name. It is drawn as the banner and starts the header line of the help and of the wizard.            |
-| `version` | `String`                | none                | The version string, shown after the name in the header line.                                                     |
-| `summary` | `HelpDoc.Span`          | none                | A one-line description, shown after `--` in the header line.                                                     |
-| `command` | `Command[Model]`        | none                | The grammar of valid input. The value it parses is the `Model` passed to `execute`. See [Commands](commands.md). |
-| `footer`  | `HelpDoc`               | `HelpDoc.Empty`     | Text printed at the end of the help.                                                                             |
-| `config`  | `CliConfig`             | `CliConfig.default` | Parsing and help settings, such as case sensitivity and auto-correction. See [CLI Configuration](cli-config.md). |
-| `figFont` | `FigFont`               | `FigFont.Default`   | The font used to draw the name as a banner. See [Figlet banners](figlet.md).                                     |
-| `execute` | `Model => ZIO[R, E, A]` | none                | The second parameter list. It runs with the parsed value of the command.                                         |
+| Parameter | Type                    | Default             | What it does                                                                                                            |
+| --------- | ----------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `name`    | `String`                | none                | The program name. It is drawn as the banner and starts the header line of the help; the wizard header also contains it. |
+| `version` | `String`                | none                | The version string, shown after the name in the header line.                                                            |
+| `summary` | `HelpDoc.Span`          | none                | A one-line description, shown after `--` in the header line.                                                            |
+| `command` | `Command[Model]`        | none                | The grammar of valid input. The value it parses is the `Model` passed to `execute`. See [Commands](commands.md).        |
+| `footer`  | `HelpDoc`               | `HelpDoc.Empty`     | Text printed at the end of the help.                                                                                    |
+| `config`  | `CliConfig`             | `CliConfig.default` | Parsing and help settings, such as case sensitivity and auto-correction. See [CLI Configuration](cli-config.md).        |
+| `figFont` | `FigFont`               | `FigFont.Default`   | The font used to draw the name as a banner. See [Figlet banners](figlet.md).                                            |
+| `execute` | `Model => ZIO[R, E, A]` | none                | The second parameter list. It runs with the parsed value of the command.                                                |
 
 ## The Help Screen
 
@@ -128,14 +128,7 @@ The result depends on the input:
 | `--wizard`                                                | Asks for the values, then runs the command they form. | The result of that run, or `None` on `quit`      |
 | Invalid input                                             | Prints the error message to standard output.          | Fails with `CliError.Parsing`                    |
 
-Words left over after a complete command are ignored, so `greet --name Ada extra` still greets `Ada`. The error type `CliError[E]` has four cases:
-
-- `CliError.Parsing(e: ValidationError)`: the input did not match the command. The message is already printed.
-- `CliError.Execution(e: E)`: `execute` failed with your error.
-- `CliError.IO(e: IOException)`: writing the help or the completion script to standard output failed.
-- `CliError.BuiltIn(e: Exception)`: computing shell completions failed.
-
-[Validation and Errors](validation-and-errors.md) describes each case and the messages the user sees.
+Words left over after a complete command are ignored, so `greet --name Ada extra` still greets `Ada`. The error type `CliError[E]` has four cases, `Parsing`, `Execution`, `IO` and `BuiltIn`, described in [Validation and Errors](validation-and-errors.md#clierror).
 
 ## Running a Stand-alone Program With ZIOCliDefault
 
