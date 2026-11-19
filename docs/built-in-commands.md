@@ -29,6 +29,8 @@ object BuiltInOption {
 }
 ```
 
+`ShellType` is a sealed trait with two cases, `ShellType.Bash` and `ShellType.ZShell`. `ShellType.option` is the `Options[ShellType]` behind `--shell-type`: it maps `sh` and `bash` to `ShellType.Bash`, and `zsh` to `ShellType.ZShell`.
+
 ## How Built-in Options Are Matched
 
 zio-cli looks for built-in options after the name of the top-level command and after the name of each subcommand. The following rules decide which one runs:
@@ -142,7 +144,7 @@ _git()
   local CMDLINE
   local IFS=$'\n'
   CMDLINE=(--shell-type bash --shell-completion-index $COMP_CWORD)
-
+  
   INDEX=0
   for arg in ${COMP_WORDS[@]}; do
     export COMP_WORD_$INDEX=${arg}
@@ -159,7 +161,7 @@ complete -F _git git
 ```
 
 :::caution
-`--shell-type zsh` with `--shell-completion-script` is not implemented: the program stops with a `NotImplementedError` defect instead of printing a script. With `--shell-completion-index`, the shell type is ignored, so `zsh` behaves like `bash`.
+`--shell-type zsh` with `--shell-completion-script` is not implemented and stops with a `NotImplementedError`; see [Bash Completion](bash-and-zsh-completion.md). With `--shell-completion-index`, the shell type is ignored, so `zsh` behaves like `bash`.
 :::
 
 [Bash Completion](bash-and-zsh-completion.md) explains how zio-cli computes completions, and [How to add Tab completion in bash](how-to-add-shell-completion.md) shows how to install the script.
