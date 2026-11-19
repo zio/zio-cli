@@ -170,9 +170,7 @@ Parsing a command with subcommands follows these rules:
 - When the first word after the parent is not a subcommand, the input is rejected with `Invalid subcommand for git. Use one of 'add', 'clone'`.
 - When the input continues after a complete subcommand, the extra words are ignored.
 
-:::caution
-`--help` and `-h` after any subcommand except the first one show the help of the first subcommand. In the `git` command above, `git clone --help` prints the help of `add`. `git --help` and `git add --help` work as expected.
-:::
+`--help` after a subcommand other than the first shows the first subcommand's help; see [Built-in Commands](built-in-commands.md#help).
 
 ## Inspecting a Command
 
@@ -228,9 +226,13 @@ See [Testing CLI Applications](testing.md) for assertions built on `Command#pars
 
 A `--` word ends the options. Every word after it goes to the arguments, even a word that looks like an option:
 
-```scala mdoc
+```scala mdoc:silent
 val echo: Command[(Boolean, List[String])] = Command("echo", Options.boolean("n"), Args.text("word").*)
+```
 
+Parsing the words after the separator shows that `-n` stays an argument:
+
+```scala mdoc
 parse(echo, "echo", "--", "-n", "hello")
 ```
 
