@@ -124,7 +124,7 @@ object CliAssertion {
 }
 ```
 
-`CliAssertion.assertSynopsis` renders the synopsis and compares it with the expected text. The `String` form expects exactly one usage line. The `List[String]` form expects every line in order; a command built with `Command#orElse` has one line per alternative. The `UsageSynopsis` form renders both sides with `CliConfig.default`. For an app, the synopsis is the one of the app's command, rendered with the implicit config, not the app's own config.
+`CliAssertion.assertSynopsis` renders the synopsis and compares it with the expected text. The `String` form expects exactly one usage line. The `List[String]` form expects every line in order; a command built with `Command#orElse` has the single line `<command>`, and an `Options#orElse` whose alternatives are several words has one line per alternative. The `UsageSynopsis` form renders both sides with `CliConfig.default`. For an app, the synopsis is the one of the app's command, rendered with the implicit config, not the app's own config.
 
 `CliAssertion.assertHelpDoc` compares the HTML rendering (`HelpDoc#toHTML`) of the command's help document with the expected one. For an app, it checks the command's help document only. The help screen that `CliApp#run` prints for `--help` also contains the app name, version, summary, a usage section and the footer; use `CliAssertion.outputContains` to check those.
 
