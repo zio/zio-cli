@@ -61,7 +61,6 @@ CliConfig.default
 `caseSensitive` decides whether `GIT CLONE` means the same as `git clone`. With `caseSensitive = false`, upper and lower case letters are equal in these places:
 
 - Command and subcommand names.
-- The names of key-value options made with `Options.keyValueMap`.
 - The distance used for "Did you mean" hints.
 - Matching words during shell completion.
 
