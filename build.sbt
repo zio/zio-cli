@@ -93,6 +93,20 @@ inThisBuild(
   List(
     ciTargetScalaVersions := targetScalaVersionsFor(zioCli.jvm, zioCli.js, zioCli.native).value,
 
+    ciCheckWebsiteBuildProcess := Seq(
+      Step.SingleStep(
+        name = "Check website build process",
+        run = Some(
+          Seq("docs/clean", "docs/installWebsite", "docs/compileDocs")
+            .map("sbt --no-colors --batch " + _)
+            .mkString("", "; ", "; cd website; npm run build")
+        )
+      ),
+      Step.SingleStep(
+        name = "Check docs build on a fresh ZIO website",
+        run = Some("sbt --no-colors docs/checkDocsOnFreshWebsite")
+      )
+    ),
     // Preserves the old two-job split (all platforms on JDK 17, JVM-only re-run on 21/25)
     // instead of the plugin's default of testing every platform on every configured JDK.
     ciTestJobs := Seq(
