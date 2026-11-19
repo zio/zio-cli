@@ -60,7 +60,7 @@ object CliError {
 | Case           | Raised when                                                         | What the user sees                                                    |
 | -------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `Parsing(e)`   | The input does not match the command.                               | The text of `e.error`, printed to standard output before the failure. |
-| `Execution(e)` | Your `execute` function fails with `e`.                             | Nothing from zio-cli, which passes your error on unchanged.         |
+| `Execution(e)` | Your `execute` function fails with `e`.                             | Nothing from zio-cli, which passes your error on unchanged.           |
 | `IO(e)`        | Writing the help or the completion script to standard output fails. | Nothing from zio-cli.                                                 |
 | `BuiltIn(e)`   | Computing shell completions for `--shell-completion-index` fails.   | Nothing from zio-cli.                                                 |
 
