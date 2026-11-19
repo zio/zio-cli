@@ -2,38 +2,23 @@
 id: figlet
 title: "Figlet banners"
 ---
-A `CliApp` prints a banner made of ASCII art. The banner shows the application name in the help output and in the header of wizard mode. The art is produced from a FIGlet font. FIGlet is a text format for fonts made of ASCII characters. A font file has the `.flf` extension and contains one drawing for each character.
 
-zio-cli includes one font, `FigFont.Default`, so a banner works without any setup. You can also load another font, on the JVM only, from a file, a resource, or a URL.
+A `CliApp` prints its name as a banner of ASCII art at the top of the help output and of wizard mode. The art comes from a FIGlet font. FIGlet is a text format for fonts made of ASCII characters: a font file, called an FLF file after its file extension, holds one drawing for each character.
 
-## Default banner
+`FigFont` in the `zio.cli.figlet` package is a parsed font. ZIO CLI includes one font, `FigFont.Default`, so a banner works without any setup. On the JVM you can also load another font from a file, a classpath resource, a URL or any `scala.io.Source`.
 
-`CliApp.make` has a `figFont` parameter. If you do not pass it, it uses `FigFont.Default`.
+## Setting the Banner Font
+
+`CliApp.make` has a `figFont` parameter, which defaults to `FigFont.Default`. We pass the font explicitly:
 
 ```scala mdoc:silent:reset
 import zio._
 import zio.cli._
-
-val greetCommand = Command("hello", Options.text("name"))
-
-val greetApp = CliApp.make(
-  name = "hello",
-  version = "1.0.0",
-  summary = HelpDoc.Span.text("Greets someone."),
-  command = greetCommand
-)(name => Console.printLine(s"Hello, $name!"))
-```
-
-`FigFont.Default` uses the "Slant" font. It is stored as a string in `zio/cli/figlet/FigFontFiles.scala` and is parsed the first time it is used.
-
-## Choosing a font
-
-Pass the font to `CliApp.make` with the `figFont` parameter:
-
-```scala mdoc:silent
 import zio.cli.figlet.FigFont
 
-val explicitApp = CliApp.make(
+val greetCommand: Command[String] = Command("hello", Options.text("name"))
+
+val greetApp = CliApp.make(
   name = "hello",
   version = "1.0.0",
   summary = HelpDoc.Span.text("Greets someone."),
@@ -42,113 +27,128 @@ val explicitApp = CliApp.make(
 )(name => Console.printLine(s"Hello, $name!"))
 ```
 
-You can see the rendered text without running the app:
+`FigFont.Default` is the "Slant" font. Its source text is part of the library and is parsed the first time `FigFont.Default` is used. [CliApp](cli-app.md) describes the other parameters of `CliApp.make`.
 
-```scala mdoc:silent
-val bannerText: String = FigFont.Default.render("hello")
-```
+## Rendering Text
 
-`render` returns a single `String` with line breaks. `renderLines` returns the same lines as a `Chunk[String]`.
-
-## Loading a font
-
-`FigFont` is a case class. `FigFont.fromLines` parses a font from lines of text. It is available on every platform:
+`FigFont#render` draws a string and returns the lines joined with `\n`. `FigFont#renderLines` returns the same lines as a `Chunk[String]`:
 
 ```scala
-FigFont.fromLines(lines: Iterable[String]): Either[String, FigFont]
+final case class FigFont(header: FigHeader, rightToLeft: Boolean, layout: Layouts, chars: Map[Char, FigChar]) {
+  def render(text: String): String
+  def renderLines(text: String): Chunk[String]
+}
 ```
 
-The loaders below read a font from a source. They are available only on the JVM. Each one returns a `ZIO` value that fails with `Either[IOException, String]`:
+We draw the banner that the help output of `greetApp` shows:
 
-- `Left(ioException)` means the file, resource, or URL could not be read.
-- `Right(message)` means the text was read but is not a valid font. The message starts with the line number.
+```scala mdoc
+println(FigFont.Default.render("hello"))
+```
 
-### Loading from a file
+A `\n` in the text starts a new row of characters below the first one. A character that the font does not define is drawn with the font's glyph for character code 0, or left out when the font has none.
+
+## Loading a Font
+
+`FigFont.fromLines` parses a font from the lines of an FLF file. It is available on every platform and returns an error message when the lines are not a valid font. The message starts with the line number and column where parsing failed:
+
+```scala
+object FigFont {
+  def fromLines(lines: Iterable[String]): Either[String, FigFont]
+}
+```
+
+The loaders below read the lines from a source and then call `FigFont.fromLines`. They exist only on the JVM. Each one returns a `ZIO` that reads nothing until it runs, and fails with an `Either`: `Left` holds the `IOException` when the source could not be read, and `Right` holds the parse message when the text is not a valid font:
+
+```scala
+object FigFont {
+  def fromFile(name: String): ZIO[Any, Either[IOException, String], FigFont]
+  def fromResource(name: String, loader: ClassLoader): ZIO[Any, Either[IOException, String], FigFont]
+  def fromURL(url: String): ZIO[Any, Either[IOException, String], FigFont]
+  def fromSource[R, A, E >: IOException](source: => ZIO[R, E, Source]): ZIO[R, Either[E, String], FigFont]
+}
+```
+
+| Loader                 | Reads                                    | Encoding                        |
+| ---------------------- | ---------------------------------------- | ------------------------------- |
+| `FigFont.fromFile`     | A file path                              | ISO-8859-1                      |
+| `FigFont.fromResource` | A classpath resource of the class loader | The platform's default encoding |
+| `FigFont.fromURL`      | A URL, over the network                  | ISO-8859-1                      |
+| `FigFont.fromSource`   | A `Source` produced by a `ZIO`           | The encoding of the `Source`    |
+
+We load a font from a file and from a classpath resource:
 
 ```scala mdoc:silent
 import java.io.IOException
 
 val fontFromFile: ZIO[Any, Either[IOException, String], FigFont] =
   FigFont.fromFile("fonts/small.flf")
-```
 
-`fromFile` reads the file with ISO-8859-1 encoding.
-
-### Loading from a classpath resource
-
-```scala mdoc:silent
 val fontFromResource: ZIO[Any, Either[IOException, String], FigFont] =
   FigFont.fromResource("fonts/small.flf", getClass.getClassLoader)
 ```
 
-### Loading from a URL
+:::caution
+When `FigFont.fromResource` cannot find the resource, the effect dies with a `NullPointerException` instead of failing with `Left`. Check that the resource exists, for example with `ClassLoader#getResource`, before loading it.
+:::
 
-This example makes a network request when it runs, so it is compiled but not run during the docs build.
+`FigFont.fromURL` downloads the font when the effect runs:
 
 ```scala mdoc:compile-only
-import java.io.IOException
-
 val fontFromUrl: ZIO[Any, Either[IOException, String], FigFont] =
   FigFont.fromURL("https://example.com/fonts/small.flf")
 ```
 
-### Loading from any source
+`FigFont.fromSource` takes a `ZIO` that opens a `scala.io.Source`, reads its lines and closes it. The other loaders are built on it. We load a font whose text is already in memory, such as text read from a database:
 
-`fromSource` takes a `ZIO` that produces a `scala.io.Source`. The other loaders are built on top of it. Use it when your font comes from somewhere else, such as a database. The source is closed after the lines are read.
+```scala mdoc:silent
+import scala.io.Source
 
-## Using a loaded font
-
-The following program loads a font file when it starts. If the file cannot be loaded, it falls back to `FigFont.Default`.
-
-```scala mdoc:compile-only
-import zio._
-import zio.cli._
-import zio.cli.figlet.FigFont
-
-object BannerApp extends ZIOAppDefault {
-  private val command = Command("hello", Options.text("name"))
-
-  private def app(font: FigFont) =
-    CliApp.make(
-      name = "hello",
-      version = "1.0.0",
-      summary = HelpDoc.Span.text("Greets someone."),
-      command = command,
-      figFont = font
-    )(name => Console.printLine(s"Hello, $name!"))
-
-  def run =
-    for {
-      args <- ZIOAppArgs.getArgs
-      font <- FigFont.fromFile("fonts/small.flf").orElseSucceed(FigFont.Default)
-      _    <- app(font).run(args.toList)
-    } yield ()
-}
+def fontFromText(text: String): ZIO[Any, Either[IOException, String], FigFont] =
+  FigFont.fromSource(ZIO.attemptBlockingIO(Source.fromString(text)))
 ```
 
-## Platform support
+Because a loader returns a `ZIO`, the application is built after the font is loaded. `ZIO#orElseSucceed` falls back to the default font when loading fails:
 
-The core parser and renderer are shared code and work on the JVM, JS, and Native. Only the loaders that read from a source are JVM-only.
+```scala mdoc:compile-only
+def helloApp(font: FigFont) =
+  CliApp.make(
+    name = "hello",
+    version = "1.0.0",
+    summary = HelpDoc.Span.text("Greets someone."),
+    command = greetCommand,
+    figFont = font
+  )(name => Console.printLine(s"Hello, $name!"))
 
-| Method | JVM | JS | Native |
-| --- | --- | --- | --- |
-| `FigFont.Default` | Yes | Yes | Yes |
-| `FigFont.fromLines` | Yes | Yes | Yes |
-| `FigFont.fromFile` | Yes | No | No |
-| `FigFont.fromResource` | Yes | No | No |
-| `FigFont.fromURL` | Yes | No | No |
-| `FigFont.fromSource` | Yes | No | No |
+val runHello: ZIO[Any, Any, Any] =
+  FigFont.fromFile("fonts/small.flf").orElseSucceed(FigFont.Default).flatMap(font => helloApp(font).run(List("--help")))
+```
 
-On JS and Native, a program that calls a JVM-only loader does not compile. To load a font there, read the file yourself and pass its lines to `FigFont.fromLines`.
+## Font Model
 
-## Internal code
+The fields of `FigFont` and the types they use are public, so a program can inspect a parsed font. You rarely need them: they matter only if you write your own renderer.
 
-The following are internal to zio-cli. Do not use them in your code:
+| Type        | Holds                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| `FigHeader` | The values of the font's header line, such as the hard-blank character and the character height |
+| `Layouts`   | The horizontal and vertical `Layout` of the font                                                |
+| `Layout`    | `Layout.FullWidth`, `Layout.Fitting` or `Layout.Smushing` with its `SmushingRule`               |
+| `FigChar`   | The drawing of one character, as `FigCharLine` rows with a width and height                     |
 
-- `FigFontParser` and `FigFontRenderer` are `private[figlet]`.
-- `Parser` in the `zio.cli.figlet` package is a set of parser combinators used by `FigFontParser`.
+## Platform Support
 
-## See also
+The parser and the renderer work on the JVM, Scala.js and Scala Native. Only the loaders that read from a source are JVM-only:
 
-- [Built-in commands](built-in-commands.md) for `--help` and the wizard, which show the banner.
-- [Commands](commands.md) for how a `Command` is built.
+| Method                 | JVM | Scala.js | Scala Native |
+| ---------------------- | --- | -------- | ------------ |
+| `FigFont.Default`      | Yes | Yes      | Yes          |
+| `FigFont#render`       | Yes | Yes      | Yes          |
+| `FigFont.fromLines`    | Yes | Yes      | Yes          |
+| `FigFont.fromFile`     | Yes | No       | No           |
+| `FigFont.fromResource` | Yes | No       | No           |
+| `FigFont.fromURL`      | Yes | No       | No           |
+| `FigFont.fromSource`   | Yes | No       | No           |
+
+On Scala.js and Scala Native, a call to a JVM-only loader does not compile. To use another font there, read the file with the platform's own API and pass its lines to `FigFont.fromLines`.
+
+The objects `FigFontParser` and `FigFontRenderer` are private to the library, and the `Parser` and `ParseResult` classes in the same package are its parser combinators. They are not meant for application code.
