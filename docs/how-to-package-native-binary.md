@@ -1,62 +1,95 @@
 ---
 id: how-to-package-native-binary
-title: "How to package a native binary"
+title: "How to package a CLI as a native binary"
+sidebar_label: "Package a Native Binary"
 ---
 
-Build a native executable of your CLI with the ZIO CLI sbt plugin.
+This guide turns a **ZIO CLI** app into a standalone native executable with GraalVM `native-image`, driven from sbt by the [sbt-native-image](https://github.com/scalameta/sbt-native-image) plugin. The executable starts without a JVM, which makes a command-line tool start almost instantly.
 
-The plugin has one task that works: `zioCliBuildNative`. It builds a native image of the main class you set. The other plugin tasks are not implemented yet. They print `TODO: Not Implemented!` and do nothing:
+## Prerequisites
 
-- `zioCliInstallCli`
-- `zioCliGenerateBashCompletion`
-- `zioCliGenerateZshCompletion`
+Before starting, make sure you have:
 
-The plugin does not create an installer or a package file. The output is the native executable.
+- An sbt project with an app object that extends `ZIOCliDefault`, such as the `Greet` app from [Getting Started](getting-started.md).
+- Either sbt 1.x or sbt 2.x. sbt-native-image is published for both.
 
-You need:
-- An sbt project with a `main` method in a `ZIOCliDefault` object (see [Bash completion](how-to-add-shell-completion.md) for an example app).
-- The `sbt-zio-cli` plugin published locally. Follow [ZIO CLI SBT Plugin](sbt-plugin.md) to run `publishLocal` on the `sbtZioCli` project.
-- A GraalVM distribution with its `native-image` tool, which the build runs. This repository does not document how to install it. See the [sbt-native-image](https://github.com/scalameta/sbt-native-image) README.
+You do not need to install GraalVM. By default, sbt-native-image downloads a GraalVM distribution with [Coursier](https://get-coursier.io/) the first time it builds an image.
 
-## Steps
+## Step 1: Add the Plugin
 
-1. Add the plugin to `project/plugins.sbt`:
+Add sbt-native-image to `project/plugins.sbt`:
 
-```
-addSbtPlugin("zio.cli.sbt" % "sbt-zio-cli" % "0.0.0-SNAPSHOT")
+```scala
+addSbtPlugin("org.scalameta" % "sbt-native-image" % "0.6.0")
 ```
 
-2. Enable the plugin in `build.sbt` and set the main class. `zioCliMainClass` defaults to `None`, so you must set it. Use the fully qualified name of your object:
+## Step 2: Enable the Plugin and Set the Main Class
 
-```
-import zio.cli.sbt.ZIOCLIPlugin
+Enable `NativeImagePlugin` on the project that contains the app, and set `Compile / mainClass` to the fully qualified name of the app object. The binary is named after the project, so we also set `name`:
 
+```scala
 lazy val root = project
   .in(file("."))
-  .enablePlugins(ZIOCLIPlugin)
+  .enablePlugins(NativeImagePlugin)
   .settings(
-    zioCliMainClass := Some("zio.cli.YourApp")
+    name                := "greet",
+    Compile / mainClass := Some("Greet"),
+    nativeImageOptions += "--no-fallback"
   )
 ```
 
-3. Build the native executable from sbt:
+`nativeImageOptions` holds extra arguments for `native-image`, and it is empty by default. The `--no-fallback` option makes the build fail when GraalVM cannot compile the app ahead of time, instead of producing an image that still needs a JVM to run. When the project has exactly one main class, sbt finds it without `Compile / mainClass`; with several, the build stops with `no mainClass is specified` until you set it.
 
+## Step 3: Build the Executable
+
+Run the `nativeImage` task:
+
+```bash
+sbt nativeImage
 ```
-sbt> zioCliBuildNative
+
+The task compiles the project, runs `native-image` (which takes a minute or more), and logs the absolute path of the binary. The binary is written to `native-image/<project name>` under the project's target directory: `target/native-image/greet` for the project above on sbt 1.x. The first build also downloads GraalVM, which takes longer.
+
+## Step 4: Run the Executable
+
+Run the binary like any other program. To print the app's help screen:
+
+```bash
+./target/native-image/greet --help
 ```
 
-   The task sets `Compile / mainClass` from `zioCliMainClass`, then runs the `nativeImage` task of `sbt-native-image`. When the image is ready, the task calls `zioCliNativeImageReady`, which prints `ZIO CLI App Native Image Ready!` by default.
+From sbt, `nativeImageRun` runs the binary that the last `nativeImage` built, passing the arguments that follow it:
 
-4. Find the executable. The output location is set by `sbt-native-image`. This guide does not verify the path. Check the output of the build and the `sbt-native-image` README.
+```bash
+sbt nativeImage "nativeImageRun --help"
+```
 
-## Settings you can change
+To copy the binary to a fixed location, for example in a CI job that uploads it, use `nativeImageCopy` with the destination path:
 
-- `zioCliNativeImageOptions` is a list of extra arguments for `native-image`. Its default is `--allow-incomplete-classpath`, `--report-unsupported-elements-at-runtime`, `--initialize-at-build-time`, and `--no-fallback`. Replacing it changes what is passed to `native-image`.
-- `zioCliNativeImageReady` is a callback with type `() => Unit`. It runs after a successful build.
+```bash
+sbt "nativeImageCopy greet-linux-x86_64"
+```
 
-See [ZIO CLI SBT Plugin](sbt-plugin.md) for the full list of settings and tasks.
+## Use a Locally Installed GraalVM
 
-## See also
+To use a GraalVM that is already installed instead of downloading one, set the environment variable `NATIVE_IMAGE_INSTALLED=true` (or `GRAALVM_INSTALLED=true`) before starting sbt:
 
-- [ZIO CLI SBT Plugin](sbt-plugin.md): setup, settings, and the status of each task.
-- [How to add shell completion (bash)](how-to-add-shell-completion.md): completion through the built-in options. The plugin's completion task is not implemented.
+```bash
+NATIVE_IMAGE_INSTALLED=true GRAALVM_HOME=/path/to/graalvm sbt nativeImage
+```
+
+sbt-native-image then runs `bin/native-image` from the first of `GRAAL_HOME`, `GRAALVM_HOME` and `JAVA_HOME` that is set. To keep the download but change the GraalVM release it fetches, set `nativeImageJvm` and `nativeImageVersion`; in sbt-native-image 0.6.0 they default to `"graalvm-java25"` and `"25.0.1"`.
+
+## Apps That Use Reflection
+
+`native-image` must know at build time about every class that is loaded by reflection. If the binary fails at runtime with a missing class or method while the same app works on the JVM, run the app once under the GraalVM tracing agent with `nativeImageRunAgent`, then pass the generated configuration to `nativeImageOptions` and rebuild. The [sbt-native-image README](https://github.com/scalameta/sbt-native-image#nativeimagerunagent) shows the exact settings.
+
+## The ZIO CLI sbt Plugin
+
+The ZIO CLI repository also contains an sbt plugin, `sbt-zio-cli`, whose `zioCliBuildNative` task wraps the same `nativeImage` task. It is not published, so the steps above are the shorter path. See [ZIO CLI SBT Plugin](sbt-plugin.md) for what it adds.
+
+## See Also
+
+- [ZIO CLI SBT Plugin](sbt-plugin.md) describes the `sbt-zio-cli` settings and tasks.
+- [How to add shell completion](how-to-add-shell-completion.md) generates a bash completion script for the installed executable.
+- The [sbt-native-image README](https://github.com/scalameta/sbt-native-image) lists every setting and task of the plugin.
