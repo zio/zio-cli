@@ -13,7 +13,7 @@ Before starting, make sure you have:
 - An sbt project with an app object that extends `ZIOCliDefault`, such as the `Greet` app from [Getting Started](getting-started.md).
 - Either sbt 1.x or sbt 2.x. sbt-native-image is published for both.
 
-You do not need to install GraalVM. By default, sbt-native-image downloads a GraalVM distribution with [Coursier](https://get-coursier.io/) the first time it builds an image.
+You do not need to install GraalVM. By default, sbt-native-image downloads a GraalVM distribution with [Coursier](https://get-coursier.io/) the first time it builds an image. `native-image` still needs a C toolchain on the machine. On Linux, install `gcc` and the zlib development headers, for example `zlib1g-dev` on Debian and Ubuntu. On macOS, install the Xcode command line tools. On Windows, install the Visual Studio C++ build tools.
 
 ## Step 1: Add the Plugin
 
