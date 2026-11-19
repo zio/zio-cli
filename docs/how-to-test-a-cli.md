@@ -17,7 +17,7 @@ A **spec** is a ZIO Test object that holds tests, a **suite** groups tests under
 
 Before starting, make sure you have:
 
-- The `zio-cli-testkit` dependency in the `Test` configuration of your build. The dependency line is in [Modules](index.md#modules).
+- The `zio-cli-testkit` dependency in the `Test` configuration of your build. The dependency line is in [Modules](index.md#modules). sbt 1.5 and later run ZIO Test specs without extra setup; on older sbt versions, add `testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")` to `build.sbt`.
 - A test source file, for example `src/test/scala/GreetCliSpec.scala`.
 - A `Command` and a `CliApp` to test. This guide uses a small greeting app.
 
