@@ -193,14 +193,20 @@ trait Command[+A] {
 `Command#parse` parses a list of words. Unlike `CliApp#run`, the list must start with the command's own name. The result is a `CommandDirective`:
 
 ```scala
-sealed trait CommandDirective[+A]
+sealed trait CommandDirective[+A] {
+  def map[B](f: A => B): CommandDirective[B]
+  def mapBuiltIn(f: BuiltInOption => BuiltInOption): CommandDirective[A]
+}
 object CommandDirective {
   final case class BuiltIn(option: BuiltInOption)                   extends CommandDirective[Nothing]
   final case class UserDefined[A](leftover: List[String], value: A) extends CommandDirective[A]
+
+  def builtIn(option: BuiltInOption): CommandDirective[Nothing]
+  def userDefined[A](leftover: List[String], value: A): CommandDirective[A]
 }
 ```
 
-`UserDefined` carries the parsed value and any words the parser does not use. `BuiltIn` means the input asks for a [built-in command](built-in-commands.md) such as `--help`. A failure is a [`ValidationError`](validation-and-errors.md).
+`UserDefined` carries the parsed value and any words the parser does not use. `BuiltIn` means the input asks for a [built-in command](built-in-commands.md) such as `--help`. A failure is a [`ValidationError`](validation-and-errors.md). `CommandDirective#map` changes the value of a `UserDefined` and leaves a `BuiltIn` unchanged, `CommandDirective#mapBuiltIn` changes the option of a `BuiltIn` and leaves a `UserDefined` unchanged, and `CommandDirective.builtIn` and `CommandDirective.userDefined` build the two cases with the wider type `CommandDirective`.
 
 To run the parser outside a ZIO program, we use a small helper:
 
