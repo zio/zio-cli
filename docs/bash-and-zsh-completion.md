@@ -9,7 +9,7 @@ Only bash is supported. The `zsh` value of `--shell-type` exists, but no zsh scr
 
 ## Built-in Options
 
-The three options are added to the top-level command of every `CliApp`, next to `--help` and `--wizard`, which [Built-in commands](built-in-commands.md) describes. They are not listed in the help output:
+The three options are added to the top-level command of every `CliApp`, next to `--help` and `--wizard`, which [Built-in Commands](built-in-commands.md) describes. They are not listed in the help output:
 
 | Option                      | Value                  | Purpose                                                              |
 | --------------------------- | ---------------------- | -------------------------------------------------------------------- |

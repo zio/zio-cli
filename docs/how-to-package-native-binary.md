@@ -91,5 +91,5 @@ The ZIO CLI repository also contains an sbt plugin, `sbt-zio-cli`, whose `zioCli
 ## See Also
 
 - [ZIO CLI sbt Plugin](sbt-plugin.md) describes the `sbt-zio-cli` settings and tasks.
-- [How to add shell completion](how-to-add-shell-completion.md) generates a bash completion script for the installed executable.
+- [How to add Tab completion in bash](how-to-add-shell-completion.md) generates a bash completion script for the installed executable.
 - The [sbt-native-image README](https://github.com/scalameta/sbt-native-image) lists every setting and task of the plugin.

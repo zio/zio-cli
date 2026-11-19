@@ -242,7 +242,7 @@ When a test fails for a reason unrelated to your app, check these common causes:
 
 ## See Also
 
-- [Testing CLI applications](testing.md) lists every testkit method with its exact behaviour.
+- [Testing CLI Applications](testing.md) lists every testkit method with its exact behaviour.
 - [Commands](commands.md) and [Options](options.md) describe the values under test.
-- [Built-in commands](built-in-commands.md) describes `--help`, shell completion and the wizard.
-- [Validation and errors](validation-and-errors.md) describes `ValidationError` and `CliError`.
+- [Built-in Commands](built-in-commands.md) describes `--help`, shell completion and the wizard.
+- [Validation and Errors](validation-and-errors.md) describes `ValidationError` and `CliError`.

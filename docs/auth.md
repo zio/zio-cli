@@ -72,7 +72,7 @@ The token is obtained while the command line is parsed, before your command's fu
 
 The built-in options `--help` and the shell-completion options are handled before the command's own options, so they never start an authorization. `--wizard` starts it only when it runs the command line that the wizard built.
 
-When the authorization fails, for example because the user denies access, the code expires or the service returns an error, the error message becomes a `ValidationError` of type `InvalidValue`. The `CliApp` prints the message and fails with `CliError.Parsing`, the same way as for invalid input. [Validation and errors](validation-and-errors.md) describes these types.
+When the authorization fails, for example because the user denies access, the code expires or the service returns an error, the error message becomes a `ValidationError` of type `InvalidValue`. The `CliApp` prints the message and fails with `CliError.Parsing`, the same way as for invalid input. [Validation and Errors](validation-and-errors.md) describes these types.
 
 ## The Device Authorization Flow
 

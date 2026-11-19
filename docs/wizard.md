@@ -8,7 +8,7 @@ Wizard mode helps users who do not know the options and arguments of an app, or 
 
 ## Starting Wizard Mode
 
-Wizard mode is a [built-in option](built-in-commands.md), so every app has it. The user adds `--wizard` after the program name. For the app in [Getting started](getting-started.md), that is:
+Wizard mode is a [built-in option](built-in-commands.md), so every app has it. The user adds `--wizard` after the program name. For the app in [Getting Started](getting-started.md), that is:
 
 ```bash
 sbt "run --wizard"
@@ -136,7 +136,7 @@ The wizard asks for every option and every argument of the chosen command, in de
 
 ## The Final Command
 
-The printed line holds the subcommand names, options and arguments in the order the wizard asked for them. It does not include the program's own name, because `CliApp#run` adds that name itself. For the app in [Getting started](getting-started.md), the answers `yes` for `--loud` and `Ada` for the name print `--loud Ada`. To skip the wizard next time, the user passes the same values after the program name, as in `sbt "run --loud Ada"`.
+The printed line holds the subcommand names, options and arguments in the order the wizard asked for them. It does not include the program's own name, because `CliApp#run` adds that name itself. For the app in [Getting Started](getting-started.md), the answers `yes` for `--loud` and `Ada` for the name print `--loud Ada`. To skip the wizard next time, the user passes the same values after the program name, as in `sbt "run --loud Ada"`.
 
 :::caution
 The wizard builds an invalid command line in two cases, and the run fails with `Invalid subcommand for <parent>`. The first is a parent with exactly one subcommand: the wizard does not ask for the subcommand and also leaves its name out of the line. The second is a session started after a subcommand name, as in `repo clone --wizard`: the line again lacks `clone`. Give the parent at least two subcommands, and start the wizard right after the program name.

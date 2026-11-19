@@ -5,7 +5,7 @@ title: "Help Documentation"
 
 `HelpDoc` is the text that a ZIO CLI application prints for `--help` and for errors. It lives in `zio.cli` and is a tree of headers, paragraphs, description lists and enumerations, joined into sequences with `HelpDoc#+`. The words inside each element are stored as `HelpDoc.Span` values, which also record how a piece of text is styled: plain, code, error, weak, strong or a link.
 
-You attach a `HelpDoc` to a [`Command`](commands.md) with `Command#withHelp`, and to a [`CliApp`](cli-app.md) as its footer. [`Options`](options.md) and [`Args`](args.md) take a plain `String` with `Options#??` and `Args#??`, which is added as a paragraph. Parse errors also carry a `HelpDoc`, as described in [Validation and errors](validation-and-errors.md).
+You attach a `HelpDoc` to a [`Command`](commands.md) with `Command#withHelp`, and to a [`CliApp`](cli-app.md) as its footer. [`Options`](options.md) and [`Args`](args.md) take a plain `String` with `Options#??` and `Args#??`, which is added as a paragraph. Parse errors also carry a `HelpDoc`, as described in [Validation and Errors](validation-and-errors.md).
 
 ## Creating Help Documents
 
@@ -334,4 +334,4 @@ val copyApp = CliApp.make(
 ) { case (verbose, source) => zio.Console.printLine(s"Copying $source") }
 ```
 
-[CliApp](cli-app.md) lists the other parameters of `CliApp.make`, and [Built-in commands](built-in-commands.md) shows the help screen that `--help` prints.
+[CliApp](cli-app.md) lists the other parameters of `CliApp.make`, and [Built-in Commands](built-in-commands.md) shows the help screen that `--help` prints.

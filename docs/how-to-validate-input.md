@@ -197,4 +197,4 @@ object FetchApp extends ZIOCliDefault {
 ## See Also
 
 - [Value Types](value-types.md): the input each value type accepts, and the messages for type errors.
-- [Validation and errors](validation-and-errors.md): the `ValidationError` type and how `CliApp` reports errors.
+- [Validation and Errors](validation-and-errors.md): the `ValidationError` type and how `CliApp` reports errors.

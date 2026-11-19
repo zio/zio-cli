@@ -435,4 +435,4 @@ val nestedOnce: Gen[Any, Int] = arithmetic.anyTree(1)
 - [Commands](commands.md) and [Options](options.md) describe the values under test.
 - [HelpDoc](helpdoc.md) describes the help document that `CliAssertion.assertHelpDoc` compares.
 - [CLI config](cli-config.md) describes `CliConfig`.
-- [Validation and errors](validation-and-errors.md) describes `ValidationError` and `CliError`.
+- [Validation and Errors](validation-and-errors.md) describes `ValidationError` and `CliError`.

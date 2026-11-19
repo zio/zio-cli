@@ -444,7 +444,7 @@ OPTIONS
 `--help` after any subcommand other than the first one in `subcommands(add, commit, remote)` shows the help of the first one, `add`. Running `sbt "run commit --help"` prints the help above. Use `sbt "run --help"` to see the usage line and description of every subcommand.
 :::
 
-[Help documentation](helpdoc.md) covers `HelpDoc`, the type behind help text, and [Built-in commands](built-in-commands.md) lists every built-in flag.
+[Help Documentation](helpdoc.md) covers `HelpDoc`, the type behind help text, and [Built-in Commands](built-in-commands.md) lists every built-in flag.
 
 ## Step 8: Generate a Shell Completion Script
 
@@ -481,7 +481,7 @@ complete -F _git git
 
 The script defines a bash function, `_git`, and its last line registers that function for the word `git`, the name of the root command. On each Tab press, the function calls the program at the path given to `--shell-completion-script`, with the built-in `--shell-completion-index` flag, and the program prints the possible completions.
 
-Because our root command is called `git`, loading this script would replace the completion of the real `git` in that shell, so in this tutorial we only generate it and read it. To install completion for a program of your own, follow [How to add shell completion](how-to-add-shell-completion.md).
+Because our root command is called `git`, loading this script would replace the completion of the real `git` in that shell, so in this tutorial we only generate it and read it. To install completion for a program of your own, follow [How to add Tab completion in bash](how-to-add-shell-completion.md).
 
 ## Step 9: Test the Parsing
 
@@ -526,7 +526,7 @@ The spec works like this:
 - `assertCommand(git, ...)` parses every line in the generator and compares the result with the expected `Subcommand` value.
 - `assertCommandSuccess(git, ...)` runs `Assertion.isLeft` on the parse result, so the test passes only when `git commit` without a message is an error.
 
-Run the spec with `sbt test`. Both tests pass. [Testing](testing.md) lists every testkit assertion, and [How to test a CLI application](how-to-test-a-cli.md) also tests help output and errors from the app's own code.
+Run the spec with `sbt test`. Both tests pass. [Testing](testing.md) lists every testkit assertion, and [How to test a CLI app](how-to-test-a-cli.md) also tests help output and errors from the app's own code.
 
 ## What You've Learned
 
@@ -547,9 +547,9 @@ Each of these pages covers one part of the library in more detail:
 - [Commands](commands.md) covers command trees, `Command#map` and `Command#subcommands` in full.
 - [Options](options.md) lists the option types, aliases and boolean negation.
 - [Args](args.md) lists the argument types and how to repeat them.
-- [Help documentation](helpdoc.md) explains how to write help text with `HelpDoc`.
-- [How to add shell completion](how-to-add-shell-completion.md) installs the completion script for a real program.
-- [How to test a CLI application](how-to-test-a-cli.md) tests a whole app, including its output.
+- [Help Documentation](helpdoc.md) explains how to write help text with `HelpDoc`.
+- [How to add Tab completion in bash](how-to-add-shell-completion.md) installs the completion script for a real program.
+- [How to test a CLI app](how-to-test-a-cli.md) tests a whole app, including its output.
 
 Some small changes to try on this program:
 

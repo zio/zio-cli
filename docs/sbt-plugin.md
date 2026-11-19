@@ -95,7 +95,7 @@ The plugin adds four tasks:
 sbt zioCliBuildNative
 ```
 
-For shell completion, use the built-in `--shell-completion-script` option of the app instead; see [How to add shell completion](how-to-add-shell-completion.md).
+For shell completion, use the built-in `--shell-completion-script` option of the app instead; see [How to add Tab completion in bash](how-to-add-shell-completion.md).
 
 ## sbt-native-image Keys
 
@@ -104,4 +104,4 @@ Only the two settings above are forwarded to sbt-native-image. Every other sbt-n
 ## See Also
 
 - [How to package a CLI as a native binary](how-to-package-native-binary.md) builds a native executable with sbt-native-image directly.
-- [How to add shell completion](how-to-add-shell-completion.md) generates a bash completion script from the app's built-in options.
+- [How to add Tab completion in bash](how-to-add-shell-completion.md) generates a bash completion script from the app's built-in options.

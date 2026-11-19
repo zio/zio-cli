@@ -6,7 +6,7 @@ sidebar_label: "Add Tab Completion"
 
 We want users of our CLI to press Tab in bash and see the subcommands, options and values they can type next. Every `CliApp` already answers completion requests, so the work is to generate a bash completion script once and install it where bash loads it.
 
-Only bash is supported. Zsh has no script generator yet. [Bash completion](bash-and-zsh-completion.md) describes the built-in options and what gets completed.
+Only bash is supported. Zsh has no script generator yet. [Bash Completion](bash-and-zsh-completion.md) describes the built-in options and what gets completed.
 
 You need:
 
@@ -45,7 +45,7 @@ If the executable must have another name, such as a short alias, add one `comple
 
 ### 2. Build and Install the Executable
 
-Build the executable and install it under the name `greet` on the `PATH`. [How to package a native binary](how-to-package-native-binary.md) covers GraalVM native images. The `installer.sh` launcher template in the ZIO CLI repository puts the executable at `$XDG_DATA_HOME/<app>/bin/<app>`, which is `~/.local/share/<app>/bin/<app>` when `XDG_DATA_HOME` is not set and the user is not root, so add that directory to the `PATH` when you use it.
+Build the executable and install it under the name `greet` on the `PATH`. [How to package a CLI as a native binary](how-to-package-native-binary.md) covers GraalVM native images. The `installer.sh` launcher template in the ZIO CLI repository puts the executable at `$XDG_DATA_HOME/<app>/bin/<app>`, which is `~/.local/share/<app>/bin/<app>` when `XDG_DATA_HOME` is not set and the user is not root, so add that directory to the `PATH` when you use it.
 
 The completion script stores the path of the executable and runs it on every Tab press, so install the executable at its final location before generating the script.
 
@@ -57,7 +57,7 @@ Run the executable with `--shell-completion-script` and the path to the executab
 greet --shell-completion-script "$(command -v greet)" --shell-type bash > greet-completion.bash
 ```
 
-The file contains a bash function named `_greet` and the line `complete -F _greet greet`. [Bash completion](bash-and-zsh-completion.md) shows the full script.
+The file contains a bash function named `_greet` and the line `complete -F _greet greet`. [Bash Completion](bash-and-zsh-completion.md) shows the full script.
 
 ### 4. Load the Script
 
