@@ -50,7 +50,7 @@ A `\n` in the text starts a new row of characters below the first one. A charact
 
 ## Loading a Font
 
-`FigFont.fromLines` parses a font from the lines of an FLF file. It is available on every platform and returns an error message when the lines are not a valid font. The message starts with the line number and column where parsing failed:
+`FigFont.fromLines` parses a font from the lines of an FLF file. It is available on every platform and returns an error message when the lines are not a valid font. The message starts with the line number where parsing failed, followed by the column when the error is inside a line:
 
 ```scala
 object FigFont {
