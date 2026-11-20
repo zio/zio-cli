@@ -26,19 +26,15 @@ Key features of ZIO CLI:
 ZIO CLI is published for Scala 2.12, 2.13 and 3. To use it on the JVM, add the following to your `build.sbt` file:
 
 ```scala
-libraryDependencies ++= Seq(
-  // Commands, options, arguments, generated help, wizard mode and shell completion (JVM, Scala.js, Scala Native)
-  "dev.zio" %% "zio-cli" % "0.8.2"
-)
+// Commands, options, arguments, generated help, wizard mode and shell completion (JVM, Scala.js, Scala Native)
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.8.2"
 ```
 
 For Scala.js or Scala Native projects, use `%%%` instead:
 
 ```scala
-libraryDependencies ++= Seq(
-  // Commands, options, arguments, generated help, wizard mode and shell completion (JVM, Scala.js, Scala Native)
-  "dev.zio" %%% "zio-cli" % "0.8.2"
-)
+// Commands, options, arguments, generated help, wizard mode and shell completion (JVM, Scala.js, Scala Native)
+libraryDependencies += "dev.zio" %%% "zio-cli" % "0.8.2"
 ```
 
 The [Getting Started](docs/getting-started.md) page walks through a first program.
@@ -52,19 +48,15 @@ Besides the core library, ZIO CLI has a module for tests and an sbt plugin.
 The testkit adds assertions and generators that check how commands parse their input and how apps behave. To use it on the JVM, add it as a test dependency:
 
 ```scala
-libraryDependencies ++= Seq(
-  // Assertions and generators for testing commands and apps with ZIO Test (JVM, Scala.js, Scala Native)
-  "dev.zio" %% "zio-cli-testkit" % "0.8.2" % Test
-)
+// Assertions and generators for testing commands and apps with ZIO Test (JVM, Scala.js, Scala Native)
+libraryDependencies += "dev.zio" %% "zio-cli-testkit" % "0.8.2" % Test
 ```
 
 For Scala.js or Scala Native projects, use `%%%` instead:
 
 ```scala
-libraryDependencies ++= Seq(
-  // Assertions and generators for testing commands and apps with ZIO Test (JVM, Scala.js, Scala Native)
-  "dev.zio" %%% "zio-cli-testkit" % "0.8.2" % Test
-)
+// Assertions and generators for testing commands and apps with ZIO Test (JVM, Scala.js, Scala Native)
+libraryDependencies += "dev.zio" %%% "zio-cli-testkit" % "0.8.2" % Test
 ```
 
 The [Testing](docs/testing.md) reference lists the assertions, and [How to test a CLI app](docs/how-to-test-a-cli.md) shows them in use.
