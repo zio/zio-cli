@@ -232,7 +232,7 @@ lazy val sbtZioCli = project
     scalaVersion       := Scala212,
     crossScalaVersions := Seq(Scala212),
     publish / skip     := true,
-    addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.5.0")
+    addSbtPlugin("org.scalameta" %% "sbt-native-image" % "0.7.0")
   )
   .enablePlugins(SbtPlugin)
 
