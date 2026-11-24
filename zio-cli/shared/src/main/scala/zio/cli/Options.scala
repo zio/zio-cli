@@ -25,9 +25,13 @@ import scala.annotation.tailrec
 import zio.cli.PrimType.Bool
 
 /**
- * An `Options[A]` describes the named options of a command, such as `--verbose` or `--port 8080`, and produces a value of type `A` once parsed.
+ * An `Options[A]` describes the named options of a command, such as `--verbose` or `--port 8080`, and produces a value
+ * of type `A` once parsed.
  *
- * Create one with a constructor such as `Options.text("name")` or `Options.boolean("verbose")`, combine several with `++`, offer alternatives with `|`, make one optional with `optional` or `withDefault`, and add names and help with `alias` and `??`. A one-letter name is typed with one dash (`-v`) and a longer one with two (`--verbose`). The value follows as the next word, or after `=` for a long name (`--name=Ann`).
+ * Create one with a constructor such as `Options.text("name")` or `Options.boolean("verbose")`, combine several with
+ * `++`, offer alternatives with `|`, make one optional with `optional` or `withDefault`, and add names and help with
+ * `alias` and `??`. A one-letter name is typed with one dash (`-v`) and a longer one with two (`--verbose`). The value
+ * follows as the next word, or after `=` for a long name (`--name=Ann`).
  *
  * {{{
  * val verbose: Options[Boolean]         = Options.boolean("verbose").alias("v")
@@ -35,14 +39,17 @@ import zio.cli.PrimType.Bool
  * val both: Options[(Boolean, BigInt)]  = verbose ++ port
  * }}}
  *
- * @see [[https://zio.dev/zio-cli/options/ Options]]
+ * @see
+ *   [[https://zio.dev/zio-cli/options/ Options]]
  */
 sealed trait Options[+A] extends Parameter { self =>
 
   import Options.Single
 
   /**
-   * Combines this option with `that`. Both are read from the command line, in either order, and their values are zipped into a flat tuple (`a ++ b ++ c` gives a triple); a `Unit` value is dropped. When both are missing, the error lists both.
+   * Combines this option with `that`. Both are read from the command line, in either order, and their values are zipped
+   * into a flat tuple (`a ++ b ++ c` gives a triple); a `Unit` value is dropped. When both are missing, the error lists
+   * both.
    */
   final def ++[A1 >: A, B](that: Options[B])(implicit zippable: Zippable[A, B]): Options[zippable.Out] =
     Options.Both(self, that).map { case (a, b) => zippable.zip(a, b) }
@@ -53,7 +60,9 @@ sealed trait Options[+A] extends Parameter { self =>
   final def |[A1 >: A](that: Options[A1]): Options[A1] = orElse(that)
 
   /**
-   * Accepts either this option or `that`, and returns the value of the one given. When both are given, it fails with `Options collision detected. You can only specify either --file or --url.` (with the two options' names); when neither is given, the error lists both.
+   * Accepts either this option or `that`, and returns the value of the one given. When both are given, it fails with
+   * `Options collision detected. You can only specify either --file or --url.` (with the two options' names); when
+   * neither is given, the error lists both.
    */
   final def orElse[A1 >: A](that: Options[A1]): Options[A1] =
     orElseEither(that).map(_.merge)
@@ -65,7 +74,8 @@ sealed trait Options[+A] extends Parameter { self =>
     Options.OrElse(self, that)
 
   /**
-   * Returns a copy with `that` added as a paragraph to the description shown in help. On a combination, the paragraph is added to every option inside.
+   * Returns a copy with `that` added as a paragraph to the description shown in help. On a combination, the paragraph
+   * is added to every option inside.
    */
   def ??(that: String): Options[A] =
     modifySingle(new SingleModifier {
@@ -73,7 +83,9 @@ sealed trait Options[+A] extends Parameter { self =>
     })
 
   /**
-   * Adds more names for this option. A one-letter name is typed with one dash (`alias("v")` accepts `-v`) and a longer one with two. On a combination such as `a ++ b`, every option inside gets the names, so call it on each option before combining.
+   * Adds more names for this option. A one-letter name is typed with one dash (`alias("v")` accepts `-v`) and a longer
+   * one with two. On a combination such as `a ++ b`, every option inside gets the names, so call it on each option
+   * before combining.
    */
   def alias(name: String, names: String*): Options[A] =
     modifySingle(new SingleModifier {
@@ -113,7 +125,8 @@ sealed trait Options[+A] extends Parameter { self =>
     map(ev).map { case (b, c, d, e, f, g) => f0(b, c, d, e, f, g) }
 
   /**
-   * Turns the `Either` value of an option built with `orElseEither` into one value: `f1` handles the `Left` side and `f2` the `Right` side.
+   * Turns the `Either` value of an option built with `orElseEither` into one value: `f1` handles the `Left` side and
+   * `f2` the `Right` side.
    */
   final def fold[B, C, Z](
     f1: B => Z,
@@ -125,7 +138,8 @@ sealed trait Options[+A] extends Parameter { self =>
     }
 
   /**
-   * Turns the nested `Either` value of three options chained with `orElseEither` into one value, with one function per option, from left to right.
+   * Turns the nested `Either` value of three options chained with `orElseEither` into one value, with one function per
+   * option, from left to right.
    */
   final def fold[B, C, D, Z](
     f1: B => Z,
@@ -139,7 +153,8 @@ sealed trait Options[+A] extends Parameter { self =>
     }
 
   /**
-   * Turns the nested `Either` value of four options chained with `orElseEither` into one value, with one function per option, from left to right.
+   * Turns the nested `Either` value of four options chained with `orElseEither` into one value, with one function per
+   * option, from left to right.
    */
   final def fold[B, C, D, E, Z](
     f1: B => Z,
@@ -155,7 +170,8 @@ sealed trait Options[+A] extends Parameter { self =>
     }
 
   /**
-   * Turns the nested `Either` value of five options chained with `orElseEither` into one value, with one function per option, from left to right.
+   * Turns the nested `Either` value of five options chained with `orElseEither` into one value, with one function per
+   * option, from left to right.
    */
   final def fold[B, C, D, E, F, Z](
     f1: B => Z,
@@ -173,7 +189,8 @@ sealed trait Options[+A] extends Parameter { self =>
     }
 
   /**
-   * Turns the nested `Either` value of six options chained with `orElseEither` into one value, with one function per option, from left to right.
+   * Turns the nested `Either` value of six options chained with `orElseEither` into one value, with one function per
+   * option, from left to right.
    */
   final def fold[B, C, D, E, F, G, Z](
     f1: B => Z,
@@ -193,7 +210,8 @@ sealed trait Options[+A] extends Parameter { self =>
     }
 
   /**
-   * Transforms the parsed value with the partial function `f`. A value that `f` doesn't cover makes parsing fail with `message` as the error, as a [[ValidationError]] of type `InvalidValue`.
+   * Transforms the parsed value with the partial function `f`. A value that `f` doesn't cover makes parsing fail with
+   * `message` as the error, as a [[ValidationError]] of type `InvalidValue`.
    */
   final def collect[B](message: String)(f: PartialFunction[A, B]): Options[B] =
     Options.Map(
@@ -206,7 +224,8 @@ sealed trait Options[+A] extends Parameter { self =>
     )
 
   /**
-   * Returns the options inside this one that read words from the command line (single options and key-value options), from left to right.
+   * Returns the options inside this one that read words from the command line (single options and key-value options),
+   * from left to right.
    */
   def flatten: List[Options[_] with Input]
 
@@ -216,7 +235,8 @@ sealed trait Options[+A] extends Parameter { self =>
   def helpDoc: HelpDoc
 
   /**
-   * Returns `true` when this option is a boolean flag, directly or under `map`, `withDefault` or `optional`. A flag with negation names (an `orElse` of two flags) and a combination return `false`.
+   * Returns `true` when this option is a boolean flag, directly or under `map`, `withDefault` or `optional`. A flag
+   * with negation names (an `orElse` of two flags) and a combination return `false`.
    */
   final def isBool: Boolean =
     asInstanceOf[Options[_]] match {
@@ -239,7 +259,9 @@ sealed trait Options[+A] extends Parameter { self =>
     Options.Map(self, (a: A) => f(a))
 
   /**
-   * Makes this option optional: returns `Some(value)` when it is given and `None` when it is absent. Help adds `This setting is optional.`, and the usage line shows the option in square brackets. A value that is given but invalid still fails.
+   * Makes this option optional: returns `Some(value)` when it is given and `None` when it is absent. Help adds
+   * `This setting is optional.`, and the usage line shows the option in square brackets. A value that is given but
+   * invalid still fails.
    */
   final def optional: Options[Option[A]] = map(Some(_)).withDefault(None)
 
@@ -249,23 +271,32 @@ sealed trait Options[+A] extends Parameter { self =>
   def synopsis: UsageSynopsis
 
   /**
-   * Returns the main name of each option inside, with its dashes, joined with `, ` (`Some("--name, --age")`), or `None` for `Options.none`.
+   * Returns the main name of each option inside, with its dashes, joined with `, ` (`Some("--name, --age")`), or `None`
+   * for `Options.none`.
    */
   def uid: Option[String]
 
   /**
-   * Builds the value of this option from `args`, a map from the option names typed on the command line (with their dashes) to the words that followed them. `Options.validate` builds that map from the command line and then calls this method.
+   * Builds the value of this option from `args`, a map from the option names typed on the command line (with their
+   * dashes) to the words that followed them. `Options.validate` builds that map from the command line and then calls
+   * this method.
    */
   def validate(args: Predef.Map[String, List[String]], conf: CliConfig): IO[ValidationError, A]
 
   /**
-   * Makes this option optional with a default: returns `value` when the option is absent. Help adds `This setting is optional. Default: '8080'.` (with the default's `toString`), and the usage line shows the option in square brackets. A value that is given but invalid still fails. On a combination such as `a ++ b`, the help text is left unchanged.
+   * Makes this option optional with a default: returns `value` when the option is absent. Help adds
+   * `This setting is optional. Default: '8080'.` (with the default's `toString`), and the usage line shows the option
+   * in square brackets. A value that is given but invalid still fails. On a combination such as `a ++ b`, the help text
+   * is left unchanged.
    */
   def withDefault[A1 >: A](value: A1): Options[A1] =
     Options.WithDefault(self, value)
 
   /**
-   * Sets the placeholder shown for the value of this option in help and in the usage line: `withPseudoName("who")` shows `--name <who>` instead of the default `--name <text>`, which uses the type name. An enumeration shows its accepted words instead of a placeholder, so the pseudo name doesn't appear for it. On a combination, every option inside gets the placeholder.
+   * Sets the placeholder shown for the value of this option in help and in the usage line: `withPseudoName("who")`
+   * shows `--name <who>` instead of the default `--name <text>`, which uses the type name. An enumeration shows its
+   * accepted words instead of a placeholder, so the pseudo name doesn't appear for it. On a combination, every option
+   * inside gets the placeholder.
    */
   def withPseudoName(name: String): Options[A] =
     modifySingle(new SingleModifier {
@@ -282,9 +313,11 @@ sealed trait Options[+A] extends Parameter { self =>
 }
 
 /**
- * A change applied to a single option, whatever its value type. `??`, `alias` and `withPseudoName` use one to change every single option inside a combination.
+ * A change applied to a single option, whatever its value type. `??`, `alias` and `withPseudoName` use one to change
+ * every single option inside a combination.
  */
 trait SingleModifier {
+
   /**
    * Returns a changed copy of `single`.
    */
@@ -292,7 +325,9 @@ trait SingleModifier {
 }
 
 /**
- * Constructors for [[Options]]. Each value type has a method that takes the option's name. A value that doesn't parse fails with `<value> is not a <type>.`, such as `x is not a integer.`; an option that is required and absent fails with `Expected to find --name option.`.
+ * Constructors for [[Options]]. Each value type has a method that takes the option's name. A value that doesn't parse
+ * fails with `<value> is not a <type>.`, such as `x is not a integer.`; an option that is required and absent fails
+ * with `Expected to find --name option.`.
  */
 object Options extends OptionsPlatformSpecific {
 
@@ -375,8 +410,8 @@ object Options extends OptionsPlatformSpecific {
     }
 
   /**
-   * Returns the error that stopped option matching (if any), the words of `input` that were not read as options, and
-   * a `Map` linking each option name to its values.
+   * Returns the error that stopped option matching (if any), the words of `input` that were not read as options, and a
+   * `Map` linking each option name to its values.
    */
   private def matchOptions(
     input: List[String],
@@ -399,7 +434,11 @@ object Options extends OptionsPlatformSpecific {
     }
 
   /**
-   * Parses the options at the front of `args` and builds the value of `options`. Returns the words that come after the options (the command's arguments), the value, and, when matching stopped at a word it couldn't read as an option, the error it met there. That error is returned rather than raised because it may only mean that the options ended; `Command` reports it when its arguments then fail to parse. Fails when the value can't be built, with the error met during matching if there was one, and otherwise with the error of `options`.
+   * Parses the options at the front of `args` and builds the value of `options`. Returns the words that come after the
+   * options (the command's arguments), the value, and, when matching stopped at a word it couldn't read as an option,
+   * the error it met there. That error is returned rather than raised because it may only mean that the options ended;
+   * `Command` reports it when its arguments then fail to parse. Fails when the value can't be built, with the error met
+   * during matching if there was one, and otherwise with the error of `options`.
    */
   def validate[A](
     options: Options[A],
@@ -416,6 +455,7 @@ object Options extends OptionsPlatformSpecific {
    * The `Options` that reads nothing and produces `()`; `Options.none` returns it.
    */
   case object Empty extends Options[Unit] with Pipeline {
+
     /**
      * Always `UsageSynopsis.None`.
      */
@@ -488,7 +528,8 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * One named option: its `name` and `aliases` (without dashes), the `primType` that parses its value, its help `description`, and an optional `pseudoName` for the placeholder of its value.
+   * One named option: its `name` and `aliases` (without dashes), the `primType` that parses its value, its help
+   * `description`, and an optional `pseudoName` for the placeholder of its value.
    */
   final case class Single[+A](
     name: String,
@@ -504,7 +545,9 @@ object Options extends OptionsPlatformSpecific {
     override def modifySingle(f: SingleModifier): Options[A] = f(self)
 
     /**
-     * The names, one-letter names first, followed by the placeholder of the value (or the accepted words of an enumeration); a boolean flag has no placeholder. With more than one name, the whole is put in parentheses: `(-n, --name <text>)`.
+     * The names, one-letter names first, followed by the placeholder of the value (or the accepted words of an
+     * enumeration); a boolean flag has no placeholder. With more than one name, the whole is put in parentheses:
+     * `(-n, --name <text>)`.
      */
     lazy val synopsis: UsageSynopsis =
       UsageSynopsis.Named(
@@ -736,7 +779,8 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * An option whose value is transformed by `f`; a `Left` from `f` makes parsing fail. `map`, `mapOrFail`, `collect` and `optional` build it.
+   * An option whose value is transformed by `f`; a `Left` from `f` makes parsing fail. `map`, `mapOrFail`, `collect`
+   * and `optional` build it.
    */
   final case class Map[A, B](value: Options[A], f: A => Either[ValidationError, B])
       extends Options[B]
@@ -770,7 +814,8 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * An option that collects `key=value` pairs into a `Map`, read with the names of `argumentOption`. `Options.keyValueMap` builds it.
+   * An option that collects `key=value` pairs into a `Map`, read with the names of `argumentOption`.
+   * `Options.keyValueMap` builds it.
    */
   final case class KeyValueMap(argumentOption: Options.Single[String])
       extends Options[Predef.Map[String, String]]
@@ -876,7 +921,8 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * An option that produces an OAuth2 access token from `provider` for the given `scope`. `auxiliaryOptions` are the extra options it reads, such as the file that stores the token. `Options.oauth2` builds it.
+   * An option that produces an OAuth2 access token from `provider` for the given `scope`. `auxiliaryOptions` are the
+   * extra options it reads, such as the file that stores the token. `Options.oauth2` builds it.
    */
   final case class OAuth2Options(
     provider: OAuth2Provider,
@@ -898,12 +944,15 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * Creates a boolean flag with the given name: present, it produces `ifPresent`; absent, it produces `!ifPresent`. A `true` or `false` word right after the flag sets the value explicitly (`--verbose false`).
+   * Creates a boolean flag with the given name: present, it produces `ifPresent`; absent, it produces `!ifPresent`. A
+   * `true` or `false` word right after the flag sets the value explicitly (`--verbose false`).
    */
   def boolean(name: String, ifPresent: Boolean = true): Options[Boolean] = makeBoolean(name, ifPresent, Nil)
 
   /**
-   * Creates a boolean flag with the given name and one or more negation names: the flag produces `ifPresent`, a negation name produces `!ifPresent`, and when neither is given the value is `!ifPresent`. Giving both fails with `Options collision detected. You can only specify either --color or --no-color.`.
+   * Creates a boolean flag with the given name and one or more negation names: the flag produces `ifPresent`, a
+   * negation name produces `!ifPresent`, and when neither is given the value is `!ifPresent`. Giving both fails with
+   * `Options collision detected. You can only specify either --color or --no-color.`.
    *
    * {{{
    * val color: Options[Boolean] = Options.boolean("color", true, "no-color")
@@ -913,7 +962,9 @@ object Options extends OptionsPlatformSpecific {
     makeBoolean(name, ifPresent, negationName :: negationNames.toList)
 
   /**
-   * Creates a boolean flag with the given name, an `alias` that is accepted as well (`-c` for `--color`), and one or more negation names. The flag and its alias produce `ifPresent`, a negation name produces `!ifPresent`, and when none is given the value is `!ifPresent`.
+   * Creates a boolean flag with the given name, an `alias` that is accepted as well (`-c` for `--color`), and one or
+   * more negation names. The flag and its alias produce `ifPresent`, a negation name produces `!ifPresent`, and when
+   * none is given the value is `!ifPresent`.
    */
   def boolean(
     name: String,
@@ -943,7 +994,9 @@ object Options extends OptionsPlatformSpecific {
   }
 
   /**
-   * Creates an option whose value is one of `cases`. Each case pairs the word the user types with the value it produces; the word must match exactly. Help and the usage line show the accepted words, and any other word fails with `Expected one of the following cases: ...`.
+   * Creates an option whose value is one of `cases`. Each case pairs the word the user types with the value it
+   * produces; the word must match exactly. Help and the usage line show the accepted words, and any other word fails
+   * with `Expected one of the following cases: ...`.
    *
    * {{{
    * val level: Options[Int] = Options.enumeration("level")("low" -> 1, "high" -> 2)
@@ -965,7 +1018,8 @@ object Options extends OptionsPlatformSpecific {
     Single(name, Vector.empty, PrimType.Decimal)
 
   /**
-   * Creates an option that parses a `java.time.Duration`, a time-based amount of time in the ISO-8601 form, such as `PT1H` or `P1DT2H3M`.
+   * Creates an option that parses a `java.time.Duration`, a time-based amount of time in the ISO-8601 form, such as
+   * `PT1H` or `P1DT2H3M`.
    */
   def duration(name: String): Options[JDuration] =
     Single(name, Vector.empty, PrimType.Duration)
@@ -989,19 +1043,22 @@ object Options extends OptionsPlatformSpecific {
     Single(name, Vector.empty, PrimType.LocalDate)
 
   /**
-   * Creates an option that parses a `java.time.LocalDateTime`, a date-time without a time zone in the ISO-8601 form, such as `2007-12-03T10:15:30`.
+   * Creates an option that parses a `java.time.LocalDateTime`, a date-time without a time zone in the ISO-8601 form,
+   * such as `2007-12-03T10:15:30`.
    */
   def localDateTime(name: String): Options[JLocalDateTime] =
     Single(name, Vector.empty, PrimType.LocalDateTime)
 
   /**
-   * Creates an option that parses a `java.time.LocalTime`, a time without a time zone in the ISO-8601 form, such as `10:15:30`.
+   * Creates an option that parses a `java.time.LocalTime`, a time without a time zone in the ISO-8601 form, such as
+   * `10:15:30`.
    */
   def localTime(name: String): Options[JLocalTime] =
     Single(name, Vector.empty, PrimType.LocalTime)
 
   /**
-   * Creates an option that parses a `java.time.MonthDay` in the ISO-8601 form `--MM-DD`, such as `--12-03`. A value without the leading dashes, such as `12-03`, fails.
+   * Creates an option that parses a `java.time.MonthDay` in the ISO-8601 form `--MM-DD`, such as `--12-03`. A value
+   * without the leading dashes, such as `12-03`, fails.
    */
   def monthDay(name: String): Options[JMonthDay] =
     Single(name, Vector.empty, PrimType.MonthDay)
@@ -1012,19 +1069,22 @@ object Options extends OptionsPlatformSpecific {
   val none: Options[Unit] = Empty
 
   /**
-   * Creates an option that parses a `java.time.OffsetDateTime`, a date-time with an offset from UTC in the ISO-8601 form, such as `2007-12-03T10:15:30+01:00`.
+   * Creates an option that parses a `java.time.OffsetDateTime`, a date-time with an offset from UTC in the ISO-8601
+   * form, such as `2007-12-03T10:15:30+01:00`.
    */
   def offsetDateTime(name: String): Options[JOffsetDateTime] =
     Single(name, Vector.empty, PrimType.OffsetDateTime)
 
   /**
-   * Creates an option that parses a `java.time.OffsetTime`, a time with an offset from UTC in the ISO-8601 form, such as `10:15:30+01:00`.
+   * Creates an option that parses a `java.time.OffsetTime`, a time with an offset from UTC in the ISO-8601 form, such
+   * as `10:15:30+01:00`.
    */
   def offsetTime(name: String): Options[JOffsetTime] =
     Single(name, Vector.empty, PrimType.OffsetTime)
 
   /**
-   * Creates an option that parses a `java.time.Period`, a date-based amount of time in the ISO-8601 form, such as `P1Y2M3D`.
+   * Creates an option that parses a `java.time.Period`, a date-based amount of time in the ISO-8601 form, such as
+   * `P1Y2M3D`.
    */
   def period(name: String): Options[JPeriod] =
     Single(name, Vector.empty, PrimType.Period)
@@ -1042,7 +1102,8 @@ object Options extends OptionsPlatformSpecific {
     Single(name, Vector.empty, PrimType.YearMonth)
 
   /**
-   * Creates an option that parses a `java.time.ZonedDateTime`, a date-time with a time zone in the ISO-8601 form, such as `2007-12-03T10:15:30+01:00[Europe/Paris]`. The zone ID goes in square brackets right after the offset.
+   * Creates an option that parses a `java.time.ZonedDateTime`, a date-time with a time zone in the ISO-8601 form, such
+   * as `2007-12-03T10:15:30+01:00[Europe/Paris]`. The zone ID goes in square brackets right after the offset.
    */
   def zonedDateTime(name: String): Options[JZonedDateTime] =
     Single(name, Vector.empty, PrimType.ZonedDateTime)
@@ -1060,9 +1121,14 @@ object Options extends OptionsPlatformSpecific {
     Single(name, Vector.empty, PrimType.ZoneOffset)
 
   /**
-   * Creates an option that collects `key=value` pairs into a `Map`. The option may be repeated (`--define a=1 --define b=2`) or followed by several pairs (`--define a=1 b=2`); the pairs end at the first word without `=`. The key is the text before the first `=` and the value the rest (`a=b=c` gives `a -> b=c`). When a key is given twice, the first value is kept. When the first word after the option has no `=` or an empty value (`a=`), the option is not read, so a required key-value option fails with `Expected to find --define option.`.
+   * Creates an option that collects `key=value` pairs into a `Map`. The option may be repeated (`--define a=1 --define
+   * b=2`) or followed by several pairs (`--define a=1 b=2`); the pairs end at the first word without `=`. The key is
+   * the text before the first `=` and the value the rest (`a=b=c` gives `a -> b=c`). When a key is given twice, the
+   * first value is kept. When the first word after the option has no `=` or an empty value (`a=`), the option is not
+   * read, so a required key-value option fails with `Expected to find --define option.`.
    *
-   * With the default case-insensitive [[CliConfig]], a name with an upper-case letter (`keyValueMap("D")`) is never matched, whether the user types `-D` or `-d`; use a lower-case name, or set `caseSensitive = true`.
+   * With the default case-insensitive [[CliConfig]], a name with an upper-case letter (`keyValueMap("D")`) is never
+   * matched, whether the user types `-D` or `-d`; use a lower-case name, or set `caseSensitive = true`.
    *
    * {{{
    * val defines: Options[Map[String, String]] = Options.keyValueMap("define").alias("d")
@@ -1072,7 +1138,8 @@ object Options extends OptionsPlatformSpecific {
     keyValueMap(Options.Single(name, Vector.empty, PrimType.Text))
 
   /**
-   * Creates a key-value option from `argumentOption`, using its names and description. It reads `key=value` pairs as `keyValueMap(name)` does.
+   * Creates a key-value option from `argumentOption`, using its names and description. It reads `key=value` pairs as
+   * `keyValueMap(name)` does.
    */
   def keyValueMap(argumentOption: Options.Single[String]): Options[Predef.Map[String, String]] =
     Options.KeyValueMap(argumentOption)

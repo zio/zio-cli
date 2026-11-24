@@ -12,9 +12,12 @@ import zio.cli.figlet.FigFont
 import scala.annotation.tailrec
 
 /**
- * A `CliApp[R, E, A]` is a complete command-line application: a name, a version, a summary, the [[Command]] that describes what the user may type, and the function that runs once the input is parsed. Running it needs an environment `R`, can fail with an error `E`, and produces a value `A`.
+ * A `CliApp[R, E, A]` is a complete command-line application: a name, a version, a summary, the [[Command]] that
+ * describes what the user may type, and the function that runs once the input is parsed. Running it needs an
+ * environment `R`, can fail with an error `E`, and produces a value `A`.
  *
- * Create one with `CliApp.make` and run it with `run`, or define it as the `cliApp` of a [[ZIOCliDefault]] program. `--help` shows a help screen built from the name, version, summary, command and footer.
+ * Create one with `CliApp.make` and run it with `run`, or define it as the `cliApp` of a [[ZIOCliDefault]] program.
+ * `--help` shows a help screen built from the name, version, summary, command and footer.
  *
  * {{{
  * import zio._
@@ -27,14 +30,19 @@ import scala.annotation.tailrec
  *   }
  * }}}
  *
- * @see [[https://zio.dev/zio-cli/ ZIO CLI]]
+ * @see
+ *   [[https://zio.dev/zio-cli/ ZIO CLI]]
  */
 sealed trait CliApp[-R, +E, +A] { self =>
 
   /**
-   * Parses `args`, the words typed after the program's name, and runs the application. For a single command, or a command with subcommands, the command's own name is added in front of `args`, so users don't type it; for alternatives built with `|`, the first word picks the command.
+   * Parses `args`, the words typed after the program's name, and runs the application. For a single command, or a
+   * command with subcommands, the command's own name is added in front of `args`, so users don't type it; for
+   * alternatives built with `|`, the first word picks the command.
    *
-   * Returns `Some(result)` after running the application's function, or `None` after a built-in option such as `--help`. Words left over after the command's arguments are ignored. On a parse error, it prints the error to the console and fails with `CliError.Parsing`; a failure of the application's function becomes `CliError.Execution`.
+   * Returns `Some(result)` after running the application's function, or `None` after a built-in option such as
+   * `--help`. Words left over after the command's arguments are ignored. On a parse error, it prints the error to the
+   * console and fails with `CliError.Parsing`; a failure of the application's function becomes `CliError.Execution`.
    */
   def run(args: List[String]): ZIO[R, CliError[E], Option[A]]
 
@@ -75,7 +83,9 @@ sealed trait CliApp[-R, +E, +A] { self =>
 object CliApp {
 
   /**
-   * Creates an application. The help screen starts with `name` drawn as a banner in `figFont`, then `name`, `version` and `summary` on one line, and ends with `footer`. `config` sets how the command line is parsed. Once `command` has parsed the command line, `execute` runs with its value.
+   * Creates an application. The help screen starts with `name` drawn as a banner in `figFont`, then `name`, `version`
+   * and `summary` on one line, and ends with `footer`. `config` sets how the command line is parsed. Once `command` has
+   * parsed the command line, `execute` runs with its value.
    */
   def make[R, E, Model, A](
     name: String,

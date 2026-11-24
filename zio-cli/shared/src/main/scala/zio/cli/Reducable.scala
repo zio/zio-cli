@@ -1,7 +1,9 @@
 package zio.cli
 
 /**
- * Combines two parsed values into one and drops a side that is `Unit`. `Command.apply` uses it to merge the value of the options with the value of the arguments, and `Command#subcommands` to merge the parent's value with the child's. `Out` is the combined type.
+ * Combines two parsed values into one and drops a side that is `Unit`. `Command.apply` uses it to merge the value of
+ * the options with the value of the arguments, and `Command#subcommands` to merge the parent's value with the child's.
+ * `Out` is the combined type.
  *
  * {{{
  * val both: Command[(String, BigInt)] = Command("copy", Options.text("mode"), Args.integer)
@@ -19,7 +21,8 @@ trait Reducable[-A, -B] {
 }
 
 /**
- * The instances, from the highest priority: a `Unit` on the left gives the right value, a `Unit` on the right gives the left value, and otherwise the result is the pair. For `(Unit, Unit)` the result is `()`.
+ * The instances, from the highest priority: a `Unit` on the left gives the right value, a `Unit` on the right gives the
+ * left value, and otherwise the result is the pair. For `(Unit, Unit)` the result is `()`.
  */
 object Reducable extends ReducableLowPriority1 {
 

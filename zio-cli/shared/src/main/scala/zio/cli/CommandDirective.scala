@@ -1,7 +1,8 @@
 package zio.cli
 
 /**
- * What a parsed command line asks for: run the application with a value (`UserDefined`), or carry out a built-in option such as help (`BuiltIn`). `Command#parse` returns it.
+ * What a parsed command line asks for: run the application with a value (`UserDefined`), or carry out a built-in option
+ * such as help (`BuiltIn`). `Command#parse` returns it.
  */
 sealed trait CommandDirective[+A] { self =>
   import CommandDirective._
@@ -25,14 +26,17 @@ sealed trait CommandDirective[+A] { self =>
     }
 
 }
+
 /**
  * The cases of [[CommandDirective]] and their constructors.
  */
 object CommandDirective {
+
   /**
    * Carry out the built-in `option`.
    */
-  final case class BuiltIn(option: BuiltInOption)                   extends CommandDirective[Nothing]
+  final case class BuiltIn(option: BuiltInOption) extends CommandDirective[Nothing]
+
   /**
    * Run the application with `value`. `leftover` holds the words that parsing didn't read.
    */

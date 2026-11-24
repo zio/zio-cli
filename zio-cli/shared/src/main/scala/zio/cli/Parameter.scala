@@ -3,12 +3,15 @@ package zio.cli
 import zio.IO
 
 /**
- * Abstraction employed by the `Wizard` class. `Command`, `Options` and `Args` all extend `Parameter`, and the wizard handles each sub-trait (`Alternatives`, `Input`, `Pipeline`) in its own way: it asks the user to pick one of several alternatives, reads a value for an input, and walks through the parameters of a pipeline in order.
+ * Abstraction employed by the `Wizard` class. `Command`, `Options` and `Args` all extend `Parameter`, and the wizard
+ * handles each sub-trait (`Alternatives`, `Input`, `Pipeline`) in its own way: it asks the user to pick one of several
+ * alternatives, reads a value for an input, and walks through the parameters of a pipeline in order.
  */
 private[cli] trait Parameter {
 
   /**
-   * A one-line description that the wizard shows for this parameter. It is empty unless a sub-type overrides it: an `Options.Single` named `name` gives `Option "name". ` followed by its description.
+   * A one-line description that the wizard shows for this parameter. It is empty unless a sub-type overrides it: an
+   * `Options.Single` named `name` gives `Option "name". ` followed by its description.
    */
   def shortDesc: String = ""
 
@@ -23,7 +26,8 @@ private[cli] trait Parameter {
 }
 
 /**
- * Alternatives are used to allow the user choosing between possibilities. `Command.OrElse` and `Options.OrElse` extend it, and the wizard asks the user to pick one.
+ * Alternatives are used to allow the user choosing between possibilities. `Command.OrElse` and `Options.OrElse` extend
+ * it, and the wizard asks the user to pick one.
  */
 private[cli] trait Alternatives extends Parameter {
 
@@ -31,9 +35,13 @@ private[cli] trait Alternatives extends Parameter {
   private[cli] val alternatives: List[Parameter]
 
   /**
-   * Returns the choices that the wizard lists, keyed by name. Each value is the word to add to the command line and the chosen parameter.
+   * Returns the choices that the wizard lists, keyed by name. Each value is the word to add to the command line and the
+   * chosen parameter.
    *
-   * Nested alternatives are flattened and wrappers (`Wrap`) are looked through. A named parameter, such as a command, is keyed by its first name; a parameter without a name is keyed by `-` and adds an empty word. A later entry replaces an earlier one with the same key, so the two sides of an `Options.OrElse`, which have no names, give a single entry for the right side.
+   * Nested alternatives are flattened and wrappers (`Wrap`) are looked through. A named parameter, such as a command,
+   * is keyed by its first name; a parameter without a name is keyed by `-` and adds an empty word. A later entry
+   * replaces an earlier one with the same key, so the two sides of an `Options.OrElse`, which have no names, give a
+   * single entry for the right side.
    */
   def getSubparameters: Map[String, (String, Parameter)] = {
     def extract[B <: Parameter](param: B): Map[String, (String, Parameter)] =
@@ -53,12 +61,14 @@ private[cli] trait Alternatives extends Parameter {
 }
 
 /**
- * Input is used to obtain a parameter from user: the wizard reads a line for it and checks it with `isValid`. `Args.Single`, `Args.Variadic`, `Options.Single`, `Options.WithDefault` and `Options.KeyValueMap` extend it.
+ * Input is used to obtain a parameter from user: the wizard reads a line for it and checks it with `isValid`.
+ * `Args.Single`, `Args.Variadic`, `Options.Single`, `Options.WithDefault` and `Options.KeyValueMap` extend it.
  */
 private[cli] trait Input extends Parameter {
 
   /**
-   * Splits `args` into the words that belong to this parameter and the remaining words. `Options.Single` takes its flag and value from the front; `Args.Single` and `Args.Variadic` return two empty lists.
+   * Splits `args` into the words that belong to this parameter and the remaining words. `Options.Single` takes its flag
+   * and value from the front; `Args.Single` and `Args.Variadic` return two empty lists.
    */
   def parse(args: List[String], conf: CliConfig): IO[ValidationError, (List[String], List[String])]
 
@@ -80,7 +90,8 @@ private[cli] trait Pipeline extends Parameter {
 }
 
 /**
- * A parameter that wraps another one, such as the `Map` cases of `Command`, `Options` and `Args`, or `Options.OAuth2Options`. `Alternatives#getSubparameters` looks through it to the wrapped parameter.
+ * A parameter that wraps another one, such as the `Map` cases of `Command`, `Options` and `Args`, or
+ * `Options.OAuth2Options`. `Alternatives#getSubparameters` looks through it to the wrapped parameter.
  */
 private[cli] trait Wrap extends Parameter {
 

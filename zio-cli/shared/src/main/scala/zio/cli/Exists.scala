@@ -1,9 +1,11 @@
 package zio.cli
 
 /**
- * Describes whether the command-line application wants a file/directory to exist, not to exist, or doesn't care. `PrimType.Path` checks it before the kind of the path.
+ * Describes whether the command-line application wants a file/directory to exist, not to exist, or doesn't care.
+ * `PrimType.Path` checks it before the kind of the path.
  */
 sealed trait Exists
+
 /** The three existence rules for a path. */
 object Exists {
 
@@ -13,7 +15,8 @@ object Exists {
   case object Yes extends Exists
 
   /**
-   * The path must not exist; an existing path fails with `Path 'out' must not exist.` for the input `out`. The kind of the path is not checked.
+   * The path must not exist; an existing path fails with `Path 'out' must not exist.` for the input `out`. The kind of
+   * the path is not checked.
    */
   case object No extends Exists
 

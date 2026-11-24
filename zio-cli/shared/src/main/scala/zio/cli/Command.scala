@@ -6,9 +6,11 @@ import zio.cli.oauth2.OAuth2PlatformSpecific
 import zio.{Chunk, IO, ZIO}
 
 /**
- * A `Command[A]` describes a command of a command-line application: its name, its [[Options]], its [[Args]], its help text and, if it has any, its subcommands. Parsing a command line with it produces a value of type `A`.
+ * A `Command[A]` describes a command of a command-line application: its name, its [[Options]], its [[Args]], its help
+ * text and, if it has any, its subcommands. Parsing a command line with it produces a value of type `A`.
  *
- * Create one with `Command(name, options, args)`, add a description with `withHelp`, offer several commands with `|`, and nest commands with `subcommands`. A [[CliApp]] runs a command.
+ * Create one with `Command(name, options, args)`, add a description with `withHelp`, offer several commands with `|`,
+ * and nest commands with `subcommands`. A [[CliApp]] runs a command.
  *
  * {{{
  * val verbose = Options.boolean("verbose").alias("v")
@@ -17,12 +19,14 @@ import zio.{Chunk, IO, ZIO}
  * val grep: Command[(Boolean, String)] = Command("grep", verbose, file).withHelp("Searches a file.")
  * }}}
  *
- * @see [[https://zio.dev/zio-cli/commands/ Commands]]
+ * @see
+ *   [[https://zio.dev/zio-cli/commands/ Commands]]
  */
 sealed trait Command[+A] extends Parameter with Named { self =>
 
   /**
-   * Offers `that` as an alternative: parsing tries this command first and, when the first word isn't its name, tries `that`. When no command matches, the error names the last one tried (`Missing command name: cat`).
+   * Offers `that` as an alternative: parsing tries this command first and, when the first word isn't its name, tries
+   * `that`. When no command matches, the error names the last one tried (`Missing command name: cat`).
    */
   final def |[A1 >: A](that: Command[A1]): Command[A1] = Command.OrElse(self, that)
 
@@ -32,13 +36,16 @@ sealed trait Command[+A] extends Parameter with Named { self =>
   final def as[B](b: => B): Command[B] = map(_ => b)
 
   /**
-   * Sets the description shown in the description section of this command's help, as one paragraph, replacing any earlier one. On alternatives (`a | b`), every command gets the description; on a command with subcommands, the parent gets it.
+   * Sets the description shown in the description section of this command's help, as one paragraph, replacing any
+   * earlier one. On alternatives (`a | b`), every command gets the description; on a command with subcommands, the
+   * parent gets it.
    */
   final def withHelp(help: String): Command[A] =
     withHelp(HelpDoc.p(help))
 
   /**
-   * Sets the description shown in the description section of this command's help, replacing any earlier one. On alternatives (`a | b`), every command gets the description; on a command with subcommands, the parent gets it.
+   * Sets the description shown in the description section of this command's help, replacing any earlier one. On
+   * alternatives (`a | b`), every command gets the description; on a command with subcommands, the parent gets it.
    */
   final def withHelp(help: HelpDoc): Command[A] =
     self match {
@@ -59,12 +66,14 @@ sealed trait Command[+A] extends Parameter with Named { self =>
     }
 
   /**
-   * Returns the commands a user can pick at this level, by name: the command itself for a single command, every alternative for `a | b`, and the subcommands for a command with subcommands.
+   * Returns the commands a user can pick at this level, by name: the command itself for a single command, every
+   * alternative for `a | b`, and the subcommands for a command with subcommands.
    */
   def getSubcommands: Map[String, Command[_]]
 
   /**
-   * Returns the help text of this command: the description, arguments and options sections (each left out when empty) and, for a command with subcommands, a commands section that lists them.
+   * Returns the help text of this command: the description, arguments and options sections (each left out when empty)
+   * and, for a command with subcommands, a commands section that lists them.
    */
   def helpDoc: HelpDoc
 
@@ -79,17 +88,25 @@ sealed trait Command[+A] extends Parameter with Named { self =>
   final def orElse[A1 >: A](that: Command[A1]): Command[A1] = self | that
 
   /**
-   * Offers `that` as an alternative, and returns `Left` with the value of this command or `Right` with the value of `that`.
+   * Offers `that` as an alternative, and returns `Left` with the value of this command or `Right` with the value of
+   * `that`.
    */
   final def orElseEither[B](that: Command[B]): Command[Either[A, B]] = map(Left(_)) | that.map(Right(_))
 
   /**
-   * Parses `args`, whose first word must be the command's name, and returns a [[CommandDirective]]: `UserDefined` with the parsed value and the words left over, or `BuiltIn` when the user asked for help, the wizard or shell completion. The options are read first, then the arguments; words after `--` are always read as arguments. When the first word isn't the command's name, it fails with a [[ValidationError]] of type `CommandMismatch` and the text `Missing command name: grep`. [[CliApp]] adds the name in front of the user's words before it calls this method.
+   * Parses `args`, whose first word must be the command's name, and returns a [[CommandDirective]]: `UserDefined` with
+   * the parsed value and the words left over, or `BuiltIn` when the user asked for help, the wizard or shell
+   * completion. The options are read first, then the arguments; words after `--` are always read as arguments. When the
+   * first word isn't the command's name, it fails with a [[ValidationError]] of type `CommandMismatch` and the text
+   * `Missing command name: grep`. [[CliApp]] adds the name in front of the user's words before it calls this method.
    */
   def parse(args: List[String], conf: CliConfig): IO[ValidationError, CommandDirective[A]]
 
   /**
-   * Adds `that` as the subcommand of this command: after this command's options, the next word picks the subcommand. The value pairs this command's value with the subcommand's, with a `Unit` side dropped. With no subcommand given, parsing returns this command's help. An unknown subcommand fails with `Invalid subcommand for git. Use one of 'add', 'rm'`.
+   * Adds `that` as the subcommand of this command: after this command's options, the next word picks the subcommand.
+   * The value pairs this command's value with the subcommand's, with a `Unit` side dropped. With no subcommand given,
+   * parsing returns this command's help. An unknown subcommand fails with
+   * `Invalid subcommand for git. Use one of 'add', 'rm'`.
    *
    * {{{
    * val add = Command("add", Args.text("path"))
@@ -102,7 +119,8 @@ sealed trait Command[+A] extends Parameter with Named { self =>
     Command.Subcommands(self, that).map(ev.fromTuple2(_))
 
   /**
-   * Adds `c1`, `c2` and `cs` as the subcommands of this command, as `subcommands(c1 | c2 | ...)` does. All of them have the same value type.
+   * Adds `c1`, `c2` and `cs` as the subcommands of this command, as `subcommands(c1 | c2 | ...)` does. All of them have
+   * the same value type.
    */
   final def subcommands[B](c1: Command[B], c2: Command[B], cs: Command[B]*)(implicit
     ev: Reducable[A, B]
@@ -131,7 +149,8 @@ object Command {
   }
 
   /**
-   * A command with a `name`, a `help` description, its `options` and its `args`. Its value is the pair of the options' value and the arguments' value; `Command.apply` drops a `Unit` side.
+   * A command with a `name`, a `help` description, its `options` and its `args`. Its value is the pair of the options'
+   * value and the arguments' value; `Command.apply` drops a `Unit` side.
    */
   final case class Single[OptionsType, ArgsType](
     name: String,
@@ -145,7 +164,8 @@ object Command {
     override lazy val shortDesc = help.getSpan.text
 
     /**
-     * The description, arguments and options sections, each left out when empty, followed by a section on third-party authorization when the options include an option built by `Options.oauth2`.
+     * The description, arguments and options sections, each left out when empty, followed by a section on third-party
+     * authorization when the options include an option built by `Options.oauth2`.
      */
     lazy val helpDoc: HelpDoc = {
       val helpHeader = {
@@ -180,7 +200,11 @@ object Command {
     lazy val names: Set[String] = Set(name)
 
     /**
-     * Checks that the first word is `name` (ignoring case unless [[CliConfig]] is case-sensitive), then reads the options and the arguments. When the words after the name are only built-in options (`--help`, `-h`, `--wizard` or the shell-completion options), it returns a `BuiltIn` directive. When parsing fails and `CliConfig.finalCheckBuiltIn` is on, `--help`, `-h`, `--wizard` or `-w` anywhere in `args` give the help or the wizard instead of the error, with help first when both are present.
+     * Checks that the first word is `name` (ignoring case unless [[CliConfig]] is case-sensitive), then reads the
+     * options and the arguments. When the words after the name are only built-in options (`--help`, `-h`, `--wizard` or
+     * the shell-completion options), it returns a `BuiltIn` directive. When parsing fails and
+     * `CliConfig.finalCheckBuiltIn` is on, `--help`, `-h`, `--wizard` or `-w` anywhere in `args` give the help or the
+     * wizard instead of the error, with help first when both are present.
      */
     def parse(
       args: List[String],
@@ -277,10 +301,11 @@ object Command {
   final case class Map[A, B](command: Command[A], f: A => B) extends Command[B] with Pipeline with Wrap {
 
     override lazy val shortDesc = command.shortDesc
+
     /**
      * The help of `command`.
      */
-    lazy val helpDoc            = command.helpDoc
+    lazy val helpDoc = command.helpDoc
 
     /**
      * The names of `command`.
@@ -318,6 +343,7 @@ object Command {
    * Two alternative commands. `|`, `orElse` and `orElseEither` build it.
    */
   final case class OrElse[A](left: Command[A], right: Command[A]) extends Command[A] with Alternatives {
+
     /**
      * The help of `left` followed by the help of `right`.
      */
@@ -359,7 +385,8 @@ object Command {
     override lazy val shortDesc = parent.shortDesc
 
     /**
-     * The help of `parent` followed by a commands section with one line per subcommand: its usage and, when its description is a single paragraph, that paragraph.
+     * The help of `parent` followed by a commands section with one line per subcommand: its usage and, when its
+     * description is a single paragraph, that paragraph.
      */
     lazy val helpDoc = {
 
@@ -411,7 +438,9 @@ object Command {
     lazy val names: Set[String] = parent.names
 
     /**
-     * Parses `parent`, then picks and parses the child from the words `parent` leaves. With no word left, returns the help of the parent. `--help` after a subcommand's name gives that subcommand's help, with the parent's name in front of its usage line.
+     * Parses `parent`, then picks and parses the child from the words `parent` leaves. With no word left, returns the
+     * help of the parent. `--help` after a subcommand's name gives that subcommand's help, with the parent's name in
+     * front of its usage line.
      */
     def parse(
       args: List[String],
@@ -513,7 +542,8 @@ object Command {
   }
 
   /**
-   * Creates a command named `name` with `options` and `args`. Its value is the pair of their values, with a `Unit` side dropped.
+   * Creates a command named `name` with `options` and `args`. Its value is the pair of their values, with a `Unit` side
+   * dropped.
    */
   def apply[OptionsType, ArgsType](
     name: String,

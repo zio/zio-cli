@@ -5,9 +5,11 @@ import zio.Console._
 import zio.cli.HelpDoc._
 
 /**
- * The wizard mode: asks the user on the console for each choice, option and argument of `command`, and returns the command line it builds. A [[CliApp]] starts it for `--wizard` and then runs that command line.
+ * The wizard mode: asks the user on the console for each choice, option and argument of `command`, and returns the
+ * command line it builds. A [[CliApp]] starts it for `--wizard` and then runs that command line.
  *
- * At each prompt, `help` shows the full help of the current parameter, `restart` starts again from the beginning and `quit` stops the wizard. An empty or invalid answer asks again.
+ * At each prompt, `help` shows the full help of the current parameter, `restart` starts again from the beginning and
+ * `quit` stops the wizard. An empty or invalid answer asks again.
  */
 final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
 
@@ -25,7 +27,9 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   val printHeader = printLine(header.toPlaintext()).orDie
 
   /**
-   * Prints the wizard's text for `parameter`: a note that `invalidInput` was rejected (if any), then `instruction`, then either the full help of `parameter` when `needHelp` is `true`, or its short description and the hints for `help`, `restart` and `quit`.
+   * Prints the wizard's text for `parameter`: a note that `invalidInput` was rejected (if any), then `instruction`,
+   * then either the full help of `parameter` when `needHelp` is `true`, or its short description and the hints for
+   * `help`, `restart` and `quit`.
    */
   def printInfo(
     invalidInput: Option[String],
@@ -65,7 +69,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   }
 
   /**
-   * Asks the user to pick one of the alternatives of `param`, by name or by number, and returns the words to add to the command line with the chosen parameter. With a single alternative, picks it without asking.
+   * Asks the user to pick one of the alternatives of `param`, by name or by number, and returns the words to add to the
+   * command line with the chosen parameter. With a single alternative, picks it without asking.
    */
   def chooseParam(
     param: Alternatives,
@@ -156,7 +161,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     } yield params
 
   /**
-   * Walks through `command`, asking the user for each choice, option and argument, and returns the words of the command line.
+   * Walks through `command`, asking the user for each choice, option and argument, and returns the words of the command
+   * line.
    */
   def generateParams(command: Parameter): IO[Wizard.WizardException, List[String]] =
     command match {
@@ -188,7 +194,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   } yield ()
 
   /**
-   * Runs the wizard and returns the command line it built, without empty words. `restart` starts again; `quit` fails with `Wizard.QuitException`.
+   * Runs the wizard and returns the command line it built, without empty words. `restart` starts again; `quit` fails
+   * with `Wizard.QuitException`.
    */
   def execute: IO[Wizard.QuitException, List[String]] = for {
     parameters <- generateParams(command).catchAll {
@@ -204,16 +211,19 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
  * The exceptions that end a step of the wizard.
  */
 object Wizard {
+
   /**
    * Raised when the user types `restart` or `quit` at a wizard prompt.
    */
-  sealed trait WizardException  extends Exception
+  sealed trait WizardException extends Exception
+
   /**
    * The user typed `restart`.
    */
   case class RestartException() extends WizardException
+
   /**
    * The user typed `quit`.
    */
-  case class QuitException()    extends WizardException
+  case class QuitException() extends WizardException
 }

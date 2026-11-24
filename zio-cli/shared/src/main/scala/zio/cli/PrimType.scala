@@ -22,9 +22,12 @@ import java.time.{
 }
 
 /**
- * A `PrimType` represents the primitive types supported by ZIO CLI: one kind of value that an option or argument reads from the command line. It gives the placeholder name and the help sentence for the value, and parses a string into an `A`.
+ * A `PrimType` represents the primitive types supported by ZIO CLI: one kind of value that an option or argument reads
+ * from the command line. It gives the placeholder name and the help sentence for the value, and parses a string into an
+ * `A`.
  *
- * Constructors such as `Args.integer` and `Options.file` wrap a `PrimType`, and `Args.Single` and `Options.Single` accept any `PrimType`. `validate` parses a string without building a command, for example in a test:
+ * Constructors such as `Args.integer` and `Options.file` wrap a `PrimType`, and `Args.Single` and `Options.Single`
+ * accept any `PrimType`. `validate` parses a string without building a command, for example in a test:
  *
  * {{{
  * import zio._
@@ -35,8 +38,10 @@ import java.time.{
  * // fails with "ten is not a integer."
  * }}}
  *
- * @see [[https://zio.dev/zio-cli/options/ Options]]
- * @see [[https://zio.dev/zio-cli/args/ Args]]
+ * @see
+ *   [[https://zio.dev/zio-cli/options/ Options]]
+ * @see
+ *   [[https://zio.dev/zio-cli/args/ Args]]
  */
 sealed trait PrimType[+A] { self =>
 
@@ -46,17 +51,20 @@ sealed trait PrimType[+A] { self =>
   def helpDoc: HelpDoc.Span
 
   /**
-   * Returns `true` for `Bool` and `false` for the other types. A boolean option may appear without a value, and its usage line shows no placeholder.
+   * Returns `true` for `Bool` and `false` for the other types. A boolean option may appear without a value, and its
+   * usage line shows no placeholder.
    */
   def isBool: Boolean
 
   /**
-   * Returns the placeholder name of this type, such as `integer` or `date`. Help and usage lines show it in angle brackets as the placeholder of an option or argument that has no pseudo-name.
+   * Returns the placeholder name of this type, such as `integer` or `date`. Help and usage lines show it in angle
+   * brackets as the placeholder of an option or argument that has no pseudo-name.
    */
   def typeName: String
 
   /**
-   * Returns the accepted words joined with ` | `, or `None` when the type has no fixed list. `Bool` gives `true | false` and `Enumeration` gives its case words; usage lines show this text.
+   * Returns the accepted words joined with ` | `, or `None` when the type has no fixed list. `Bool` gives
+   * `true | false` and `Enumeration` gives its case words; usage lines show this text.
    */
   def choices: Option[String]
 
@@ -71,9 +79,11 @@ sealed trait PrimType[+A] { self =>
   final def validate(value: String, conf: CliConfig): IO[String, A] = validate(Option(value), conf)
 
   /**
-   * Parses `value`, or handles a missing value (`None`). The error is a message for the user, such as `ten is not a integer.`.
+   * Parses `value`, or handles a missing value (`None`). The error is a message for the user, such as
+   * `ten is not a integer.`.
    *
-   * Every type except `Bool` fails on `None`; `Bool` returns its default value if it has one. Only `Bool` reads `conf`, to decide whether the case of the input matters.
+   * Every type except `Bool` fails on `None`; `Bool` returns its default value if it has one. Only `Bool` reads `conf`,
+   * to decide whether the case of the input matters.
    */
   def validate(value: Option[String], conf: CliConfig): IO[String, A]
 }
@@ -84,7 +94,10 @@ sealed trait PrimType[+A] { self =>
 object PrimType extends PathPlatformSpecific {
 
   /**
-   * A file-system path, checked for its kind and its existence. `validate` parses the string with `fileSystem` and returns the parsed path. It first applies the existence rule of `shouldExist`; then, if the path exists and `shouldExist` is not `Exists.No`, the kind rule of `pathType`. A missing path accepted by `Exists.Either` gets no kind check.
+   * A file-system path, checked for its kind and its existence. `validate` parses the string with `fileSystem` and
+   * returns the parsed path. It first applies the existence rule of `shouldExist`; then, if the path exists and
+   * `shouldExist` is not `Exists.No`, the kind rule of `pathType`. A missing path accepted by `Exists.Either` gets no
+   * kind check.
    *
    * On Scala.js, `FileSystem.live` can't parse paths, so validation with it fails.
    *
@@ -100,7 +113,8 @@ object PrimType extends PathPlatformSpecific {
     import PathType._
 
     /**
-     * Returns a sentence built from `pathType` and `shouldExist`, such as "An existing file.", "A directory that must not exist." or "A file or directory.".
+     * Returns a sentence built from `pathType` and `shouldExist`, such as "An existing file.", "A directory that must
+     * not exist." or "A file or directory.".
      */
     lazy val helpDoc: HelpDoc.Span = (self.pathType, self.shouldExist) match {
       case (PathType.Either, Exists.Yes)       => text("An existing file or directory.")
@@ -131,9 +145,14 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses and checks the path. For the input `out.txt`, the existence rule fails with `Path 'out.txt' must exist.` (`Exists.Yes`) or `Path 'out.txt' must not exist.` (`Exists.No`), and the kind rule fails with `Expected path 'out.txt' to be a regular file.` (`PathType.File`) or `Expected path 'out.txt' to be a directory.` (`PathType.Directory`).
+     * Parses and checks the path. For the input `out.txt`, the existence rule fails with `Path 'out.txt' must exist.`
+     * (`Exists.Yes`) or `Path 'out.txt' must not exist.` (`Exists.No`), and the kind rule fails with
+     * `Expected path 'out.txt' to be a regular file.` (`PathType.File`) or `Expected path 'out.txt' to be a directory.`
+     * (`PathType.Directory`).
      *
-     * A string that is not a path fails with the error of `fileSystem.parsePath`; on the JVM, `FileSystem.live` gives `'out.txt' is not a recognized path.` with the input in place of `out.txt`. A missing value fails with `Path options do not have a default value`. `conf` is not used.
+     * A string that is not a path fails with the error of `fileSystem.parsePath`; on the JVM, `FileSystem.live` gives
+     * `'out.txt' is not a recognized path.` with the input in place of `out.txt`. A missing value fails with
+     * `Path options do not have a default value`. `conf` is not used.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JPath] =
       for {
@@ -164,7 +183,8 @@ object PrimType extends PathPlatformSpecific {
   /**
    * A value chosen from a fixed list of words. Each case pairs the word the user types with the value it stands for.
    *
-   * The input must equal a word exactly, including its case, even when the `CliConfig` is case-insensitive. When two cases have the same word, the first one wins.
+   * The input must equal a word exactly, including its case, even when the `CliConfig` is case-insensitive. When two
+   * cases have the same word, the first one wins.
    *
    * @param cases
    *   The pairs of word and value, in the order the help lists them.
@@ -172,7 +192,8 @@ object PrimType extends PathPlatformSpecific {
   final case class Enumeration[A](cases: (String, A)*) extends PrimType[A] { self =>
 
     /**
-     * Returns "One of the following cases: " followed by the words joined with `, ` and a period, such as "One of the following cases: red, green.".
+     * Returns "One of the following cases: " followed by the words joined with `, ` and a period, such as "One of the
+     * following cases: red, green.".
      */
     lazy val helpDoc: HelpDoc.Span = text("One of the following cases: " + self.cases.map(_._1).mkString(", ") + ".")
 
@@ -188,7 +209,9 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = Some(self.cases.map(_._1).mkString(" | "))
 
     /**
-     * Returns the value of the first case whose word equals the input. Any other input fails with `Expected one of the following cases: red, green` (the words of this enumeration, with no final period), and a missing value fails with `Enumeration options do not have a default value.`. `conf` is not used.
+     * Returns the value of the first case whose word equals the input. Any other input fails with
+     * `Expected one of the following cases: red, green` (the words of this enumeration, with no final period), and a
+     * missing value fails with `Enumeration options do not have a default value.`. `conf` is not used.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, A] =
       (ZIO.fromOption(value) orElseFail "Enumeration options do not have a default value.").flatMap { value =>
@@ -224,7 +247,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing decimal value via BigDecimal. The input is read with `BigDecimal(...)`, so `1.5`, `-2` and `1e3` parse, while ` 1`, with a leading space, doesn't.
+   * Type representing decimal value via BigDecimal. The input is read with `BigDecimal(...)`, so `1.5`, `-2` and `1e3`
+   * parse, while ` 1`, with a leading space, doesn't.
    */
   case object Decimal extends PrimType[BigDecimal] { self =>
 
@@ -238,7 +262,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `BigDecimal(...)`. Fails with `abc is not a decimal.` for the input `abc`, and with `decimal options do not have a default value.` when the value is missing.
+     * Parses the input with `BigDecimal(...)`. Fails with `abc is not a decimal.` for the input `abc`, and with
+     * `decimal options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, BigDecimal] =
       attempt(value, BigDecimal(_), self.typeName)
@@ -248,7 +273,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing integer value via BigInt. The input is read with `BigInt(...)`, so numbers of any size parse, with an optional `+` or `-` sign; `1.5` and `0x10` don't.
+   * Type representing integer value via BigInt. The input is read with `BigInt(...)`, so numbers of any size parse,
+   * with an optional `+` or `-` sign; `1.5` and `0x10` don't.
    */
   case object Integer extends PrimType[BigInt] { self =>
 
@@ -262,7 +288,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `BigInt(...)`. Fails with `ten is not a integer.` for the input `ten`, and with `integer options do not have a default value.` when the value is missing.
+     * Parses the input with `BigInt(...)`. Fails with `ten is not a integer.` for the input `ten`, and with
+     * `integer options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, BigInt] =
       attempt(value, BigInt(_), self.typeName)
@@ -272,12 +299,15 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a boolean value. True value can be passed as "true", "1", "y", "yes" or "on". False value can be passed as "false", "0", "n", "no" or "off".
+   * Type representing a boolean value. True value can be passed as "true", "1", "y", "yes" or "on". False value can be
+   * passed as "false", "0", "n", "no" or "off".
    *
-   * The words are compared after lowercasing the input, unless the `CliConfig` is case-sensitive: with `CliConfig.default`, `TRUE` and `Yes` parse, while a case-sensitive config rejects them.
+   * The words are compared after lowercasing the input, unless the `CliConfig` is case-sensitive: with
+   * `CliConfig.default`, `TRUE` and `Yes` parse, while a case-sensitive config rejects them.
    *
    * @param defaultValue
-   *   The value that `validate` returns when the value is missing (`None`), as for a boolean flag given without a value.
+   *   The value that `validate` returns when the value is missing (`None`), as for a boolean flag given without a
+   *   value.
    */
   final case class Bool(defaultValue: Option[Boolean]) extends PrimType[Boolean] { self =>
 
@@ -291,9 +321,12 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = Some("true | false")
 
     /**
-     * Returns `true` for a word in `Bool.TrueValues` and `false` for a word in `Bool.FalseValues`, after lowercasing the input unless `conf` is case-sensitive.
+     * Returns `true` for a word in `Bool.TrueValues` and `false` for a word in `Bool.FalseValues`, after lowercasing
+     * the input unless `conf` is case-sensitive.
      *
-     * Any other input fails with `maybe cannot be recognized as valid boolean.` (for the input `maybe`; the message shows the lowercased input when `conf` is case-insensitive). A missing value returns `defaultValue`, or fails with `Missing default for bool parameter.` when there is none.
+     * Any other input fails with `maybe cannot be recognized as valid boolean.` (for the input `maybe`; the message
+     * shows the lowercased input when `conf` is case-insensitive). A missing value returns `defaultValue`, or fails
+     * with `Missing default for bool parameter.` when there is none.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, Boolean] =
       value.map(conf.normalizeCase) match {
@@ -320,7 +353,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a time-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'. The input is read with `java.time.Duration.parse`, so `PT1H30M` parses too.
+   * Type representing a time-based amount of time in the ISO-8601 format, such as 'P1DT2H3M'. The input is read with
+   * `java.time.Duration.parse`, so `PT1H30M` parses too.
    */
   case object Duration extends PrimType[JDuration] { self =>
 
@@ -334,7 +368,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.Duration.parse`. Fails with `1h is not a duration.` for the input `1h`, and with `duration options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.Duration.parse`. Fails with `1h is not a duration.` for the input `1h`, and with
+     * `duration options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JDuration] =
       attempt(value, JDuration.parse, self.typeName)
@@ -347,7 +382,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing parameter for instant in time in UTC format, such as 2007-12-03T10:15:30.00Z. The input is read with `java.time.Instant.parse`.
+   * Type representing parameter for instant in time in UTC format, such as 2007-12-03T10:15:30.00Z. The input is read
+   * with `java.time.Instant.parse`.
    */
   case object Instant extends PrimType[JInstant] { self =>
 
@@ -361,7 +397,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.Instant.parse`. Fails with `2007-12-03 is not a instant.` for the input `2007-12-03`, and with `instant options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.Instant.parse`. Fails with `2007-12-03 is not a instant.` for the input
+     * `2007-12-03`, and with `instant options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JInstant] =
       attempt(value, JInstant.parse, self.typeName)
@@ -373,7 +410,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing parameter for a date in ISO_LOCAL_DATE format, such as 2007-12-03. The input is read with `java.time.LocalDate.parse`, so `2007-12-3` doesn't parse.
+   * Type representing parameter for a date in ISO_LOCAL_DATE format, such as 2007-12-03. The input is read with
+   * `java.time.LocalDate.parse`, so `2007-12-3` doesn't parse.
    */
   case object LocalDate extends PrimType[JLocalDate] { self =>
 
@@ -387,7 +425,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.LocalDate.parse`. Fails with `2007-12-3 is not a date.` for the input `2007-12-3`, and with `date options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.LocalDate.parse`. Fails with `2007-12-3 is not a date.` for the input
+     * `2007-12-3`, and with `date options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JLocalDate] =
       attempt(value, JLocalDate.parse, self.typeName)
@@ -399,7 +438,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30. The input is read with `java.time.LocalDateTime.parse`, so `2007-12-03T10:15` parses too.
+   * Type representing a date-time without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30. The input is
+   * read with `java.time.LocalDateTime.parse`, so `2007-12-03T10:15` parses too.
    */
   case object LocalDateTime extends PrimType[JLocalDateTime] { self =>
 
@@ -413,7 +453,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.LocalDateTime.parse`. Fails with `2007-12-03 is not a date-time.` for the input `2007-12-03`, and with `date-time options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.LocalDateTime.parse`. Fails with `2007-12-03 is not a date-time.` for the input
+     * `2007-12-03`, and with `date-time options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JLocalDateTime] =
       attempt(value, JLocalDateTime.parse, self.typeName)
@@ -426,7 +467,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a time without a time-zone in the ISO-8601 format, such as 10:15:30. The input is read with `java.time.LocalTime.parse`, so `10:15` parses too.
+   * Type representing a time without a time-zone in the ISO-8601 format, such as 10:15:30. The input is read with
+   * `java.time.LocalTime.parse`, so `10:15` parses too.
    */
   case object LocalTime extends PrimType[JLocalTime] { self =>
 
@@ -440,7 +482,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.LocalTime.parse`. Fails with `10 is not a local-time.` for the input `10`, and with `local-time options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.LocalTime.parse`. Fails with `10 is not a local-time.` for the input `10`, and
+     * with `local-time options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JLocalTime] =
       attempt(value, JLocalTime.parse, self.typeName)
@@ -452,7 +495,9 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a month-day in the ISO-8601 format, such as --12-03. The input is read with `java.time.MonthDay.parse`, which needs the two leading dashes: `--12-03` parses, while `12-03`, the example in the help sentence, doesn't.
+   * Type representing a month-day in the ISO-8601 format, such as --12-03. The input is read with
+   * `java.time.MonthDay.parse`, which needs the two leading dashes: `--12-03` parses, while `12-03`, the example in the
+   * help sentence, doesn't.
    */
   case object MonthDay extends PrimType[JMonthDay] { self =>
 
@@ -466,7 +511,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.MonthDay.parse`. Fails with `12-03 is not a month-day.` for the input `12-03`, and with `month-day options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.MonthDay.parse`. Fails with `12-03 is not a month-day.` for the input `12-03`,
+     * and with `month-day options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JMonthDay] =
       attempt(value, JMonthDay.parse, self.typeName)
@@ -478,7 +524,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00. The input is read with `java.time.OffsetDateTime.parse`, so `Z` works as the offset too.
+   * Type representing a date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as
+   * 2007-12-03T10:15:30+01:00. The input is read with `java.time.OffsetDateTime.parse`, so `Z` works as the offset too.
    */
   case object OffsetDateTime extends PrimType[JOffsetDateTime] { self =>
 
@@ -492,20 +539,24 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.OffsetDateTime.parse`. Fails with `2007-12-03T10:15:30 is not a offset-date-time.` for an input without an offset, and with `offset-date-time options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.OffsetDateTime.parse`. Fails with
+     * `2007-12-03T10:15:30 is not a offset-date-time.` for an input without an offset, and with
+     * `offset-date-time options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JOffsetDateTime] =
       attempt(value, JOffsetDateTime.parse, self.typeName)
 
     /**
-     * Returns "A date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.".
+     * Returns "A date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as
+     * 2007-12-03T10:15:30+01:00.".
      */
     lazy val helpDoc: HelpDoc.Span =
       text("A date-time with an offset from UTC/Greenwich in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00.")
   }
 
   /**
-   * Type representing a time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00. The input is read with `java.time.OffsetTime.parse`.
+   * Type representing a time with an offset from UTC/Greenwich in the ISO-8601 format, such as 10:15:30+01:00. The
+   * input is read with `java.time.OffsetTime.parse`.
    */
   case object OffsetTime extends PrimType[JOffsetTime] { self =>
 
@@ -519,7 +570,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.OffsetTime.parse`. Fails with `10:15:30 is not a offset-time.` for an input without an offset, and with `offset-time options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.OffsetTime.parse`. Fails with `10:15:30 is not a offset-time.` for an input
+     * without an offset, and with `offset-time options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JOffsetTime] =
       attempt(value, JOffsetTime.parse, self.typeName)
@@ -532,7 +584,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'. The input is read with `java.time.Period.parse`, so `P2W` parses too, while a time part such as `PT1H` doesn't.
+   * Type representing a date-based amount of time in the ISO-8601 format, such as 'P1Y2M3D'. The input is read with
+   * `java.time.Period.parse`, so `P2W` parses too, while a time part such as `PT1H` doesn't.
    */
   case object Period extends PrimType[JPeriod] { self =>
 
@@ -546,7 +599,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.Period.parse`. Fails with `PT1H is not a period.` for the input `PT1H`, and with `period options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.Period.parse`. Fails with `PT1H is not a period.` for the input `PT1H`, and with
+     * `period options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JPeriod] =
       attempt(value, JPeriod.parse, self.typeName)
@@ -559,7 +613,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a year, such as 2007. The input is read as an `Int` and passed to `java.time.Year.of`, so `07` gives the year 7, `-5` and `+2007` parse, and `1000000000` fails.
+   * Type representing a year, such as 2007. The input is read as an `Int` and passed to `java.time.Year.of`, so `07`
+   * gives the year 7, `-5` and `+2007` parse, and `1000000000` fails.
    */
   case object Year extends PrimType[JYear] { self =>
 
@@ -573,7 +628,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input as an `Int` and builds the year with `java.time.Year.of`. Fails with `abc is not a year.` for the input `abc`, and with `year options do not have a default value.` when the value is missing.
+     * Parses the input as an `Int` and builds the year with `java.time.Year.of`. Fails with `abc is not a year.` for
+     * the input `abc`, and with `year options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JYear] =
       attempt(value, s => JYear.of(s.toInt), self.typeName)
@@ -583,7 +639,9 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a year-month in the ISO-8601 format, such as 2007-12. The input is an optional `-`, the digits of the year, a `-` and a two-digit month from `01` to `12`; `07-12` gives the year 7, while `+2007-12` and `2007-1` fail.
+   * Type representing a year-month in the ISO-8601 format, such as 2007-12. The input is an optional `-`, the digits of
+   * the year, a `-` and a two-digit month from `01` to `12`; `07-12` gives the year 7, while `+2007-12` and `2007-1`
+   * fail.
    */
   case object YearMonth extends PrimType[JYearMonth] { self =>
 
@@ -597,7 +655,9 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input and builds the value with `java.time.YearMonth.of`. Fails with `2007-13 is not a year-month.` for the input `2007-13`. A missing value fails with ` is not a year-month.`, which starts with a space because the input is empty.
+     * Parses the input and builds the value with `java.time.YearMonth.of`. Fails with `2007-13 is not a year-month.`
+     * for the input `2007-13`. A missing value fails with ` is not a year-month.`, which starts with a space because
+     * the input is empty.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JYearMonth] = {
       val AcceptedFormat       = "^(-?\\d+)-(\\d{2})".r
@@ -615,7 +675,10 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a date-time with a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30+01:00[Europe/Paris]. The input is read with `java.time.ZonedDateTime.parse`, which needs the zone ID in square brackets; an offset alone, as in `2007-12-03T10:15:30+01:00`, parses too. The help sentence shows the zone after a space, and that form doesn't parse.
+   * Type representing a date-time with a time-zone in the ISO-8601 format, such as
+   * 2007-12-03T10:15:30+01:00[Europe/Paris]. The input is read with `java.time.ZonedDateTime.parse`, which needs the
+   * zone ID in square brackets; an offset alone, as in `2007-12-03T10:15:30+01:00`, parses too. The help sentence shows
+   * the zone after a space, and that form doesn't parse.
    */
   case object ZonedDateTime extends PrimType[JZonedDateTime] { self =>
 
@@ -629,7 +692,9 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.ZonedDateTime.parse`. Fails with `2007-12-03T10:15:30 is not a zoned-date-time.` for an input without a zone, and with `zoned-date-time options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.ZonedDateTime.parse`. Fails with `2007-12-03T10:15:30 is not a zoned-date-time.`
+     * for an input without a zone, and with `zoned-date-time options do not have a default value.` when the value is
+     * missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JZonedDateTime] =
       attempt(value, JZonedDateTime.parse, self.typeName)
@@ -642,7 +707,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a time-zone ID, such as Europe/Paris. The input is read with `java.time.ZoneId.of`, so `UTC` and offsets such as `+02:00` parse too.
+   * Type representing a time-zone ID, such as Europe/Paris. The input is read with `java.time.ZoneId.of`, so `UTC` and
+   * offsets such as `+02:00` parse too.
    */
   case object ZoneId extends PrimType[JZoneId] { self =>
 
@@ -656,7 +722,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.ZoneId.of`. Fails with `Mars/Base is not a zone-id.` for the input `Mars/Base`, and with `zone-id options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.ZoneId.of`. Fails with `Mars/Base is not a zone-id.` for the input `Mars/Base`,
+     * and with `zone-id options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JZoneId] =
       attempt(value, JZoneId.of, self.typeName)
@@ -666,7 +733,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing a time-zone offset from Greenwich/UTC, such as +02:00. The input is read with `java.time.ZoneOffset.of`, so `Z`, `+2` and `-0530` parse too, while `+19:00` fails.
+   * Type representing a time-zone offset from Greenwich/UTC, such as +02:00. The input is read with
+   * `java.time.ZoneOffset.of`, so `Z`, `+2` and `-0530` parse too, while `+19:00` fails.
    */
   case object ZoneOffset extends PrimType[JZoneOffset] { self =>
 
@@ -680,7 +748,8 @@ object PrimType extends PathPlatformSpecific {
     lazy val choices: Option[String] = None
 
     /**
-     * Parses the input with `java.time.ZoneOffset.of`. Fails with `+19:00 is not a zone-offset.` for the input `+19:00`, and with `zone-offset options do not have a default value.` when the value is missing.
+     * Parses the input with `java.time.ZoneOffset.of`. Fails with `+19:00 is not a zone-offset.` for the input
+     * `+19:00`, and with `zone-offset options do not have a default value.` when the value is missing.
      */
     def validate(value: Option[String], conf: CliConfig): IO[String, JZoneOffset] =
       attempt(value, JZoneOffset.of, typeName)

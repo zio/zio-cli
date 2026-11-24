@@ -7,7 +7,9 @@ import zio.cli.CliError.Parsing
 import zio.cli.CliError.Execution
 
 /**
- * The error of running a [[CliApp]]: a parse error, a failure of a built-in option, a console error, or a failure `E` of the application's function. `getMessage` always returns `zio-cli app failed`, and `getCause` returns the wrapped error.
+ * The error of running a [[CliApp]]: a parse error, a failure of a built-in option, a console error, or a failure `E`
+ * of the application's function. `getMessage` always returns `zio-cli app failed`, and `getCause` returns the wrapped
+ * error.
  */
 sealed trait CliError[+E] extends Exception { self =>
   override final def getMessage(): String =

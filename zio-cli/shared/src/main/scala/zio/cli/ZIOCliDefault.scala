@@ -3,7 +3,9 @@ package zio.cli
 import zio.ZIOAppDefault
 
 /**
- * A `ZIOAppDefault` that runs a [[CliApp]] as the program's main: define `cliApp`, and the program's command-line arguments are passed to its `run`. On a parse error, the error is printed and the program exits with code 1; a failure of the application's function is logged and the program exits with code 1 as well.
+ * A `ZIOAppDefault` that runs a [[CliApp]] as the program's main: define `cliApp`, and the program's command-line
+ * arguments are passed to its `run`. On a parse error, the error is printed and the program exits with code 1; a
+ * failure of the application's function is logged and the program exits with code 1 as well.
  *
  * {{{
  * import zio._
@@ -17,6 +19,7 @@ import zio.ZIOAppDefault
  * }
  * }}}
  *
- * @see [[https://zio.dev/zio-cli/ ZIO CLI]]
+ * @see
+ *   [[https://zio.dev/zio-cli/ ZIO CLI]]
  */
 trait ZIOCliDefault extends ZIOCli with ZIOAppDefault

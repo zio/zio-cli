@@ -1,7 +1,9 @@
 package zio.cli
 
 /**
- * A `HelpDoc` is a help document made of headers, paragraphs, description lists and enumerations, put one after the other with `+`. The text inside them is made of [[HelpDoc.Span]]s. ZIO CLI builds the help of commands, options and arguments as `HelpDoc`s and prints them with `toPlaintext`; `toHTML` renders an HTML page instead.
+ * A `HelpDoc` is a help document made of headers, paragraphs, description lists and enumerations, put one after the
+ * other with `+`. The text inside them is made of [[HelpDoc.Span]]s. ZIO CLI builds the help of commands, options and
+ * arguments as `HelpDoc`s and prints them with `toPlaintext`; `toHTML` renders an HTML page instead.
  *
  * {{{
  * val doc: HelpDoc =
@@ -12,7 +14,8 @@ package zio.cli
  * val text: String = doc.toPlaintext(columnWidth = 80, color = false)
  * }}}
  *
- * @see [[https://zio.dev/zio-cli/helpdoc/ HelpDoc]]
+ * @see
+ *   [[https://zio.dev/zio-cli/helpdoc/ HelpDoc]]
  */
 sealed trait HelpDoc { self =>
   import HelpDoc._
@@ -33,7 +36,8 @@ sealed trait HelpDoc { self =>
   def |(that: HelpDoc): HelpDoc = if (self.isEmpty) that else self
 
   /**
-   * Returns the text of a header or a paragraph. Any other document, including a sequence that starts with a paragraph, gives an empty span.
+   * Returns the text of a header or a paragraph. Any other document, including a sequence that starts with a paragraph,
+   * gives an empty span.
    */
   def getSpan: Span =
     self match {
@@ -43,7 +47,9 @@ sealed trait HelpDoc { self =>
     }
 
   /**
-   * Returns `true` for `HelpDoc.Empty`, for a description list whose descriptions are all empty (whatever its terms), for an enumeration whose elements are all empty, and for a sequence of two empty documents. A header or a paragraph returns `false`, even with empty text.
+   * Returns `true` for `HelpDoc.Empty`, for a description list whose descriptions are all empty (whatever its terms),
+   * for an enumeration whose elements are all empty, and for a sequence of two empty documents. A header or a paragraph
+   * returns `false`, even with empty text.
    */
   def isEmpty: Boolean =
     self match {
@@ -104,7 +110,8 @@ sealed trait HelpDoc { self =>
     }
 
   /**
-   * Applies `f` to each (term, description) entry of a description list. Returns any other document unchanged, including a sequence that contains description lists.
+   * Applies `f` to each (term, description) entry of a description list. Returns any other document unchanged,
+   * including a sequence that contains description lists.
    */
   def mapDescriptionList(f: (HelpDoc.Span, HelpDoc) => (HelpDoc.Span, HelpDoc)): HelpDoc =
     self match {
@@ -113,7 +120,10 @@ sealed trait HelpDoc { self =>
     }
 
   /**
-   * Renders this document as a complete HTML page with a built-in style sheet. Headers, paragraphs and enumerations become the matching HTML elements, code spans become preformatted blocks, and the parts of a sequence are separated by line breaks. The entries of a description list are written in reverse order, each term followed by its description.
+   * Renders this document as a complete HTML page with a built-in style sheet. Headers, paragraphs and enumerations
+   * become the matching HTML elements, code spans become preformatted blocks, and the parts of a sequence are separated
+   * by line breaks. The entries of a description list are written in reverse order, each term followed by its
+   * description.
    */
   def toHTML: String = {
 
@@ -253,9 +263,12 @@ sealed trait HelpDoc { self =>
   }
 
   /**
-   * Renders this document as text for a terminal, wrapping lines at `columnWidth` characters. Headers are written in upper case whatever their level, each description in a description list goes under its term, indented by two spaces, and each element of an enumeration starts with `- `.
+   * Renders this document as text for a terminal, wrapping lines at `columnWidth` characters. Headers are written in
+   * upper case whatever their level, each description in a description list goes under its term, indented by two
+   * spaces, and each element of an enumeration starts with `- `.
    *
-   * With `color` (the default), ANSI color codes make headers and terms bold, errors red and URIs underlined; with `color = false`, the text has no such codes.
+   * With `color` (the default), ANSI color codes make headers and terms bold, errors red and URIs underlined; with
+   * `color = false`, the text has no such codes.
    *
    * {{{
    * val text = (HelpDoc.h1("usage") + HelpDoc.p("Run the tool.")).toPlaintext(color = false)
@@ -378,30 +391,38 @@ sealed trait HelpDoc { self =>
     writer.toString() + (if (color) Console.RESET else "")
   }
 }
+
 /**
  * The cases of [[HelpDoc]] and the constructors for documents and spans.
  */
 object HelpDoc {
+
   /**
    * The empty document. `+` drops it.
    */
-  case object Empty                                                    extends HelpDoc
+  case object Empty extends HelpDoc
+
   /**
-   * A header with the text `value`. `h1`, `h2` and `h3` set `level` to 1, 2 or 3; `toHTML` uses the level, while `toPlaintext` writes every header the same way.
+   * A header with the text `value`. `h1`, `h2` and `h3` set `level` to 1, 2 or 3; `toHTML` uses the level, while
+   * `toPlaintext` writes every header the same way.
    */
-  final case class Header(value: Span, level: Int)                     extends HelpDoc
+  final case class Header(value: Span, level: Int) extends HelpDoc
+
   /**
    * A paragraph with the text `value`.
    */
-  final case class Paragraph(value: Span)                              extends HelpDoc
+  final case class Paragraph(value: Span) extends HelpDoc
+
   /**
    * A list of terms, each followed by its description, such as the options of a command and what they do.
    */
   final case class DescriptionList(definitions: List[(Span, HelpDoc)]) extends HelpDoc
+
   /**
    * A list of documents shown as bullet points.
    */
-  final case class Enumeration(elements: List[HelpDoc])                extends HelpDoc { self =>
+  final case class Enumeration(elements: List[HelpDoc]) extends HelpDoc { self =>
+
     /**
      * Moves the elements of each enumeration directly inside this one into it. Only one level is flattened.
      */
@@ -442,7 +463,8 @@ object HelpDoc {
   val empty: HelpDoc = Empty
 
   /**
-   * Creates an enumeration of `elements`. An element that is itself an enumeration has its elements moved into this one.
+   * Creates an enumeration of `elements`. An element that is itself an enumeration has its elements moved into this
+   * one.
    */
   def enumeration(elements: HelpDoc*): HelpDoc =
     HelpDoc.Enumeration(elements.toList).flatten
@@ -450,7 +472,8 @@ object HelpDoc {
   /**
    * Creates a level-1 header with the text `t`.
    */
-  def h1(t: String): HelpDoc  = h1(Span.text(t))
+  def h1(t: String): HelpDoc = h1(Span.text(t))
+
   /**
    * Creates a level-1 header with the text `span`.
    */
@@ -459,7 +482,8 @@ object HelpDoc {
   /**
    * Creates a level-2 header with the text `t`.
    */
-  def h2(t: String): HelpDoc  = h2(Span.text(t))
+  def h2(t: String): HelpDoc = h2(Span.text(t))
+
   /**
    * Creates a level-2 header with the text `span`.
    */
@@ -468,7 +492,8 @@ object HelpDoc {
   /**
    * Creates a level-3 header with the text `t`.
    */
-  def h3(t: String): HelpDoc  = h3(Span.text(t))
+  def h3(t: String): HelpDoc = h3(Span.text(t))
+
   /**
    * Creates a level-3 header with the text `span`.
    */
@@ -477,16 +502,19 @@ object HelpDoc {
   /**
    * Creates a paragraph with the text `t`.
    */
-  def p(t: String): HelpDoc  = HelpDoc.Paragraph(Span.text(t))
+  def p(t: String): HelpDoc = HelpDoc.Paragraph(Span.text(t))
+
   /**
    * Creates a paragraph with the text `span`.
    */
   def p(span: Span): HelpDoc = HelpDoc.Paragraph(span)
 
   /**
-   * A piece of inline text in a [[HelpDoc]]: plain text, code, an error, weak or strong text, a URI, or two spans one after the other.
+   * A piece of inline text in a [[HelpDoc]]: plain text, code, an error, weak or strong text, a URI, or two spans one
+   * after the other.
    */
   sealed trait Span { self =>
+
     /**
      * Puts `that` after this span.
      */
@@ -525,34 +553,42 @@ object HelpDoc {
         case Span.Sequence(left, right) => left.text + right.text
       }
   }
+
   /**
    * The cases of [[HelpDoc.Span]] and their constructors.
    */
   object Span {
+
     /**
      * Plain text.
      */
-    final case class Text(value: String)               extends Span
+    final case class Text(value: String) extends Span
+
     /**
      * Code, such as a command line to type. `toHTML` writes it as a preformatted block.
      */
-    final case class Code(value: String)               extends Span
+    final case class Code(value: String) extends Span
+
     /**
      * A span marked as an error, as in the messages of parse errors. `toPlaintext` writes it in red when colors are on.
      */
-    final case class Error(value: Span)                extends Span
+    final case class Error(value: Span) extends Span
+
     /**
      * A span with weak emphasis, used for the names of arguments in help.
      */
-    final case class Weak(value: Span)                 extends Span
+    final case class Weak(value: Span) extends Span
+
     /**
      * A span with strong emphasis. `toPlaintext` writes it in bold when colors are on, and `toHTML` in bold.
      */
-    final case class Strong(value: Span)               extends Span
+    final case class Strong(value: Span) extends Span
+
     /**
      * A link to `value`. `toPlaintext` writes it underlined when colors are on, and `toHTML` as a link.
      */
-    final case class URI(value: java.net.URI)          extends Span
+    final case class URI(value: java.net.URI) extends Span
+
     /**
      * Two spans, one after the other; `+` builds it.
      */
@@ -589,7 +625,8 @@ object HelpDoc {
     def spans(span: Span, spans0: Span*): Span = spans(span :: spans0.toList)
 
     /**
-     * Puts the spans of `spans` one after the other, after an empty text span; an empty collection gives an empty text span.
+     * Puts the spans of `spans` one after the other, after an empty text span; an empty collection gives an empty text
+     * span.
      */
     def spans(spans: Iterable[Span]): Span =
       spans.toList.foldLeft(text("")) { case (span, s) =>
