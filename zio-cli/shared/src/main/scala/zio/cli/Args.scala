@@ -97,7 +97,7 @@ sealed trait Args[+A] extends Parameter { self =>
     mapOrFail((a: A) => scala.util.Try(f(a)).toEither.left.map(e => HelpDoc.p(e.getMessage())))
 
   /**
-   * Returns the largest number of words this argument can read. A repetition without an upper limit reports `Int.MaxValue / 2` times the size of the repeated argument.
+   * Returns the largest number of words this argument can read. A repetition without an upper limit counts as `Int.MaxValue / 2` times the size of the repeated argument, and that product overflows to a negative number when the repeated argument reads three or more words.
    */
   def maxSize: Int
 
