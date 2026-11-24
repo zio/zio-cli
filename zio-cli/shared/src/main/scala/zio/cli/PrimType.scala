@@ -78,6 +78,9 @@ sealed trait PrimType[+A] { self =>
   def validate(value: Option[String], conf: CliConfig): IO[String, A]
 }
 
+/**
+ * The value types of ZIO CLI: text, numbers, booleans, enumerations, paths and the `java.time` types.
+ */
 object PrimType extends PathPlatformSpecific {
 
   /**

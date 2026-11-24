@@ -4,6 +4,7 @@ package zio.cli
  * Describes whether the command-line application wants a file/directory to exist, not to exist, or doesn't care. `PrimType.Path` checks it before the kind of the path.
  */
 sealed trait Exists
+/** The three existence rules for a path. */
 object Exists {
 
   /**

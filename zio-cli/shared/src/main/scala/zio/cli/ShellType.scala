@@ -6,6 +6,7 @@ package zio.cli
  * @see [[https://zio.dev/zio-cli/bash-and-zsh-completion/ Bash Completion]]
  */
 sealed trait ShellType
+/** The supported shells and the built-in `--shell-type` option. */
 object ShellType {
 
   /** Bash, selected by `--shell-type bash` or `--shell-type sh`. */

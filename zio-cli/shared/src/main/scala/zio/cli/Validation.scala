@@ -32,6 +32,7 @@ final case class ValidationError(validationErrorType: ValidationErrorType, error
  * The kind of a [[ValidationError]]. Some kinds, such as `MissingFlag` and `UnclusteredFlag`, are used inside the parser to decide what to try next.
  */
 sealed trait ValidationErrorType
+/** The kinds of [[ValidationError]]. */
 object ValidationErrorType {
   // needed because KeyValueMap depends on a Single[String] option
   /**

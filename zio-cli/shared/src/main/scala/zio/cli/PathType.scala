@@ -4,6 +4,7 @@ package zio.cli
  * Describes whether the command-line application wants a path to be a file, a directory, or either. `PrimType.Path` checks the kind only for a path that exists, and not when the path must not exist (`Exists.No`).
  */
 sealed trait PathType
+/** The three kinds of path that a path parameter can expect. */
 object PathType {
 
   /** Accepts a file or a directory: no kind check. */
