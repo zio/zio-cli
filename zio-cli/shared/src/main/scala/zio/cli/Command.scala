@@ -98,7 +98,7 @@ sealed trait Command[+A] extends Parameter with Named { self =>
    * the parsed value and the words left over, or `BuiltIn` when the user asked for help, the wizard or shell
    * completion. The options are read first, then the arguments; words after `--` are always read as arguments. When the
    * first word isn't the command's name, it fails with a [[ValidationError]] of type `CommandMismatch` and the text
-   * `Missing command name: grep`. [[CliApp]] adds the name in front of the user's words before it calls this method.
+   * `Missing command name: grep`. For a single command or a command with subcommands, [[CliApp]] adds the name in front of the user's words before it calls this method.
    */
   def parse(args: List[String], conf: CliConfig): IO[ValidationError, CommandDirective[A]]
 
