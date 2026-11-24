@@ -58,13 +58,13 @@ sealed trait PrimType[+A] { self =>
 
   /**
    * Returns the placeholder name of this type, such as `integer` or `date`. Help and usage lines show it in angle
-   * brackets as the placeholder of an option or argument that has no pseudo-name.
+   * brackets, as in `--count <integer>` or `<integer>`, for an option or argument that has no pseudo-name; an enumeration option shows its words instead (`--color red | green`), and a boolean option shows no placeholder.
    */
   def typeName: String
 
   /**
    * Returns the accepted words joined with ` | `, or `None` when the type has no fixed list. `Bool` gives
-   * `true | false` and `Enumeration` gives its case words; usage lines show this text.
+   * `true | false` and `Enumeration` gives its case words; usage lines show this text after an argument's placeholder (`<choice> red | green`) and in place of an enumeration option's placeholder (`--color red | green`); a boolean option shows neither.
    */
   def choices: Option[String]
 
@@ -273,8 +273,8 @@ object PrimType extends PathPlatformSpecific {
   }
 
   /**
-   * Type representing integer value via BigInt. The input is read with `BigInt(...)`, so numbers of any size parse,
-   * with an optional `+` or `-` sign; `1.5` and `0x10` don't.
+   * Type representing integer value via BigInt. The input is read with `BigInt(...)`, so numbers larger than a `Long`,
+   * such as `123456789012345678901234567890`, parse, with an optional `+` or `-` sign; `1.5` and `0x10` don't.
    */
   case object Integer extends PrimType[BigInt] { self =>
 
