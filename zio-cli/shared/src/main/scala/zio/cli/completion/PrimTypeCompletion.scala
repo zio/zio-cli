@@ -7,7 +7,19 @@ import zio.cli.PrimType
 import java.time.{ZoneId => JZoneId}
 import scala.jdk.CollectionConverters._
 
+/**
+ * Lists the tab completions for the value of an option or an argument, from its [[zio.cli.PrimType]].
+ */
 object PrimTypeCompletion {
+
+  /**
+   * Returns the completions that start with `prefix` for a value of `primType`. `PrimType.Bool` gives `"true "` and
+   * `"false "`, `PrimType.Enumeration` gives its case names, and `PrimType.ZoneId` gives the ids of
+   * `java.time.ZoneId.getAvailableZoneIds`, each followed by a space. `PrimType.Path` gives the file and directory
+   * names that `compgen` lists (only directories for `PathType.Directory`), and a failure of `compgen` becomes a
+   * defect. The other types, such as `PrimType.Text`, `PrimType.Integer` and the date and time types, give an empty
+   * set. The prefix is compared with case.
+   */
   def firstTokens(primType: PrimType[Any], prefix: String, compgen: Compgen): UIO[Set[String]] =
     primType match {
       case PrimType.Bool(_) =>
@@ -58,5 +70,8 @@ object PrimTypeCompletion {
         ZIO.succeed(Set.empty)
     }
 
+  /**
+   * Returns `tokens` with a space added to the end of each one (`Set("true")` gives `Set("true ")`).
+   */
   def appendSpaces(tokens: Set[String]): Set[String] = tokens.map(_ + " ")
 }
