@@ -375,8 +375,8 @@ object Options extends OptionsPlatformSpecific {
     }
 
   /**
-   * Returns a possible `ValidationError` when parsing the commands, leftover arguments from `input` and a `Map` linking
-   * each flag with its values.
+   * Returns the error that stopped option matching (if any), the words of `input` that were not read as options, and
+   * a `Map` linking each option name to its values.
    */
   private def matchOptions(
     input: List[String],
