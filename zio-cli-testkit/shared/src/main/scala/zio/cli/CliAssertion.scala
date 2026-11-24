@@ -40,8 +40,8 @@ import zio.test._
 object CliAssertion {
 
   /**
-   * The `zio.cli.CliConfig` that the assertions here take as an implicit parameter, set to `CliConfig.default`. Import
-   * `CliAssertion._` (or `CliAssertion.cliConfig`) to have it in implicit scope.
+   * The `zio.cli.CliConfig` (`CliConfig.default`) that the methods with an implicit `CliConfig` parameter pick up, such
+   * as the `assertCommand` methods. Import `CliAssertion._` (or `CliAssertion.cliConfig`) to have it in implicit scope.
    */
   implicit val cliConfig: CliConfig = CliConfig.default
 
@@ -215,7 +215,8 @@ object CliAssertion {
    * Runs `cliApp` on each generated argument list and checks the outcome with the generated `Assertion`. The assertion
    * sees `Right(value)` with the value the app returns, and `Left(error)` when the run fails with a `zio.cli.CliError`.
    * When the run returns no value, as it does for `--help`, the returned effect fails with a `java.lang.Exception` that
-   * has no message. The argument list does not include the name of the command.
+   * has no message. The argument list leaves out the name of the top command, which `CliApp#run` adds for a single
+   * command, a subcommand group or a `Map`; for an `orElse` of commands nothing is added.
    */
   def assertCliApp[R, E, A, RGen](
     cliApp: CliApp[R, E, A],

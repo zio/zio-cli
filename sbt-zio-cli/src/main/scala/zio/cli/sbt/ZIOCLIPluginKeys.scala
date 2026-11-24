@@ -11,8 +11,8 @@ import sbt._
 trait ZIOCLIPluginKeys {
 
   /**
-   * The main class of the CLI application, as `Option[String]`. The plugin sets it to `None`. The only place the plugin
-   * reads it is the body of `zioCliBuildNative`.
+   * The main class of the CLI application, as `Option[String]`. The plugin sets it to `None`. `zioCliBuildNative` reads
+   * it in its body, where the body assigns `Compile / mainClass` inside the task.
    */
   lazy val zioCliMainClass = settingKey[Option[String]]("The mainClass of the CLI App in the Compile scope")
 
@@ -36,20 +36,20 @@ trait ZIOCLIPluginKeys {
   lazy val zioCliBuildNative = taskKey[Unit]("Build a native image version of the CLI App")
 
   /**
-   * Meant to generate the bash completion for the CLI application. It currently only prints a message that it is not
-   * implemented.
+   * Generates the bash completion for the CLI application. The task is not implemented: it prints a message and does
+   * nothing else.
    */
   lazy val zioCliGenerateBashCompletion = taskKey[Unit]("Generate bash completion for the CLI App")
 
   /**
-   * Meant to generate the zsh completion for the CLI application. It currently only prints a message that it is not
-   * implemented.
+   * Generates the zsh completion for the CLI application. The task is not implemented: it prints a message and does
+   * nothing else.
    */
   lazy val zioCliGenerateZshCompletion = taskKey[Unit]("Generate zsh completion for the CLI App")
 
   /**
-   * Meant to run the universal installer for the CLI application. It currently only prints a message that it is not
-   * implemented.
+   * Runs the universal installer for the CLI application. The task is not implemented: it prints a message and does
+   * nothing else.
    */
   lazy val zioCliInstallCli = taskKey[Unit]("Run the universal installer")
 

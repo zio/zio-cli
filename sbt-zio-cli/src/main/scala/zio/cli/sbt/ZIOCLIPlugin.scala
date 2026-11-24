@@ -18,7 +18,7 @@ import sbt.{Compile, Def, _}
  * lazy val cli = project
  *   .enablePlugins(ZIOCLIPlugin)
  *   .settings(
- *     zioCliMainClass := Some("example.Main"),
+ *     Compile / mainClass := Some("example.Main"),
  *     zioCliNativeImageOptions += "--verbose"
  *   )
  * }}}

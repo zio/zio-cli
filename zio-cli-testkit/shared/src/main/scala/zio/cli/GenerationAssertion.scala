@@ -35,8 +35,9 @@ import zio.ZIO
 object GenerationAssertion {
 
   /**
-   * The `zio.cli.CliConfig` that the assertions here take as an implicit parameter, set to `CliConfig.default`. Import
-   * `GenerationAssertion._` (or `GenerationAssertion.cliConfig`) to have it in implicit scope.
+   * The `zio.cli.CliConfig` (`CliConfig.default`) that the methods with an implicit `CliConfig` parameter pick up, such
+   * as `commandCreation`. Import `GenerationAssertion._` (or `GenerationAssertion.cliConfig`) to have it in implicit
+   * scope.
    */
   implicit val cliConfig: CliConfig = CliConfig.default
 

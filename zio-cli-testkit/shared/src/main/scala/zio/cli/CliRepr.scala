@@ -7,8 +7,8 @@ package zio.cli.testkit
  * effect as `repr`.
  *
  * {{{
- * val pair: CliRepr[List[String], String] = CliRepr(List("greet", "--name", "Ann"), "Ann")
- * val lengths: CliRepr[Int, String]       = pair.map(_.length)
+ * val pair: CliRepr[List[String], String]  = CliRepr(List("greet", "--name", "Ann"), "Ann")
+ * val lengths: CliRepr[Int, String]        = pair.map(_.length)
  * val upper: CliRepr[List[String], String] = pair.map2(_.toUpperCase)
  * }}}
  *
