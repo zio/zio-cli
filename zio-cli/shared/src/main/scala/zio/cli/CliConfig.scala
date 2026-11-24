@@ -15,15 +15,16 @@ import zio.{URIO, ZIO}
  *   any case; an option name typed in a different case than declared is still not read (`--NAME` is not read as
  *   `--name`).
  * @param autoCorrectLimit
- *   the largest edit distance between a mistyped option and a declared option name for which parsing fails with
- *   `The flag "--nmae" is not recognized. Did you mean --name?`. Only option names longer than `autoCorrectLimit + 1`
- *   characters get this suggestion.
+ *   the largest edit distance between a mistyped option and a declared option name for which a parse error suggests the
+ *   declared name, as in `The flag "--nmae" is not recognized. Did you mean --name?`. Only option names longer than
+ *   `autoCorrectLimit + 1` characters get this suggestion. The suggestion is shown only when parsing then fails:
+ *   `Command("c", Options.text("name").optional)` parses `c --nmae x` as `None` without an error.
  * @param finalCheckBuiltIn
  *   whether, when parsing fails, to look for `--help`, `-h`, `--wizard` or `-w` anywhere in the input and show the help
  *   or the wizard instead of the error.
  * @param showAllNames
- *   whether the usage line of the help screen shows every name of an option; when `false`, it shows the first long name
- *   only. The options section always shows every name.
+ *   whether the usage line of the help screen shows every name of an option; when `false`, it shows only the first long name,
+ *   or every name when the option has no long name. The options section always shows every name.
  * @param showTypes
  *   whether the usage line of the help screen shows the value placeholders of options, such as `<text>`. The options
  *   section always shows them.
