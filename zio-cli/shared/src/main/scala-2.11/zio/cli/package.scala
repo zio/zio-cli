@@ -35,7 +35,10 @@ package object cli {
    */
   implicit final class StringBackfill(private val self: String) extends AnyVal {
 
-    /** Returns the string parsed as an `Int`, or `None` when `toInt` throws (for example for `"12x"`, or a number out of the `Int` range). */
+    /**
+     * Returns the string parsed as an `Int`, or `None` when `toInt` throws (for example for `"12x"`, or a number out
+     * of the `Int` range).
+     */
     def toIntOption: Option[Int] = Try(self.toInt).toOption
 
   }

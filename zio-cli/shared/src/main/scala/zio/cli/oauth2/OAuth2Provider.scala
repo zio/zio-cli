@@ -14,7 +14,7 @@ import zio.json._
  * implement this trait for another server.
  *
  * {{{
- * val github: OAuth2Provider       = OAuth2Provider.Github("Iv1.8a61f9b3a7aba766")
+ * val github: OAuth2Provider      = OAuth2Provider.Github("Iv1.8a61f9b3a7aba766")
  * val token: Options[OAuth2Token] = Options.oauth2(github, List("repo", "read:user"))
  * }}}
  *
