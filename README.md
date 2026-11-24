@@ -27,14 +27,14 @@ ZIO CLI is published for Scala 2.12, 2.13 and 3. To use it on the JVM, add the f
 
 ```scala
 // Commands, options, arguments, generated help, wizard mode and shell completion (JVM, Scala.js, Scala Native)
-libraryDependencies += "dev.zio" %% "zio-cli" % "0.8.2"
+libraryDependencies += "dev.zio" %% "zio-cli" % "0.8.3"
 ```
 
 For Scala.js or Scala Native projects, use `%%%` instead:
 
 ```scala
 // Commands, options, arguments, generated help, wizard mode and shell completion (JVM, Scala.js, Scala Native)
-libraryDependencies += "dev.zio" %%% "zio-cli" % "0.8.2"
+libraryDependencies += "dev.zio" %%% "zio-cli" % "0.8.3"
 ```
 
 The [Getting Started](docs/getting-started.md) page walks through a first program.
@@ -49,14 +49,14 @@ The testkit adds assertions and generators that check how commands parse their i
 
 ```scala
 // Assertions and generators for testing commands and apps with ZIO Test (JVM, Scala.js, Scala Native)
-libraryDependencies += "dev.zio" %% "zio-cli-testkit" % "0.8.2" % Test
+libraryDependencies += "dev.zio" %% "zio-cli-testkit" % "0.8.3" % Test
 ```
 
 For Scala.js or Scala Native projects, use `%%%` instead:
 
 ```scala
 // Assertions and generators for testing commands and apps with ZIO Test (JVM, Scala.js, Scala Native)
-libraryDependencies += "dev.zio" %%% "zio-cli-testkit" % "0.8.2" % Test
+libraryDependencies += "dev.zio" %%% "zio-cli-testkit" % "0.8.3" % Test
 ```
 
 The [Testing](docs/testing.md) reference lists the assertions, and [How to test a CLI app](docs/how-to-test-a-cli.md) shows them in use.
