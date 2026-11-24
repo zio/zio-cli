@@ -1,5 +1,9 @@
 package zio.cli.figlet
 
+/**
+ * Holds the font bundled with zio-cli, `Default`, as FIGfont text in the source code, so it is available on the JVM,
+ * Scala.js and Scala Native without reading a file.
+ */
 object FigFontFiles {
   private val Text =
     """flf2a$ 6 5 16 15 10 0 18319
@@ -1299,5 +1303,10 @@ __/_/_@
 /____/    @@
 """
 
+  /**
+   * The FIGlet font Slant, parsed from the text bundled with zio-cli. The font's comment lines name it "Slant by Glenn
+   * Chappell 3/93", modified by Paul Burton in 12/96. It has the characters with codes 32 to 126 and 160 to 255, and
+   * smushes characters both horizontally and vertically. `FigFont.Default` is this same value.
+   */
   val Default: FigFont = FigFont.fromLines(Text.split("\n").toSeq).toOption.get
 }

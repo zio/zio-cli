@@ -5,7 +5,8 @@ package oauth2
 import zio.json.{jsonMemberNames, DeriveJsonDecoder, JsonDecoder, SnakeCase}
 
 /**
- * Response to device authorization request providing end-user verification code.
+ * The response to a device authorization request: the device code the client polls with, and the code and URI the user
+ * needs to approve the request in a browser.
  *
  * @see
  *   https://datatracker.ietf.org/doc/html/rfc8628#section-3.2
@@ -19,9 +20,9 @@ import zio.json.{jsonMemberNames, DeriveJsonDecoder, JsonDecoder, SnakeCase}
  * @param verificationUriComplete
  *   end-user verification URI with `userCode`
  * @param expiresIn
- *   lifetime od `deviceCode` and `userCode`
+ *   lifetime of `deviceCode` and `userCode`
  * @param interval
- *   polling interval
+ *   time to wait between two token requests
  */
 final case class AuthorizationResponse(
   deviceCode: String,
@@ -32,6 +33,9 @@ final case class AuthorizationResponse(
   interval: Duration
 )
 
+/**
+ * Companion of `AuthorizationResponse`, holding the decoder of the standard JSON response.
+ */
 object AuthorizationResponse {
 
   @jsonMemberNames(SnakeCase)
@@ -45,7 +49,16 @@ object AuthorizationResponse {
   )
 
   /**
-   * JSON decoder for [[AuthorizationResponse]].
+   * Decodes the JSON response of RFC 8628 section 3.2. `device_code`, `user_code`, `verification_uri` and `expires_in`
+   * are required, and `verification_uri_complete` and `interval` are optional. `expires_in` and `interval` are read as
+   * seconds, and a missing `interval` gives 5 seconds.
+   *
+   * {{{
+   * AuthorizationResponse.authorizationResponseJsonDecoder.decodeJson(
+   *   """{"device_code":"3584d83530557fdd","user_code":"WDJB-MJHT","verification_uri":"https://example.com/device","expires_in":900}"""
+   * )
+   * // Right(AuthorizationResponse(3584d83530557fdd,WDJB-MJHT,https://example.com/device,None,PT15M,PT5S))
+   * }}}
    */
   val authorizationResponseJsonDecoder: JsonDecoder[AuthorizationResponse] =
     DeriveJsonDecoder
