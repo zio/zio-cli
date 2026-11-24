@@ -83,8 +83,8 @@ sealed trait Args[+A] extends Parameter { self =>
 
   /**
    * Repeats this argument at least `min` and at most `max` times and returns the values as a list. Words after the
-   * first `max` values are left for what follows. When `min` is greater than `max`, it stops after `max` values without
-   * failing.
+   * first `max` values are left for what follows. When `min` is greater than `max`, it succeeds once `max` values are
+   * read, and fails with fewer words.
    */
   final def between(min: Int, max: Int): Args[List[A]] = Args.Variadic(self, Some(min), Some(max))
 
