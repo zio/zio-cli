@@ -5,19 +5,31 @@ import zio.Console._
 import zio.cli.HelpDoc._
 
 /**
- * Wizard controls the representation of the Wizard Mode triggered by "--wizard" command.
+ * The wizard mode: asks the user on the console for each choice, option and argument of `command`, and returns the
+ * command line it builds. A [[CliApp]] starts it for `--wizard` and then runs that command line.
+ *
+ * At each prompt, `help` shows the full help of the current parameter, `restart` starts again from the beginning and
+ * `quit` stops the wizard. An empty or invalid answer asks again.
  */
 final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
 
+  /**
+   * The prompt shown before each answer: a name of `command` followed by ` :> `, such as `greet :> `.
+   */
   val prompt = command.names.headOption match {
     case Some(name) => s"$name :> "
     case None       => ":> "
   }
 
+  /**
+   * Prints `header`.
+   */
   val printHeader = printLine(header.toPlaintext()).orDie
 
   /**
-   * Prints information about option, help and if an input of the user was invalid.
+   * Prints the wizard's text for `parameter`: a note that `invalidInput` was rejected (if any), then `instruction`,
+   * then either the full help of `parameter` when `needHelp` is `true`, or its short description and the hints for
+   * `help`, `restart` and `quit`.
    */
   def printInfo(
     invalidInput: Option[String],
@@ -57,7 +69,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   }
 
   /**
-   * Allows the user choosing between different options represented by Alternatives trait.
+   * Asks the user to pick one of the alternatives of `param`, by name or by number, and returns the words to add to the
+   * command line with the chosen parameter. With a single alternative, picks it without asking.
    */
   def chooseParam(
     param: Alternatives,
@@ -124,7 +137,7 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   }
 
   /**
-   * Allows the user enterin the value of a parameter represented by Input trait.
+   * Asks the user for the value of `param` until it is valid, and returns the words to add to the command line.
    */
   def inputParam(
     param: Input,
@@ -148,7 +161,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     } yield params
 
   /**
-   * Constructs a command interacting with the user.
+   * Walks through `command`, asking the user for each choice, option and argument, and returns the words of the command
+   * line.
    */
   def generateParams(command: Parameter): IO[Wizard.WizardException, List[String]] =
     command match {
@@ -168,7 +182,7 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
     }
 
   /**
-   * Prints resulting command constructed by Wizard Mode.
+   * Prints the command line that the wizard built, so the user can type it directly next time.
    */
   def printFinalCommand(params: List[String]) = for {
     _ <- printHeader
@@ -180,7 +194,8 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
   } yield ()
 
   /**
-   * Entry point for Wizard mode.
+   * Runs the wizard and returns the command line it built, without empty words. `restart` starts again; `quit` fails
+   * with `Wizard.QuitException`.
    */
   def execute: IO[Wizard.QuitException, List[String]] = for {
     parameters <- generateParams(command).catchAll {
@@ -192,8 +207,23 @@ final case class Wizard(command: Command[_], conf: CliConfig, header: HelpDoc) {
 
 }
 
+/**
+ * The exceptions that end a step of the wizard.
+ */
 object Wizard {
-  sealed trait WizardException  extends Exception
+
+  /**
+   * Raised when the user types `restart` or `quit` at a wizard prompt.
+   */
+  sealed trait WizardException extends Exception
+
+  /**
+   * The user typed `restart`.
+   */
   case class RestartException() extends WizardException
-  case class QuitException()    extends WizardException
+
+  /**
+   * The user typed `quit`.
+   */
+  case class QuitException() extends WizardException
 }

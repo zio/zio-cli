@@ -12,31 +12,81 @@ import zio.cli.figlet.FigFont
 import scala.annotation.tailrec
 
 /**
- * A `CliApp[R, E]` is a complete description of a command-line application, which requires environment `R`, and may
- * fail with a value of type `E`.
+ * A `CliApp[R, E, A]` is a complete command-line application: a name, a version, a summary, the [[Command]] that
+ * describes what the user may type, and the function that runs once the input is parsed. Running it needs an
+ * environment `R`, can fail with an error `E`, and produces a value `A`.
+ *
+ * Create one with `CliApp.make` and run it with `run`, or define it as the `cliApp` of a [[ZIOCliDefault]] program.
+ * `--help` shows a help screen built from the name, version, summary, command and footer.
+ *
+ * {{{
+ * import zio._
+ *
+ * val greet = Command("greet", Options.text("name"))
+ *
+ * val app: CliApp[Any, java.io.IOException, Unit] =
+ *   CliApp.make("greeter", "1.0.0", HelpDoc.Span.text("Says hello."), greet) { name =>
+ *     Console.printLine("Hello, " + name + "!")
+ *   }
+ * }}}
+ *
+ * @see
+ *   [[https://zio.dev/zio-cli/ ZIO CLI]]
  */
 sealed trait CliApp[-R, +E, +A] { self =>
 
+  /**
+   * Parses `args`, the words typed after the program's name, and runs the application. For a single command, or a
+   * command with subcommands, the command's own name is added in front of `args`, so users don't type it; for
+   * alternatives built with `|`, the first word picks the command.
+   *
+   * Returns `Some(result)` after running the application's function, or `None` after a built-in option such as
+   * `--help`. Words left over after the command's arguments are ignored. On a parse error, it prints the error to the
+   * console and fails with `CliError.Parsing`; a failure of the application's function becomes `CliError.Execution`.
+   */
   def run(args: List[String]): ZIO[R, CliError[E], Option[A]]
 
+  /**
+   * Returns a copy that parses the command line with `newConfig`.
+   */
   def config(newConfig: CliConfig): CliApp[R, E, A]
 
+  /**
+   * Transforms the result of the application with `f`.
+   */
   final def map[B](f: A => B): CliApp[R, E, B] =
     self match {
       case CliApp.CliAppImpl(name, version, summary, command, execute, footer, config, figFont) =>
         CliApp.CliAppImpl(name, version, summary, command, execute.andThen(_.map(f)), footer, config, figFont)
     }
 
+  /**
+   * Runs `f` after the application's function, with its result. A failure of `f` becomes a `CliError.Execution`.
+   */
   def flatMap[R1 <: R, E1 >: E, B](f: A => ZIO[R1, E1, B]): CliApp[R1, E1, B]
 
+  /**
+   * Adds `newFooter` after the current footer; the footer ends the help screen.
+   */
   def footer(newFooter: HelpDoc): CliApp[R, E, A]
 
+  /**
+   * Appends `s` to the current summary, which the help screen shows after the name and version.
+   */
   def summary(s: HelpDoc.Span): CliApp[R, E, A]
 
 }
 
+/**
+ * The constructor for [[CliApp]].
+ */
 object CliApp {
 
+  /**
+   * Creates an application. The help screen starts with `name` drawn as a banner in `figFont`, then `name`, `version`
+   * and `summary` on one line, and ends with `footer`. `config` sets how the command line is parsed. Once `command` has
+   * parsed the command line, `execute` runs with its value.
+   */
   def make[R, E, Model, A](
     name: String,
     version: String,
