@@ -23,8 +23,8 @@ import zio.{URIO, ZIO}
  *   whether, when parsing fails, to look for `--help`, `-h`, `--wizard` or `-w` anywhere in the input and show the help
  *   or the wizard instead of the error.
  * @param showAllNames
- *   whether the usage line of the help screen shows every name of an option; when `false`, it shows only the first long name,
- *   or every name when the option has no long name. The options section always shows every name.
+ *   whether the usage line of the help screen shows every name of an option; when `false`, it shows only the first long
+ *   name, or every name when the option has no long name. The options section always shows every name.
  * @param showTypes
  *   whether the usage line of the help screen shows the value placeholders of options, such as `<text>`. The options
  *   section always shows them.

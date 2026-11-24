@@ -97,8 +97,9 @@ object ValidationErrorType {
   case object MissingSubCommand extends ValidationErrorType
 
   /**
-   * A positional argument is missing or invalid, an `Args#mapOrFail` function returned `Left`, or a value that `Options.KeyValueMap#validate` receives
-   * has no `=` (`Expected a key/value pair but got 'a'.`). On the command line, a word without `=` after a `keyValueMap` option is not read as a pair.
+   * A positional argument is missing or invalid, an `Args#mapOrFail` function returned `Left`, or a value that
+   * `Options.KeyValueMap#validate` receives has no `=` (`Expected a key/value pair but got 'a'.`). On the command line,
+   * a word without `=` after a `keyValueMap` option is not read as a pair.
    */
   case object InvalidArgument extends ValidationErrorType
 

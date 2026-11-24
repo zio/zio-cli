@@ -16,7 +16,8 @@ object ShellType {
 
   /**
    * Z shell, selected by `--shell-type zsh`. There is no completion script for it: `CompletionScript` throws
-   * `scala.NotImplementedError` for `ZShell`, so with `--shell-type zsh` the effect of `CliApp#run` for `--shell-completion-script` dies with that error and prints no script.
+   * `scala.NotImplementedError` for `ZShell`, so with `--shell-type zsh` the effect of `CliApp#run` for
+   * `--shell-completion-script` dies with that error and prints no script.
    */
   case object ZShell extends ShellType
 

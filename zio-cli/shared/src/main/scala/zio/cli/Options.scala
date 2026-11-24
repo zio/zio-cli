@@ -1121,9 +1121,10 @@ object Options extends OptionsPlatformSpecific {
     Single(name, Vector.empty, PrimType.ZoneOffset)
 
   /**
-   * Creates an option that collects `key=value` pairs into a `Map`. The option may be repeated right after its pairs (`--define a=1 --define
-   * b=2`) or followed by several pairs (`--define a=1 b=2`); a repeat that comes after another option is not read, and its words are left for the arguments. The pairs end at the first word without `=`. The key is
-   * the text before the first `=` and the value the rest (`a=b=c` gives `a -> b=c`). When a key is given twice, the
+   * Creates an option that collects `key=value` pairs into a `Map`. The option may be repeated right after its pairs
+   * (`--define a=1 --define b=2`) or followed by several pairs (`--define a=1 b=2`); a repeat that comes after another
+   * option is not read, and its words are left for the arguments. The pairs end at the first word without `=`. The key
+   * is the text before the first `=` and the value the rest (`a=b=c` gives `a -> b=c`). When a key is given twice, the
    * first value is kept. When the first word after the option has no `=` or an empty value (`a=`), the option is not
    * read, so a required key-value option fails with `Expected to find --define option.`.
    *

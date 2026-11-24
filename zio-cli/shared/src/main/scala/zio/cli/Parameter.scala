@@ -4,8 +4,9 @@ import zio.IO
 
 /**
  * Abstraction employed by the `Wizard` class. `Command`, `Options` and `Args` all extend `Parameter`, and the wizard
- * handles each sub-trait (`Alternatives`, `Input`, `Pipeline`) in its own way: it picks one of several
- * alternatives (asking the user when there is more than one choice), reads a value for an input, and walks through the parameters of a pipeline in order.
+ * handles each sub-trait (`Alternatives`, `Input`, `Pipeline`) in its own way: it picks one of several alternatives
+ * (asking the user when there is more than one choice), reads a value for an input, and walks through the parameters of
+ * a pipeline in order.
  */
 private[cli] trait Parameter {
 
@@ -27,7 +28,8 @@ private[cli] trait Parameter {
 
 /**
  * Alternatives are used to allow the user choosing between possibilities. `Command.OrElse` and `Options.OrElse` extend
- * it. For a `Command.OrElse` the wizard asks the user to pick a command; for an `Options.OrElse`, whose sides have no names, it takes the right side without asking.
+ * it. For a `Command.OrElse` the wizard asks the user to pick a command; for an `Options.OrElse`, whose sides have no
+ * names, it takes the right side without asking.
  */
 private[cli] trait Alternatives extends Parameter {
 
@@ -39,9 +41,9 @@ private[cli] trait Alternatives extends Parameter {
    * chosen parameter.
    *
    * Nested alternatives are flattened and wrappers (`Wrap`) are looked through. A named parameter, such as a command,
-   * is keyed by its first name; a parameter without a name is keyed by `-`, with an empty word in its value. A later entry
-   * replaces an earlier one with the same key, so the two sides of an `Options.OrElse`, which have no names, give a
-   * single entry for the right side.
+   * is keyed by its first name; a parameter without a name is keyed by `-`, with an empty word in its value. A later
+   * entry replaces an earlier one with the same key, so the two sides of an `Options.OrElse`, which have no names, give
+   * a single entry for the right side.
    */
   def getSubparameters: Map[String, (String, Parameter)] = {
     def extract[B <: Parameter](param: B): Map[String, (String, Parameter)] =
