@@ -110,7 +110,7 @@ import zio.cli._
 val config = Options.file("config", exists = Exists.Yes)
 ```
 
-`Options.directory` is not available on Scala.js, and `Options.file` there rejects every value. There is no `Options.path`; an option that accepts a file or a directory is built from a `PrimType`. [Paths](value-types.md#paths), [Custom Parameters From a PrimType](value-types.md#custom-parameters-from-a-primtype) and [Platform Support](value-types.md#platform-support) give the details.
+`Options.directory` is not available on Scala.js; `Options.file` there compiles as `Options[String]` and uses Node.js `fs` and `path` when available (failing with `FileSystem is not available in ScalaJS` otherwise). There is no `Options.path`; an option that accepts a file or a directory is built from a `PrimType`. [Paths](value-types.md#paths), [Custom Parameters From a PrimType](value-types.md#custom-parameters-from-a-primtype) and [Platform Support](value-types.md#platform-support) give the details.
 
 ### Key-Value Options
 

@@ -1,6 +1,6 @@
 package zio.cli.files
 
-import zio.{IO, UIO}
+import zio.{IO, UIO, ZIO}
 import zio.cli.PathPlatformSpecific
 
 /**
@@ -24,6 +24,32 @@ trait FileSystem extends PathPlatformSpecific {
 
   /** Returns whether `path` is an existing regular file. */
   def isRegularFile(path: JPath): UIO[Boolean]
+
+  /** Returns the parent directory of `path`, or `None` when `path` has no parent. */
+  def getParent(path: JPath): UIO[Option[JPath]] = {
+    val _ = path
+    ZIO.none
+  }
+
+  /** Resolves `child` against `parent`, or fails with an error message. */
+  def resolve(parent: JPath, child: String): IO[String, JPath] =
+    parsePath(s"$parent/$child")
+
+  /** Reads the UTF-8 contents of the file at `path`, or fails with an error message. */
+  def readFile(path: JPath): IO[String, String] =
+    ZIO.fail(s"Cannot read file '$path'.")
+
+  /** Returns the current working directory (`user.dir`, or `process.cwd()` on Scala.js under Node.js), if available. */
+  def currentWorkingDirectory: UIO[Option[String]] =
+    zio.System.property("user.dir").orElseSucceed(None)
+
+  /** Returns the user's home directory (`user.home`, or `os.homedir()` on Scala.js under Node.js), if available. */
+  def userHomeDirectory: UIO[Option[String]] =
+    zio.System.property("user.home").orElseSucceed(None)
+
+  /** Returns a string representation of `path` (normalized by platform implementations such as `FileSystem.live`). */
+  def pathString(path: JPath): String =
+    path.toString
 
 }
 
