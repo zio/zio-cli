@@ -111,7 +111,7 @@ Path parameters return a `java.nio.file.Path`. Two small types configure them:
 
 `PathType` says which kind of path is expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable. `Exists` says whether the path must exist: `Exists.Yes`, `Exists.No`, or `Exists.Either` when it does not matter.
 
-`PrimType.Path(pathType, shouldExist)` combines the two. `Args.file(name, exists = Exists.Yes)`, for example, wraps `PrimType.Path(PathType.File, Exists.Yes)`. A third parameter, `fileSystem`, is a `zio.cli.files.FileSystem` and defaults to `FileSystem.live`. `FileSystem` has four methods, `parsePath(path: String): IO[String, Path]`, `exists(path: Path): UIO[Boolean]`, `isDirectory(path: Path): UIO[Boolean]` and `isRegularFile(path: Path): UIO[Boolean]`, so a test can pass its own implementation.
+`PrimType.Path(pathType, shouldExist)` combines the two. `Args.file(name, exists = Exists.Yes)`, for example, wraps `PrimType.Path(PathType.File, Exists.Yes)`. A third parameter, `fileSystem`, is a `zio.cli.files.FileSystem` and defaults to `FileSystem.live`. `FileSystem` has four abstract methods that `PrimType.Path` calls — `parsePath(path: String): IO[String, Path]`, `exists(path: Path): UIO[Boolean]`, `isDirectory(path: Path): UIO[Boolean]` and `isRegularFile(path: Path): UIO[Boolean]` — plus six methods with defaults used when loading `.<name>` option files (`getParent`, `resolve`, `readFile`, `currentWorkingDirectory`, `userHomeDirectory` and `pathString`), so a test can pass its own implementation.
 
 The `exists` parameter of `Args.file`, `Args.directory`, `Options.file` and `Options.directory` defaults to `Exists.Either`. The help sentence follows the combination, as in `A file.`, `An existing file.` or `A directory that must not exist.`. Validation checks the path in two steps:
 
@@ -151,13 +151,13 @@ println(source.helpDoc.toPlaintext(color = false))
 
 Some value types depend on the file system, so their constructors differ between platforms:
 
-| Constructor         | JVM | Scala Native | Scala.js                                           |
-| ------------------- | --- | ------------ | -------------------------------------------------- |
-| `Args.file`         | yes | yes          | no                                                 |
-| `Args.directory`    | yes | yes          | no                                                 |
-| `Args.path`         | yes | yes          | no                                                 |
-| `Options.file`      | yes | yes          | compiles as `Options[String]`, rejects every value |
-| `Options.directory` | yes | yes          | no                                                 |
-| `Options.oauth2`    | yes | no           | no                                                 |
+| Constructor         | JVM | Scala Native | Scala.js                                                    |
+| ------------------- | --- | ------------ | ----------------------------------------------------------- |
+| `Args.file`         | yes | yes          | no                                                          |
+| `Args.directory`    | yes | yes          | no                                                          |
+| `Args.path`         | yes | yes          | no                                                          |
+| `Options.file`      | yes | yes          | compiles as `Options[String]` (requires Node.js at runtime) |
+| `Options.directory` | yes | yes          | no                                                          |
+| `Options.oauth2`    | yes | no           | no                                                          |
 
-All other value types are available on every platform. On Scala.js there is no file system, so `Options.file` fails for every value the user passes with `FileSystem is not available in ScalaJS`. Only a default set with `Options#withDefault` can be used there. `Options.oauth2` is described in [Authorization with OAuth2](auth.md).
+All other value types are available on every platform. On Scala.js, `Options.file` uses Node.js `fs` and `path` when running on Node.js, and otherwise fails with `FileSystem is not available in ScalaJS` (where only a default set with `Options#withDefault` can be used). `Options.oauth2` is described in [Authorization with OAuth2](auth.md).

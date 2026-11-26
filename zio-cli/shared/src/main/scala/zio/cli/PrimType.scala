@@ -102,7 +102,8 @@ object PrimType extends PathPlatformSpecific {
    * `shouldExist` is not `Exists.No`, the kind rule of `pathType`. A missing path accepted by `Exists.Either` gets no
    * kind check.
    *
-   * On Scala.js, `FileSystem.live` can't parse paths, so validation with it fails.
+   * On Scala.js, `FileSystem.live` requires Node.js (`fs` and `path`), and fails with
+   * `FileSystem is not available in ScalaJS` when Node.js is unavailable.
    *
    * @param pathType
    *   The kind of path expected: `PathType.File`, `PathType.Directory`, or `PathType.Either` when both are acceptable.
